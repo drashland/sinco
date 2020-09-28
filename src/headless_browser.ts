@@ -74,7 +74,7 @@ export class HeadlessBrowser {
    * Used to display the command in the error message if
    * command errored
    */
-  private last_command_sent: string = "";
+  private last_command_sent = "";
 
   /**
    * A list of every command sent
