@@ -214,6 +214,9 @@ export class HeadlessBrowser {
    */
   protected async writeCommandToProcess (command: string): Promise<void> {
     //await this.browser_process.stdin!.write(encoder.encode(command));
+    if (!this.browser_process.stdin) {
+      throw new Error("TODO")
+    }
     await Deno.writeAll(this.browser_process.stdin, new TextEncoder().encode(command))
     this.commands_sent.push(command)
     await this.browser_process.stdin!.close(); // We need this, otherwise process hangs when we try do p.output()

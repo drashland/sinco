@@ -29,10 +29,9 @@
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Features](#features)
-- [Why use Drash?](#why-use-drash)
+- [Why use Dawn?](#why-use-dawn)
 - [Mirrors](#mirrors)
 - [Articles](#articles)
-- [Benchmarks](#benchmarks)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -42,19 +41,48 @@
 
 import { Dawn } from "https://deno.land/x/dawn@v1.0.0/mod.ts";
 
-Deno.test({
-  name: "Page URL changes when clicking a button",
-  async fnn(): Promise<void> {
-    const dawn = new Dawn("https://chromstatus.com");
-    await dawn.click('a[href="/features/schedule"]');
-    await dawn.assertUrlIs("https://chromestatus.com/features/schedule")
-    dawn.done()
+Deno.test('I will pass', async () => {
+  // Initialise dawn
+  const dawn = new Dawn("https://chromestatus.com")
+
+  // Do stuff
+  await dawn.assertUrlIs("https://chromestatus.com/features")
+  // ...
+
+  // Finish
+  await dawn.done()
+})
+
+Deno.test('I will fail', async () => {
+  // Initialise dawn
+  const dawn = new Dawn("https://chromestatus.com")
+
+  // Do stuff
+  await dawn.assertUrlIs("https://chromestatus.com/feeaatureesss")
+  // ...
+
+  // Finish
+  await dawn.done()
 })
 ```
 
 ```
 $ deno test --allow-run app_test.ts
-// TODO DISPLAY OUTPUT
+running 2 tests
+test I will pass ... ok (2550ms)
+test I will fail ... FAILED (1809ms)
+
+failures:
+
+I will fail
+AssertionError: Values are not equal:
+
+
+    [Diff] Actual / Expected
+
+
+-   "https://chromestatus.com/features"
++   "https://chromestatus.com/feeaatureesss"
 ```
 
 Or you can even use [Rhum](https://github.com/drashland/rhum) which can aid in displaying the output in a cleaner format:
@@ -67,8 +95,8 @@ Rhum.testPlan("Browser", () => {
   Rhum.testSuite("Home Page", () => {
     Rhum.testCase("Redirects when clicking your profile picture", () => {
       const dawn = new Dawn("https://your-app.com")
-      await dawn.click("#my-profile-picture")
       await dawn.assertUrlIs("https://your-app/me/edit")
+      await dawn.done()
     })
   })
 })
@@ -82,21 +110,26 @@ Rhum.run()
 
 ## Features
 
-- [Click Buttons](http://drash.land/drash/#/advanced-tutorials/content-negotiation/user-profiles)
-- [Get Selector Text](http://drash.land/drash/#/tutorials/servers/serving-static-paths)
-- // TODO MENTION ALL METHODS
+- [x] [Click Buttons](url)
+- [x] [Get Input Values](url)
+- [x] [Custom assertions](url)
+    - [x] `assertUrlIs`
+    - [x] `assertSee`
+- [x] [Wait For AJAX](url)
+- [x] [Type into an Input Tag](url)
+- [ ] Run Many Actions
 
 ## Why Use Dawn?
 
 Dawn is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Dawn provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
 
-Drash takes concepts from the following:
+Dawn takes concepts from the following:
 
 * <a href="https://laravel.com/docs/8.x/dusk" target="_BLANK">Laravel Dusk</a> &mdash; taking inspiration from the methods the Dusk API provides</a>
 
 ## Mirrors
 
-* https://nest.land/package/dawn
+* [ ] https://nest.land/package/dawn
 
 ## Articles
 
