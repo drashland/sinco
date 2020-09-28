@@ -2,7 +2,7 @@ import {
   HeadlessBrowser,
   SuccessResult,
 } from "./headless_browser.ts";
-import {assertEquals} from "../deps.ts";
+import { assertEquals } from "../deps.ts";
 
 /**
  * visit
@@ -40,12 +40,11 @@ import {assertEquals} from "../deps.ts";
  * Responsible for assertions, and exposing the Headless Browser methods
  */
 export class Dawn extends HeadlessBrowser {
-
   /**
    * @param urlToVisit - Which url are we visiting?
    */
   constructor(urlToVisit: string) {
-    super(urlToVisit)
+    super(urlToVisit);
   }
 
   /**
@@ -55,10 +54,10 @@ export class Dawn extends HeadlessBrowser {
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
     const command = "window.location.href";
-    await this.writeCommandToProcess(command)
-    const result = await this.getOutputFromProcess()
+    await this.writeCommandToProcess(command);
+    const result = await this.getOutputFromProcess();
     const actualUrl = (result.result as SuccessResult).value;
-    assertEquals(actualUrl, expectedUrl)
+    assertEquals(actualUrl, expectedUrl);
   }
 
   /**
@@ -66,12 +65,13 @@ export class Dawn extends HeadlessBrowser {
    *
    * @param text - The text to check for
    */
-  public async assertSee (text: string): Promise<void> {
-    const command = `document.documentElement.innerText.indexOf('${text}') >= 0`;
-    await this.writeCommandToProcess(command)
-    const result = await this.getOutputFromProcess()
+  public async assertSee(text: string): Promise<void> {
+    const command =
+      `document.documentElement.innerText.indexOf('${text}') >= 0`;
+    await this.writeCommandToProcess(command);
+    const result = await this.getOutputFromProcess();
     // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
     const exists = (result.result as SuccessResult).value;
-    assertEquals(exists, true)
+    assertEquals(exists, true);
   }
 }

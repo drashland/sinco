@@ -1,1 +1,1 @@
-export { Dawn } from "./src/dawn.ts"
+export { Dawn } from "./src/dawn.ts";
