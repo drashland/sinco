@@ -39,7 +39,7 @@
 ```typescript
 // File: app_test.ts
 
-import { Dawn } from "https://deno.land/x/dawn@v1.0.0/mod.ts";
+import { Dawn } from "https://deno.land/x/dawn@v0.1.0/mod.ts";
 
 Deno.test('I will pass', async () => {
   // Initialise dawn
@@ -89,7 +89,7 @@ Or you can even use [Rhum](https://github.com/drashland/rhum) which can aid in d
 
 ```typescript
 import { Rhum } from "https://deno.land/x/rhum@v1.2.4/mod.ts";
-import { Dawn } from "https://deno.land/x/dawn@v1.0.0/mod.ts";
+import { Dawn } from "https://deno.land/x/dawn@v0.1.0/mod.ts";
 
 Rhum.testPlan("Browser", () => {
   Rhum.testSuite("Home Page", () => {
@@ -144,3 +144,7 @@ Please read through our [contributing guidelines](./.github/CONTRIBUTING.md). In
 ## License
 
 By contributing your code, you agree to license your contribution under the [MIT License](./LICENSE).
+
+## Acknowledgements
+
+- [caspervonb/deno-web](https://github.com/caspervonb/deno-web) - Made it a realisation using Chrome from the CLI could be a possibility
