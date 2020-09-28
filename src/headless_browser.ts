@@ -86,7 +86,6 @@ export class HeadlessBrowser {
    * @param urlToVisit - The url to visit or open up
    */
   constructor(urlToVisit: string) {
-    // TODO use options
     let chromePath = ""
     switch (Deno.build.os) {
       case "darwin":
@@ -123,7 +122,7 @@ export class HeadlessBrowser {
     }
     const command = `document.querySelector('${selector}').click()`
     await this.writeCommandToProcess(command)
-    // TODO(any) When we can read output at any time, check if result has errors
+    // TODO(#7) When we can read output at any time, check if result has errors
     // this.getCommandFromProcess // gets command and checks for errors
     // TODO(any) we might need to wait here, because clicking something could be too fast and the next command might not work eg submit button for form, how do we know or how do we wait? The submission might send us to a different page but by then, the console is cleared and the next command(s) won't runn
     // ...
@@ -155,7 +154,7 @@ export class HeadlessBrowser {
   public async waitForAjax(): Promise<void> {
     const command = '!$.active'
     await this.writeCommandToProcess(command)
-    // TODO(any) When we can read output at any time, check if result has errors
+    // TODO(#7) When we can read output at any time, check if result has errors
     // await this.getCommandFromProcess // gets command and checks for errors
   }
 
@@ -183,7 +182,7 @@ export class HeadlessBrowser {
     // TODO should we remove the hardcoded input bit, and allow the user to specify the selector? means this method could be more generic, allowing users to get an input value based on a class or something
     const command = `document.querySelector('input[name="${inputName}"]').value = ${value}`;
     await this.writeCommandToProcess(command)
-    // TODO(any) When we can read output at any time, check if result has errors
+    // TODO(#7) When we can read output at any time, check if result has errors
     // await this.getCommandFromProcess // gets command and checks for errors
   }
 

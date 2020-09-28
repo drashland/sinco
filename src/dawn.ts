@@ -4,22 +4,6 @@ import {
 } from "./headless_browser.ts";
 import {assertEquals} from "../deps.ts";
 
-// TODO(edward) Support when using docker, support logging in (databases annd all that) (maybe), make options configurable, make options platform agnostic
-// TODO Add cookie operations
-// todo add method to get a value of selector (do we have this already)
-// todo add method to get atttribute from selector
-// todo add dialog support (typing into them and asserting if one popped up
-// todo look into flags we can pass to chrome path (see headless_browser.ts at top of file)
-// todo add wait for method, that sets a timeout, and after 5s (default) asserts it exists and then continues
-// TODO I WANT TO ACHIEVE SYNTAX LIKE:
-//   await dawn()
-//     .visit()
-//     .click()
-//   const value = dawn().getValue(...)
-//   await dawn()
-//     .click(...)
-
-
 /**
  * visit
  *     Initial method to call on `Dawn`. Sets the ulr to visit
