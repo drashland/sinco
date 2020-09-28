@@ -1,0 +1,15 @@
+{
+  "name": "dawn",
+  "description": "Browser Automation and Testing Tool.",
+  "version": "1.0.0",
+  "stable": true,
+  "repository": "https://github.com/drashland/dawn",
+  "files": [
+    "./mod.ts",
+    "./deps.ts",
+    "./src/**/*",
+    "./README.md",
+    "./logo.svg",
+    "LICENSE"
+  ]
+}
