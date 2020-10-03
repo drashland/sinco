@@ -1,7 +1,4 @@
-import {
-  HeadlessBrowser,
-  SuccessResult,
-} from "./headless_browser.ts";
+import { HeadlessBrowser, SuccessResult } from "./headless_browser.ts";
 import { assertEquals } from "../deps.ts";
 
 /**
