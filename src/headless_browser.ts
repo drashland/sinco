@@ -15,7 +15,7 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import {Cookie, readLines} from "../deps.ts";
+import { Cookie, readLines } from "../deps.ts";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -181,13 +181,13 @@ export class HeadlessBrowser {
    *
    * @param cookie - An object containing the cookie data to set. See https://deno.land/std@0.74.0/http/cookie.ts#L9
    */
-  public async setCookie (cookie: Cookie): Promise<void> {
-    let command = 'document.cookie = "'
-    Object.keys(cookie).forEach(key => {
-      command += `${key}=${cookie[key]}; `
+  public async setCookie(cookie: Cookie): Promise<void> {
+    let command = 'document.cookie = "';
+    Object.keys(cookie).forEach((key) => {
+      command += `${key}=${cookie[key]}; `;
     });
-    command += '"'
-    await this.writeCommandToProcess(command)
+    command += '"';
+    await this.writeCommandToProcess(command);
     // TODO(#7) When we can read output at any time, check if result has errors
     // await this.getCommandFromProcess // gets command and checks for errors
   }
@@ -197,12 +197,12 @@ export class HeadlessBrowser {
    *
    * @param cookieName - The name of the cookie to delete
    */
-  public async delCookie (cookieName: string): Promise<void> {
+  public async delCookie(cookieName: string): Promise<void> {
     const date = new Date();
     date.setTime(date.getTime() + 24 * 60 * 60 * 1000);
     const expires = date.toUTCString();
-    const command = `document.cookie = "${name}=; expires=${expires};`
-    await this.writeCommandToProcess(command)
+    const command = `document.cookie = "${name}=; expires=${expires};`;
+    await this.writeCommandToProcess(command);
     // TODO(#7) When we can read output at any time, check if result has errors
     // await this.getCommandFromProcess // gets command and checks for errors
   }
@@ -214,16 +214,16 @@ export class HeadlessBrowser {
    *
    * @returns The cookie value, or null if the cookie doesn't exist
    */
-  public async getCookie (cookieName: string): Promise<string|null> {
-    await this.writeCommandToProcess("document.cookie")
+  public async getCookie(cookieName: string): Promise<string | null> {
+    await this.writeCommandToProcess("document.cookie");
     // TODO(#7) When we can read output at any time, check if result has errors
     // await this.getCommandFromProcess // gets command and checks for errors
-    const cookies = await this.getOutputFromProcess()
-    const parts = (cookies.result as SuccessResult).value.split(`${name}=`)
+    const cookies = await this.getOutputFromProcess();
+    const parts = (cookies.result as SuccessResult).value.split(`${name}=`);
     if (parts.length) {
-      return parts.pop().split(';').shift()
+      return parts.pop().split(";").shift();
     } else { // cookie didn't exist
-      return null
+      return null;
     }
   }
 
