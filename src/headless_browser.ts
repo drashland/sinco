@@ -1,4 +1,6 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
+import { delay } from "https://deno.land/std/async/mod.ts";
+
 
 // Success response
 // switch (result.result.type) {
@@ -128,7 +130,8 @@ export class HeadlessBrowser {
    */
   private is_done = false;
 
-  private resolvables: { [key: number]: unknown } = {};
+  // deno-lint-ignore allow-no-explicit-any Could MessageResponse.result or ".error
+  private resolvables: { [key: number]: any } = {};
 
   /**
    * @param urlToVisit - The url to visit or open up
@@ -346,11 +349,9 @@ export class HeadlessBrowser {
    */
   public async done(): Promise<void> {
     this.is_done = true;
-    this.socket!.close();
-    //await this.browser_process.stdin!.close()
-    //await this.browser_process.stdout!.close()
-    //await this.browser_process.stderr!.close()
     this.browser_process.close();
+    this.socket!.close();
+    await delay(0)
   }
 
   /**

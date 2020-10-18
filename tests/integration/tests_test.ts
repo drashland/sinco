@@ -8,8 +8,10 @@ Rhum.testPlan("tests/integration/tests_test.ts", () => {
       async () => {
         const dawn = new Dawn("https://chromestatus.com");
         await dawn.start();
+        console.log(Deno.resources())
         await dawn.assertUrlIs("https://chromestatus.com/features");
         await dawn.done();
+        console.log(Deno.resources())
         // TODO
       },
     );
