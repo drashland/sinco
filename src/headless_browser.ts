@@ -15,7 +15,29 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import { readLines } from "../deps.ts";
+interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
+  id: number;
+  result?: {
+    result: {[key: string]: any}
+  }; // Present on success
+  error?: unknown; // Present on error
+}
+
+interface NotificationResponse { // Not entirely sure when, but when we send the `Network.enable` method
+  method: string;
+  params: unknown
+}
+
+function sleep(milliseconds: number): void {
+  const start = new Date().getTime();
+  for (let i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
+}
+
+import {deferred, readLines} from "../deps.ts";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -70,6 +92,16 @@ export class HeadlessBrowser {
   private readonly browser_process: Deno.Process;
 
   /**
+   * Our web socket connection to the remote debugging port
+   */
+  private socket: WebSocket|null = null
+
+  /**
+   * The endpoint our websocket connects to
+   */
+  private debug_url: string|null  = null;
+
+  /**
    * A way to keep track of the last command sent.
    * Used to display the command in the error message if
    * command errored
@@ -80,6 +112,18 @@ export class HeadlessBrowser {
    * A list of every command sent
    */
   private commands_sent: string[] = [];
+
+  /**
+   * A counter that acts as the message id we use to send as part of the event data through the websocket
+   */
+  private next_message_id = 1
+
+  /**
+   * Are we connected to the endpoint through the websocket
+   */
+  public connected = false;
+
+  private resolvables: {[key: number]: any} = {}
 
   /**
    * @param urlToVisit - The url to visit or open up
@@ -102,20 +146,106 @@ export class HeadlessBrowser {
       cmd: [
         chromePath,
         "--headless",
-        "--virtual-time-budget=10000",
-        "--repl",
+        "--remote-debugging-port=9292",
+        "--disable-gpu",
         urlToVisit,
       ],
-      stdin: "piped",
-      stdout: "piped",
+      //stdin: "piped",
+      //stdout: "piped",
       stderr: "piped",
     });
   }
 
   /**
+   * Creates the web socket connection to the headless chrome,
+   * and initialises it so we can send events
+   */
+  public async start ()  {
+    // Wait until the endpoint is actually ready
+    sleep(1000)
+
+    // Now get the url to connect to
+    const res = await fetch("http://localhost:9292/json/list")
+    const json = await res.json()
+    console.log(json)
+    const debugUrl = json[0]["webSocketDebuggerUrl"]
+    this.debug_url = debugUrl
+    this.socket = new WebSocket(debugUrl)
+
+    // Due to async nature of below listeners, wait until we've enabled the network to finish this execution
+    const promise = deferred()
+
+    // Setup the connection so we can start sending events and getting actual feedback! Without this, the messages we get from the websocket (after sending) are not valid
+    this.socket.onopen = () => {
+      this.connected = true
+      // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
+      this.socket!.send(JSON.stringify({
+        method: "Network.enable",
+        id: this.next_message_id
+      }))
+      this.next_message_id++
+      promise.resolve()
+    }
+
+    // Listen for all events
+    this.socket.onmessage = (event) => {
+      const message: MessageResponse | NotificationResponse = JSON.parse(event.data)
+      if ("id" in message) { // message response
+        console.log('THE MSG')
+        console.log(message)
+        const resolvable = this.resolvables[message.id]
+        if (resolvable) {
+          if ("result" in message) { // success response
+            resolvable.resolve(message.result);
+          }
+          if ("error" in message) { // error response
+            // todo throw error  using error message
+            resolvable.reject(message.error)
+          }
+        }
+      }
+    }
+
+    // general socket handlers
+    this.socket.onclose = () => {
+      this.connected = false
+      // todo try reconnect
+      throw new Error("Unhandled. todo")
+    }
+    this.socket.onerror = (e) => {
+      throw new Error('Error encountered')
+    }
+
+    await promise
+  }
+
+  /**
+   * Main method to handle sending messages/events to the websocket endpoint.
+   *
+   * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
+   * @param params - Parameters required for the domain method
+   *
+   * @returns
+   */
+  protected async sendWebSocketMessage (method: string, params?: {[key: string]: unknown}): Promise<unknown> {
+    if (this.connected && this.socket) {
+      const data: {
+        id: number,
+        method: string,
+        params?: {[key: string]: unknown}
+      } = {
+        id: this.next_message_id++,
+        method: method,
+      };
+      if (params) data.params = params
+      let pending = this.resolvables[data.id] = deferred();
+      this.socket.send(JSON.stringify(data))
+      return await pending
+    }
+  }
+
+  /**
    * Clicks a button with the given selector
-   * Will not allow clicking links, you can check
-   * a link works by just checking the href
    *
    *     await this.click("#username");
    *     await this.click('button[type="submit"]')
@@ -123,15 +253,45 @@ export class HeadlessBrowser {
    * @param selector - The tag name, id or class
    */
   public async click(selector: string): Promise<void> {
-    if (selector.indexOf("href") !== -1) {
-      throw new Error(
-        "Clicking links is not supported. You can check a link works by getting the `href` attribute",
-      );
+    // Get document so we can get the node id
+    //const document = await this.sendWebSocketMessage("DOM.getDocument")
+    //const child = (document as { root: { children: Array<{ nodeId: number, localName: string}> }}).root.children.find(c => c.localName === "html")
+    //const documentId = child!.nodeId
+    // Use  node  id  to get  the  element
+    // const element = await this.sendWebSocketMessage("DOM.querySelector", {
+    //   selector: selector,
+    //   nodeId: documentId
+    // })
+    //const elementId = (element as { nodeId: number }).nodeId
+    // Use element node id to get X and Y co-ords
+    // const box = await this.sendWebSocketMessage("DOM.getBoxModel", {
+    //   nodeId: elementId
+    // })
+    // Click element using co-ords
+    // let clickResult = await this.sendWebSocketMessage("Input.dispatchMouseEvent", {
+    //   type: "mousePressed",
+    //   x: (box as { model: { width: number }}).model.width,
+    //   y: (box as { model: { height: number }}).model.height,
+    //   button: 'left',
+    //   clickCount: 1
+    // })
+    // clickResult = await this.sendWebSocketMessage("Input.dispatchMouseEvent", {
+    //   type: "mouseReleased",
+    //   x: (box as { model: { width: number }}).model.width,
+    //   y: (box as { model: { height: number }}).model.height,
+    //   button: 'left',
+    //   clickCount: 1
+    // })
+    const command = `document.querySelector('${selector}').click()`
+    const result = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command
+    })
+    if ("type" in (result as DOMOutput).result) {
+      if ((result as DOMOutput).result.type === "undefined") {
+        // no errors
+      }
     }
-    const command = `document.querySelector('${selector}').click()`;
-    await this.writeCommandToProcess(command);
-    // TODO(#7) When we can read output at any time, check if result has errors
-    // this.getCommandFromProcess // gets command and checks for errors
+    this.checkForErrorResult((result as DOMOutput), command)
     // TODO(any) we might need to wait here, because clicking something could be too fast and the next command might not work eg submit button for form, how do we know or how do we wait? The submission might send us to a different page but by then, the console is cleared and the next command(s) won't runn
     // ...
   }
@@ -142,17 +302,26 @@ export class HeadlessBrowser {
    *
    * @param selector - eg input[type="submit"] or #submit
    *
+   * @throws When:
+   *     - Error with the element (using selector)
+   *
    * @returns The text inside the selector, eg could be "" or "Edward"
    */
   public async getInputValue(selector: string): Promise<string> {
-    const command = `document.querySelector('${selector}').value`;
-    await this.writeCommandToProcess(command);
-    const result = await this.getOutputFromProcess();
-    const value = (result.result as SuccessResult).value;
-    if (!value) { // purely to stop tsc from complaining
-      throw new Error("todo"); // TODO(any) In what scenarios would the command not return a value?
+    const command = `document.querySelector('${selector}').value`
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command
+    })
+    const type = (res as DOMOutput).result.type
+    if (type === "undefined") { // not an input elem
+      return "undefined"
     }
-    return value;
+    this.checkForErrorResult((res as DOMOutput), command)
+    if ("value" in (res as DOMOutput).result) {
+      const value = ((res as DOMOutput).result as SuccessResult).value
+      return value || ""
+    }
+    throw new Error("How did you get here...")
   }
 
   /**
@@ -160,39 +329,38 @@ export class HeadlessBrowser {
    * wait for the request to complete before doing anything else
    */
   public async waitForAjax(): Promise<void> {
-    const command = "!$.active";
-    await this.writeCommandToProcess(command);
-    // TODO(#7) When we can read output at any time, check if result has errors
-    // await this.getCommandFromProcess // gets command and checks for errors
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: "!$.active"
+    })
+    this.checkForErrorResult((res as DOMOutput), "!$.active")
   }
 
   /**
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    await this.browser_process.stderrOutput(); // we haven't closed this yet
+    await this.browser_process.stderrOutput();
     await this.browser_process.output();
-    // await this.browser_process.stdin.close() // Close stdin too
     this.browser_process.close();
+    this.socket!.close()
   }
 
   /**
-   * Type into an input element, by the given name attribute
+   * Type into an input element, by the given selector
    *
    *     <input name="city"/>
    *
-   *     await this.type("city", "Stockholm")
+   *     await this.type('input[name="city"]', "Stockholm")
    *
-   * @param inputName - The value for the name attribute of the input to type into
+   * @param selector - The value for the name attribute of the input to type into
    * @param value - The value to set the input to
    */
-  public async type(inputName: string, value: string): Promise<void> {
-    // TODO should we remove the hardcoded input bit, and allow the user to specify the selector? means this method could be more generic, allowing users to get an input value based on a class or something
-    const command =
-      `document.querySelector('input[name="${inputName}"]').value = ${value}`;
-    await this.writeCommandToProcess(command);
-    // TODO(#7) When we can read output at any time, check if result has errors
-    // await this.getCommandFromProcess // gets command and checks for errors
+  public async type(selector: string, value: string): Promise<void> {
+    const command = `document.querySelector('${selector}').value = "${value}"`
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command
+    })
+    this.checkForErrorResult((res as DOMOutput), command)
   }
 
   /**
@@ -213,63 +381,5 @@ export class HeadlessBrowser {
         throw new Error(`${errorMessage}: "${commandSent}"`);
       }
     }
-  }
-
-  /**
-   * Writes stdin to the process, and closes the stdin afteer
-   *
-   * @param command - The text to write
-   */
-  protected async writeCommandToProcess(command: string): Promise<void> {
-    //await this.browser_process.stdin!.write(encoder.encode(command));
-    if (!this.browser_process.stdin) {
-      throw new Error("TODO");
-    }
-    await Deno.writeAll(
-      this.browser_process.stdin,
-      new TextEncoder().encode(command),
-    );
-    this.commands_sent.push(command);
-    await this.browser_process.stdin!.close(); // We need this, otherwise process hangs when we try do p.output()
-    this.last_command_sent = command;
-  }
-
-  /**
-   * Get's the output from the process, and formats the result
-   * into JSON
-   *
-   * @returns A JSON object, which is just the raw output string converted into JSON
-   */
-  protected async getOutputFromProcess(): Promise<DOMOutput> {
-    if (!this.browser_process.stdout) {
-      throw new Error("TODO");
-    }
-    // Raw output looks like:
-    //
-    //   >>> {"prop": { ... }, ... }
-    //   >>>
-    //
-    //
-    // So just clean it up a bit
-    let rawOutput = "";
-    for await (let line of readLines(this.browser_process.stdout)) {
-      line = line
-        .replace(">>> ", "") // strip from first line
-        .replace(">>>", "") // strip from second
-        .replace("\n", ""); // remove the pesky new lines so we can convert to json
-      if (line !== "") {
-        rawOutput = line;
-      }
-    }
-    //const rawOutput = decoder.decode(await this.browser_process.output())
-    //const output = rawOutput
-    //.replace(">>> ", "") // strip from first line
-    //.replace(">>>", "") // strip from second
-    //.replace("\n", "") // remove the pesky new lines so we can convert to json
-
-    // And it's a JSON string, so lets convert it to JSON cause JSON FTW
-    const json: DOMOutput = JSON.parse(rawOutput);
-    this.checkForErrorResult(json, this.last_command_sent);
-    return json;
   }
 }
