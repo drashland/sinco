@@ -9,6 +9,7 @@ Rhum.testPlan("tests/integration/tests_test.ts", () => {
         const dawn = new Dawn("https://chromestatus.com");
         await dawn.start();
         console.log(Deno.resources())
+        console.log('asserting url')
         await dawn.assertUrlIs("https://chromestatus.com/features");
         await dawn.done();
         console.log(Deno.resources())

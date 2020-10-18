@@ -1,7 +1,6 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
 import { delay } from "https://deno.land/std/async/mod.ts";
 
-
 // Success response
 // switch (result.result.type) {
 //   case "object":
@@ -19,9 +18,7 @@ import { delay } from "https://deno.land/std/async/mod.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
-  result?: {
-    result: { [key: string]: unknown };
-  }; // Present on success
+  result?: unknown; // Present on success
   error?: unknown; // Present on error
 }
 
@@ -160,7 +157,7 @@ export class HeadlessBrowser {
       ],
       // stdout: "piped",
       // stdin: "piped",
-      // stderr: "piped"
+      stderr: "piped"
     });
   }
 
@@ -179,10 +176,6 @@ export class HeadlessBrowser {
     this.debug_url = debugUrl;
     this.socket = new WebSocket(debugUrl);
 
-    // Due to async nature of below listeners, wait until we've enabled the network to finish this execution
-    const promise = deferred();
-
-    // Setup the connection so we can start sending events and getting actual feedback! Without this, the messages we get from the websocket (after sending) are not valid
     this.socket.onopen = () => {
       this.connected = true;
       // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
@@ -191,7 +184,6 @@ export class HeadlessBrowser {
         id: this.next_message_id,
       }));
       this.next_message_id++;
-      promise.resolve();
     };
 
     // Listen for all events
@@ -222,10 +214,13 @@ export class HeadlessBrowser {
       }
     };
     this.socket.onerror = (e) => {
-      throw new Error("Error encountered");
+      this.connected = false
+      if (this.is_done === false) {
+        console.error(e)
+        throw new Error("Unencountered error");
+      }
     };
 
-    await promise;
   }
 
   /**
@@ -348,10 +343,15 @@ export class HeadlessBrowser {
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
+    const promise = deferred()
     this.is_done = true;
+    this.browser_process.stderr!.close()
     this.browser_process.close();
+    this.socket!.addEventListener('close', function () {
+      promise.resolve()
+    })
     this.socket!.close();
-    await delay(0)
+    await promise
   }
 
   /**
