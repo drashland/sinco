@@ -1,4 +1,8 @@
-import {DOMOutput, HeadlessBrowser, SuccessResult} from "./headless_browser.ts";
+import {
+  DOMOutput,
+  HeadlessBrowser,
+  SuccessResult,
+} from "./headless_browser.ts";
 import { assertEquals } from "../deps.ts";
 
 /**
@@ -50,8 +54,9 @@ export class Dawn extends HeadlessBrowser {
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
-    const res = await this.sendWebSocketMessage("DOM.getDocument")
-    const actualUrl = (res as {root: { documentURL: string}}).root.documentURL;
+    const res = await this.sendWebSocketMessage("DOM.getDocument");
+    const actualUrl =
+      (res as { root: { documentURL: string } }).root.documentURL;
     assertEquals(actualUrl, expectedUrl);
   }
 
@@ -63,10 +68,10 @@ export class Dawn extends HeadlessBrowser {
   public async assertSee(text: string): Promise<void> {
     const command =
       `document.documentElement.innerText.indexOf('${text}') >= 0`;
-    const res =  await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command
-    })
-    this.checkForErrorResult((res as DOMOutput), command)
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command,
+    });
+    this.checkForErrorResult((res as DOMOutput), command);
     // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
     const exists = ((res as DOMOutput).result as SuccessResult).value;
     assertEquals(exists, true);

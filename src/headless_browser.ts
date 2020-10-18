@@ -18,26 +18,26 @@
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
   result?: {
-    result: {[key: string]: any}
+    result: { [key: string]: any };
   }; // Present on success
   error?: unknown; // Present on error
 }
 
 interface NotificationResponse { // Not entirely sure when, but when we send the `Network.enable` method
   method: string;
-  params: unknown
+  params: unknown;
 }
 
 function sleep(milliseconds: number): void {
   const start = new Date().getTime();
   for (let i = 0; i < 1e7; i++) {
-    if ((new Date().getTime() - start) > milliseconds){
+    if ((new Date().getTime() - start) > milliseconds) {
       break;
     }
   }
 }
 
-import {deferred, readLines} from "../deps.ts";
+import { deferred, readLines } from "../deps.ts";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -94,12 +94,12 @@ export class HeadlessBrowser {
   /**
    * Our web socket connection to the remote debugging port
    */
-  private socket: WebSocket|null = null
+  private socket: WebSocket | null = null;
 
   /**
    * The endpoint our websocket connects to
    */
-  private debug_url: string|null  = null;
+  private debug_url: string | null = null;
 
   /**
    * A way to keep track of the last command sent.
@@ -116,7 +116,7 @@ export class HeadlessBrowser {
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
-  private next_message_id = 1
+  private next_message_id = 1;
 
   /**
    * Are we connected to the endpoint through the websocket
@@ -126,9 +126,9 @@ export class HeadlessBrowser {
   /**
    * Tracks whether the user is done or not, to determine whether to reconnect to socket on disconnect
    */
-  private is_done = false
+  private is_done = false;
 
-  private resolvables: {[key: number]: any} = {}
+  private resolvables: { [key: number]: any } = {};
 
   /**
    * @param urlToVisit - The url to visit or open up
@@ -165,63 +165,65 @@ export class HeadlessBrowser {
    * Creates the web socket connection to the headless chrome,
    * and initialises it so we can send events
    */
-  public async start ()  {
+  public async start() {
     // Wait until the endpoint is actually ready
-    sleep(1000)
+    sleep(1000);
 
     // Now get the url to connect to
-    const res = await fetch("http://localhost:9292/json/list")
-    const json = await res.json()
-    const debugUrl = json[0]["webSocketDebuggerUrl"]
-    this.debug_url = debugUrl
-    this.socket = new WebSocket(debugUrl)
+    const res = await fetch("http://localhost:9292/json/list");
+    const json = await res.json();
+    const debugUrl = json[0]["webSocketDebuggerUrl"];
+    this.debug_url = debugUrl;
+    this.socket = new WebSocket(debugUrl);
 
     // Due to async nature of below listeners, wait until we've enabled the network to finish this execution
-    const promise = deferred()
+    const promise = deferred();
 
     // Setup the connection so we can start sending events and getting actual feedback! Without this, the messages we get from the websocket (after sending) are not valid
     this.socket.onopen = () => {
-      this.connected = true
+      this.connected = true;
       // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
-        id: this.next_message_id
-      }))
-      this.next_message_id++
-      promise.resolve()
-    }
+        id: this.next_message_id,
+      }));
+      this.next_message_id++;
+      promise.resolve();
+    };
 
     // Listen for all events
     this.socket.onmessage = (event) => {
-      const message: MessageResponse | NotificationResponse = JSON.parse(event.data)
+      const message: MessageResponse | NotificationResponse = JSON.parse(
+        event.data,
+      );
       if ("id" in message) { // message response
-        const resolvable = this.resolvables[message.id]
+        const resolvable = this.resolvables[message.id];
         if (resolvable) {
           if ("result" in message) { // success response
             resolvable.resolve(message.result);
           }
           if ("error" in message) { // error response
             // todo throw error  using error message
-            resolvable.reject(message.error)
+            resolvable.reject(message.error);
           }
         }
       }
-    }
+    };
 
     // general socket handlers
     this.socket.onclose = () => {
-      this.connected = false
+      this.connected = false;
       if (this.is_done === false) {
         // todo try reconnect
-        throw new Error("Unhandled. todo")
-        this.connected = true
+        throw new Error("Unhandled. todo");
+        this.connected = true;
       }
-    }
+    };
     this.socket.onerror = (e) => {
-      throw new Error('Error encountered')
-    }
+      throw new Error("Error encountered");
+    };
 
-    await promise
+    await promise;
   }
 
   /**
@@ -232,20 +234,23 @@ export class HeadlessBrowser {
    *
    * @returns
    */
-  protected async sendWebSocketMessage (method: string, params?: {[key: string]: unknown}): Promise<unknown> {
+  protected async sendWebSocketMessage(
+    method: string,
+    params?: { [key: string]: unknown },
+  ): Promise<unknown> {
     if (this.connected && this.socket) {
       const data: {
-        id: number,
-        method: string,
-        params?: {[key: string]: unknown}
+        id: number;
+        method: string;
+        params?: { [key: string]: unknown };
       } = {
         id: this.next_message_id++,
         method: method,
       };
-      if (params) data.params = params
+      if (params) data.params = params;
       let pending = this.resolvables[data.id] = deferred();
-      this.socket.send(JSON.stringify(data))
-      return await pending
+      this.socket.send(JSON.stringify(data));
+      return await pending;
     }
   }
 
@@ -287,16 +292,16 @@ export class HeadlessBrowser {
     //   button: 'left',
     //   clickCount: 1
     // })
-    const command = `document.querySelector('${selector}').click()`
+    const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command
-    })
+      expression: command,
+    });
     if ("type" in (result as DOMOutput).result) {
       if ((result as DOMOutput).result.type === "undefined") {
         // no errors
       }
     }
-    this.checkForErrorResult((result as DOMOutput), command)
+    this.checkForErrorResult((result as DOMOutput), command);
     // TODO(any) we might need to wait here, because clicking something could be too fast and the next command might not work eg submit button for form, how do we know or how do we wait? The submission might send us to a different page but by then, the console is cleared and the next command(s) won't runn
     // ...
   }
@@ -313,17 +318,17 @@ export class HeadlessBrowser {
    * @returns The text inside the selector, eg could be "" or "Edward"
    */
   public async getInputValue(selector: string): Promise<string> {
-    const command = `document.querySelector('${selector}').value`
+    const command = `document.querySelector('${selector}').value`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command
-    })
-    const type = (res as DOMOutput).result.type
+      expression: command,
+    });
+    const type = (res as DOMOutput).result.type;
     if (type === "undefined") { // not an input elem
-      return "undefined"
+      return "undefined";
     }
-    this.checkForErrorResult((res as DOMOutput), command)
-    const value = ((res as DOMOutput).result as SuccessResult).value
-    return value || ""
+    this.checkForErrorResult((res as DOMOutput), command);
+    const value = ((res as DOMOutput).result as SuccessResult).value;
+    return value || "";
   }
 
   /**
@@ -332,21 +337,21 @@ export class HeadlessBrowser {
    */
   public async waitForAjax(): Promise<void> {
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: "!$.active"
-    })
-    this.checkForErrorResult((res as DOMOutput), "!$.active")
+      expression: "!$.active",
+    });
+    this.checkForErrorResult((res as DOMOutput), "!$.active");
   }
 
   /**
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    this.is_done = true
-    this.socket!.close()
+    this.is_done = true;
+    this.socket!.close();
     //await this.browser_process.stdin!.close()
     //await this.browser_process.stdout!.close()
     //await this.browser_process.stderr!.close()
-    this.browser_process.close()
+    this.browser_process.close();
   }
 
   /**
@@ -360,11 +365,11 @@ export class HeadlessBrowser {
    * @param value - The value to set the input to
    */
   public async type(selector: string, value: string): Promise<void> {
-    const command = `document.querySelector('${selector}').value = "${value}"`
+    const command = `document.querySelector('${selector}').value = "${value}"`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command
-    })
-    this.checkForErrorResult((res as DOMOutput), command)
+      expression: command,
+    });
+    this.checkForErrorResult((res as DOMOutput), command);
   }
 
   /**
