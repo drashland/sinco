@@ -18,7 +18,7 @@
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
   result?: {
-    result: { [key: string]: any };
+    result: { [key: string]: unknown };
   }; // Present on success
   error?: unknown; // Present on error
 }
@@ -128,7 +128,7 @@ export class HeadlessBrowser {
    */
   private is_done = false;
 
-  private resolvables: { [key: number]: any } = {};
+  private resolvables: { [key: number]: unknown } = {};
 
   /**
    * @param urlToVisit - The url to visit or open up
@@ -216,7 +216,6 @@ export class HeadlessBrowser {
       if (this.is_done === false) {
         // todo try reconnect
         throw new Error("Unhandled. todo");
-        this.connected = true;
       }
     };
     this.socket.onerror = (e) => {
@@ -248,7 +247,7 @@ export class HeadlessBrowser {
         method: method,
       };
       if (params) data.params = params;
-      let pending = this.resolvables[data.id] = deferred();
+      const pending = this.resolvables[data.id] = deferred();
       this.socket.send(JSON.stringify(data));
       return await pending;
     }
