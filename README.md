@@ -23,8 +23,6 @@
 
 ---
 
-> :warning: **This project is in very early development**. You can currently only call one action and one assertion.
-
 ## Table of Contents
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
@@ -47,7 +45,8 @@ Deno.test('I will pass', async () => {
 
   // Do stuff
   await dawn.assertUrlIs("https://chromestatus.com/features")
-  // ...
+  await dawn.click('a[href="/features/schedule"]')
+  await dawn.assertUrlIs("https://chromestatus.com/features/schedule")
 
   // Finish
   await dawn.done()
@@ -67,7 +66,7 @@ Deno.test('I will fail', async () => {
 ```
 
 ```
-$ deno test --allow-run app_test.ts
+$ deno test --allow-run --allow-net app_test.ts
 running 2 tests
 test I will pass ... ok (2550ms)
 test I will fail ... FAILED (1809ms)
@@ -85,39 +84,19 @@ AssertionError: Values are not equal:
 +   "https://chromestatus.com/feeaatureesss"
 ```
 
-Or you can even use [Rhum](https://github.com/drashland/rhum) which can aid in displaying the output in a cleaner format:
-
-```typescript
-import { Rhum } from "https://deno.land/x/rhum@v1.2.4/mod.ts";
-import { Dawn } from "https://deno.land/x/dawn@v0.1.0/mod.ts";
-
-Rhum.testPlan("Browser", () => {
-  Rhum.testSuite("Home Page", () => {
-    Rhum.testCase("Redirects when clicking your profile picture", () => {
-      const dawn = new Dawn("https://your-app.com")
-      await dawn.assertUrlIs("https://your-app/me/edit")
-      await dawn.done()
-    })
-  })
-})
-
-Rhum.run()
-```
-
 ## Documentation
 
 [Full Documentation](https://drash.land/dawn)
 
 ## Features
 
-- [x] [Click Buttons](url)
+- [x] [Click Elements](url)
 - [x] [Get Input Values](url)
 - [x] [Custom assertions](url)
     - [x] `assertUrlIs`
     - [x] `assertSee`
 - [x] [Wait For AJAX](url)
-- [x] [Type into an Input Tag](url)
-- [ ] Run Many Actions
+- [x] [Type into an Input Tags](url)
 
 ## Why Use Dawn?
 
@@ -147,4 +126,4 @@ By contributing your code, you agree to license your contribution under the [MIT
 
 ## Acknowledgements
 
-- [caspervonb/deno-web](https://github.com/caspervonb/deno-web) - Made it a realisation using Chrome from the CLI could be a possibility
+- [@caspbervonb](https://github.com/caspervonb) - A huge help in getting this project working by helping understand how we can interact with the browser
