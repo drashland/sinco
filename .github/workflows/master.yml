@@ -25,10 +25,10 @@ jobs:
           deno-version: ${{ matrix.deno }}
 
       - name: Unit
-        run: deno test --allow-env tests/unit
+        run: deno test -A tests/unit
 
       - name: Integration
-        run: deno test --allow-run --allow-env tests/integration
+        run: deno test -A tests/integration
 
   linter:
     strategy:

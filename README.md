@@ -23,6 +23,8 @@
 
 ---
 
+**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/dawn
+
 ## Table of Contents
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
@@ -126,4 +128,4 @@ By contributing your code, you agree to license your contribution under the [MIT
 
 ## Acknowledgements
 
-- [@caspbervonb](https://github.com/caspervonb) - A huge help in getting this project working by helping understand how we can interact with the browser
+- [@caspervonb](https://github.com/caspervonb) - A huge help in getting this project working by helping understand how we can interact with the browser

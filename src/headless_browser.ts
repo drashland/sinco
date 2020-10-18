@@ -123,6 +123,11 @@ export class HeadlessBrowser {
    */
   public connected = false;
 
+  /**
+   * Tracks whether the user is done or not, to determine whether to reconnect to socket on disconnect
+   */
+  private is_done = false
+
   private resolvables: {[key: number]: any} = {}
 
   /**
@@ -139,7 +144,7 @@ export class HeadlessBrowser {
         chromePath = "start chrome";
         break;
       case "linux":
-        chromePath = "TODO"; // TODO(any) Finnd what the path for chrome is for linux
+        chromePath = "TODO"; // TODO(any) Find what the path for chrome is for linux
         break;
     }
     this.browser_process = Deno.run({
@@ -150,9 +155,9 @@ export class HeadlessBrowser {
         "--disable-gpu",
         urlToVisit,
       ],
-      //stdin: "piped",
-      //stdout: "piped",
-      stderr: "piped",
+      // stdout: "piped",
+      // stdin: "piped",
+      // stderr: "piped"
     });
   }
 
@@ -167,7 +172,6 @@ export class HeadlessBrowser {
     // Now get the url to connect to
     const res = await fetch("http://localhost:9292/json/list")
     const json = await res.json()
-    console.log(json)
     const debugUrl = json[0]["webSocketDebuggerUrl"]
     this.debug_url = debugUrl
     this.socket = new WebSocket(debugUrl)
@@ -191,8 +195,6 @@ export class HeadlessBrowser {
     this.socket.onmessage = (event) => {
       const message: MessageResponse | NotificationResponse = JSON.parse(event.data)
       if ("id" in message) { // message response
-        console.log('THE MSG')
-        console.log(message)
         const resolvable = this.resolvables[message.id]
         if (resolvable) {
           if ("result" in message) { // success response
@@ -209,8 +211,11 @@ export class HeadlessBrowser {
     // general socket handlers
     this.socket.onclose = () => {
       this.connected = false
-      // todo try reconnect
-      throw new Error("Unhandled. todo")
+      if (this.is_done === false) {
+        // todo try reconnect
+        throw new Error("Unhandled. todo")
+        this.connected = true
+      }
     }
     this.socket.onerror = (e) => {
       throw new Error('Error encountered')
@@ -317,11 +322,8 @@ export class HeadlessBrowser {
       return "undefined"
     }
     this.checkForErrorResult((res as DOMOutput), command)
-    if ("value" in (res as DOMOutput).result) {
-      const value = ((res as DOMOutput).result as SuccessResult).value
-      return value || ""
-    }
-    throw new Error("How did you get here...")
+    const value = ((res as DOMOutput).result as SuccessResult).value
+    return value || ""
   }
 
   /**
@@ -339,10 +341,12 @@ export class HeadlessBrowser {
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    await this.browser_process.stderrOutput();
-    await this.browser_process.output();
-    this.browser_process.close();
+    this.is_done = true
     this.socket!.close()
+    //await this.browser_process.stdin!.close()
+    //await this.browser_process.stdout!.close()
+    //await this.browser_process.stderr!.close()
+    this.browser_process.close()
   }
 
   /**
