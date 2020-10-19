@@ -1,5 +1,4 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
-import { delay } from "https://deno.land/std/async/mod.ts";
 
 // Success response
 // switch (result.result.type) {
@@ -15,8 +14,6 @@ import { delay } from "https://deno.land/std/async/mod.ts";
 //   default:
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
-
-const globalPromise = deferred()
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -38,7 +35,7 @@ export function sleep(milliseconds: number): void {
   }
 }
 
-import { deferred } from "../deps.ts";
+import { deferred, delay } from "../deps.ts";
 
 export type ErrorResult = {
   className: string; // eg SyntaxError
@@ -207,7 +204,6 @@ export class HeadlessBrowser {
         // todo try reconnect
         throw new Error("Unhandled. todo");
       }
-      globalPromise.resolve()
     };
     this.socket.onerror = (e) => {
       this.connected = false
@@ -260,44 +256,10 @@ export class HeadlessBrowser {
    * @param selector - The tag name, id or class
    */
   public async click(selector: string): Promise<void> {
-    // Get document so we can get the node id
-    //const document = await this.sendWebSocketMessage("DOM.getDocument")
-    //const child = (document as { root: { children: Array<{ nodeId: number, localName: string}> }}).root.children.find(c => c.localName === "html")
-    //const documentId = child!.nodeId
-    // Use  node  id  to get  the  element
-    // const element = await this.sendWebSocketMessage("DOM.querySelector", {
-    //   selector: selector,
-    //   nodeId: documentId
-    // })
-    //const elementId = (element as { nodeId: number }).nodeId
-    // Use element node id to get X and Y co-ords
-    // const box = await this.sendWebSocketMessage("DOM.getBoxModel", {
-    //   nodeId: elementId
-    // })
-    // Click element using co-ords
-    // let clickResult = await this.sendWebSocketMessage("Input.dispatchMouseEvent", {
-    //   type: "mousePressed",
-    //   x: (box as { model: { width: number }}).model.width,
-    //   y: (box as { model: { height: number }}).model.height,
-    //   button: 'left',
-    //   clickCount: 1
-    // })
-    // clickResult = await this.sendWebSocketMessage("Input.dispatchMouseEvent", {
-    //   type: "mouseReleased",
-    //   x: (box as { model: { width: number }}).model.width,
-    //   y: (box as { model: { height: number }}).model.height,
-    //   button: 'left',
-    //   clickCount: 1
-    // })
     const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
-    if ("type" in (result as DOMOutput).result) {
-      if ((result as DOMOutput).result.type === "undefined") {
-        // no errors
-      }
-    }
     this.checkForErrorResult((result as DOMOutput), command);
     sleep(1000)// Need to wait, so click action has time to run before user sends next action
   }
@@ -342,7 +304,7 @@ export class HeadlessBrowser {
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    sleep(2000) // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
+    sleep(1000) // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
     const promise = deferred()
     this.is_done = true;
     this.browser_process.stderr!.close()
@@ -352,7 +314,6 @@ export class HeadlessBrowser {
     })
     this.socket!.close();
     await promise
-    await globalPromise
   }
 
   /**
@@ -371,7 +332,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((res as DOMOutput), command);
-    sleep(1000)
+    sleep(500)
   }
 
   /**
