@@ -35,7 +35,7 @@ export function sleep(milliseconds: number): void {
   }
 }
 
-import { deferred, delay } from "../deps.ts";
+import {deferred, delay, existsSync} from "../deps.ts";
 
 export type ErrorResult = {
   className: string; // eg SyntaxError
@@ -130,13 +130,21 @@ export class HeadlessBrowser {
           "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
         break;
       case "windows":
-        chromePath = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
-        break;
+        const pathOne = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+        if (existsSync(pathOne)) {
+          chromePath = pathOne
+          break
+        }
+        const pathTwo = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        if (existsSync(pathTwo)) {
+          chromePath = pathTwo
+          break
+        }
+        throw new Error("Cannot find path for chrome in windows. Submit an issue if you encounter this error")
       case "linux":
         chromePath = "/usr/bin/google-chrome";
         break;
     }
-    console.log(`chrome path: ${chromePath}`)
     this.browser_process = Deno.run({
       cmd: [
         chromePath,
