@@ -51,7 +51,7 @@ const existsSync = (filename: string): boolean => {
   }
 };
 
-import {deferred, delay, existsSync} from "../deps.ts";
+import {deferred, delay} from "../deps.ts";
 
 export type ErrorResult = {
   className: string; // eg SyntaxError
