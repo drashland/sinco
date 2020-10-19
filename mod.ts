@@ -1,1 +1,1 @@
-export { Dawn } from "./src/dawn.ts";
+export { Cinco } from "./src/cinco.ts";

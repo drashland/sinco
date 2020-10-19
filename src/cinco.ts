@@ -8,7 +8,7 @@ import { assertEquals } from "../deps.ts";
 /**
  * Responsible for assertions, and exposing the Headless Browser methods
  */
-export class Dawn extends HeadlessBrowser {
+export class Cinco extends HeadlessBrowser {
   /**
    * @param urlToVisit - Which url are we visiting?
    */

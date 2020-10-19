@@ -1,16 +1,16 @@
 import { Rhum } from "../deps.ts";
-import { Dawn } from "../../mod.ts";
+import { Cinco } from "../../mod.ts";
 
 Rhum.testPlan("tests/integration/tests_test.ts", () => {
   Rhum.testSuite("Extensive test", () => {
     Rhum.testCase("Should handle many actions and assertions", async () => {
-      const dawn = new Dawn("https://chromestatus.com");
-      await dawn.start();
-      await dawn.assertUrlIs("https://chromestatus.com/features");
-      await dawn.click('a[href="/features/schedule"]')
-      await dawn.assertSee("Release timeline")
-      await dawn.assertUrlIs("https://chromestatus.com/features/schedule")
-      await dawn.done();
+      const cinco = new Cinco("https://chromestatus.com");
+      await cinco.start();
+      await cinco.assertUrlIs("https://chromestatus.com/features");
+      await cinco.click('a[href="/features/schedule"]')
+      await cinco.assertSee("Release timeline")
+      await cinco.assertUrlIs("https://chromestatus.com/features/schedule")
+      await cinco.done();
     });
   })
 })

@@ -1,14 +1,14 @@
 <p align="center">
-  <img height="200" src="https://drash.land/dawn/assets/img/dawn.svg" alt="Dawn logo">
-  <h1 align="center">Dawn</h1>
+  <img height="200" src="https://drash.land/cinco/assets/img/cinco.svg" alt="Cinco logo">
+  <h1 align="center">Cinco</h1>
 </p>
 <p align="center">Browser Automation and Testing Tool for Deno.</p>
 <p align="center">
-  <a href="https://github.com/drashland/dawn/releases">
-    <img src="https://img.shields.io/github/release/drashland/dawn.svg?color=bright_green&label=latest">
+  <a href="https://github.com/drashland/cinco/releases">
+    <img src="https://img.shields.io/github/release/drashland/cinco.svg?color=bright_green&label=latest">
   </a>
-  <a href="https://github.com/drashland/dawn/actions">
-    <img src="https://img.shields.io/github/workflow/status/drashland/dawn/master?label=ci">
+  <a href="https://github.com/drashland/cinco/actions">
+    <img src="https://img.shields.io/github/workflow/status/drashland/cinco/master?label=ci">
   </a>
   <a href="https://discord.gg/SgejNXq">
     <img src="https://img.shields.io/badge/chat-on%20discord-blue">
@@ -23,13 +23,13 @@
 
 ---
 
-**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/dawn
+**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/cinco
 
 ## Table of Contents
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Features](#features)
-- [Why use Dawn?](#why-use-dawn)
+- [Why use Cinco?](#why-use-cinco)
 - [Mirrors](#mirrors)
 - [Articles](#articles)
 - [Contributing](#contributing)
@@ -39,31 +39,31 @@
 ```typescript
 // File: app_test.ts
 
-import { Dawn } from "https://deno.land/x/dawn@v0.1.0/mod.ts";
+import { Cinco } from "https://deno.land/x/cinco@v0.1.0/mod.ts";
 
 Deno.test('I will pass', async () => {
-  // Initialise dawn
-  const dawn = new Dawn("https://chromestatus.com")
+  // Initialise cinco
+  const cinco = new Cinco("https://chromestatus.com")
 
   // Do stuff
-  await dawn.assertUrlIs("https://chromestatus.com/features")
-  await dawn.click('a[href="/features/schedule"]')
-  await dawn.assertUrlIs("https://chromestatus.com/features/schedule")
+  await cinco.assertUrlIs("https://chromestatus.com/features")
+  await cinco.click('a[href="/features/schedule"]')
+  await cinco.assertUrlIs("https://chromestatus.com/features/schedule")
 
   // Finish
-  await dawn.done()
+  await cinco.done()
 })
 
 Deno.test('I will fail', async () => {
-  // Initialise dawn
-  const dawn = new Dawn("https://chromestatus.com")
+  // Initialise cinco
+  const cinco = new Cinco("https://chromestatus.com")
 
   // Do stuff
-  await dawn.assertUrlIs("https://chromestatus.com/feeaatureesss")
+  await cinco.assertUrlIs("https://chromestatus.com/feeaatureesss")
   // ...
 
   // Finish
-  await dawn.done()
+  await cinco.done()
 })
 ```
 
@@ -88,7 +88,7 @@ AssertionError: Values are not equal:
 
 ## Documentation
 
-[Full Documentation](https://drash.land/dawn)
+[Full Documentation](https://drash.land/cinco)
 
 ## Features
 
@@ -100,17 +100,17 @@ AssertionError: Values are not equal:
 - [x] [Wait For AJAX](url)
 - [x] [Type into an Input Tags](url)
 
-## Why Use Dawn?
+## Why Use Cinco?
 
-Dawn is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Dawn provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
+Cinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Cinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
 
-Dawn takes concepts from the following:
+Cinco takes concepts from the following:
 
 * <a href="https://laravel.com/docs/8.x/dusk" target="_BLANK">Laravel Dusk</a> &mdash; taking inspiration from the methods the Dusk API provides</a>
 
 ## Mirrors
 
-* [ ] https://nest.land/package/dawn
+* [ ] https://nest.land/package/cinco
 
 ## Articles
 

@@ -49,7 +49,7 @@ template: |
 
   * Import this latest release by using the following in your project(s):
     ```typescript
-    import { Dawn } from "https://deno.land/x/rhum@v$RESOLVED_VERSION/mod.ts";
+    import { Cinco } from "https://deno.land/x/cinco@v$RESOLVED_VERSION/mod.ts";
     ```
 
   __Updates__

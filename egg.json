@@ -1,9 +1,9 @@
 {
-  "name": "dawn",
+  "name": "cinco",
   "description": "Browser Automation and Testing Tool for Deno.",
   "version": "0.1.0",
   "stable": true,
-  "repository": "https://github.com/drashland/dawn",
+  "repository": "https://github.com/drashland/cinco",
   "files": [
     "./mod.ts",
     "./deps.ts",
