@@ -130,13 +130,12 @@ export class HeadlessBrowser {
           "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
         break;
       case "windows":
-        chromePath = "start chrome";
+        chromePath = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
         break;
       case "linux":
         chromePath = "/usr/bin/google-chrome";
         break;
     }
-    console.log('chrome path: ' + chromePath)
     this.browser_process = Deno.run({
       cmd: [
         chromePath,
