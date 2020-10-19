@@ -26,7 +26,6 @@ jobs:
 
       - name: Unit
         run: |
-          RUST_BACKTRACE=1
           deno test -A tests/unit
 
       - name: Integration
