@@ -15,7 +15,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
@@ -38,7 +38,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
@@ -74,7 +74,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
@@ -97,7 +97,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
@@ -147,7 +147,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
@@ -170,7 +170,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
-        let error = {
+        const error = {
           errored: false,
           msg: "",
         };
