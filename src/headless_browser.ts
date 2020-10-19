@@ -133,7 +133,7 @@ export class HeadlessBrowser {
         chromePath = "start chrome";
         break;
       case "linux":
-        chromePath = "TODO"; // TODO(any) Find what the path for chrome is for linux
+        chromePath = "/usr/bin/google-chrome"
         break;
     }
     this.browser_process = Deno.run({
