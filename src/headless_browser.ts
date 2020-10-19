@@ -29,7 +29,7 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: unknown;
 }
 
-function sleep(milliseconds: number): void {
+export function sleep(milliseconds: number): void {
   const start = new Date().getTime();
   for (let i = 0; i < 1e7; i++) {
     if ((new Date().getTime() - start) > milliseconds) {
@@ -38,10 +38,7 @@ function sleep(milliseconds: number): void {
   }
 }
 
-import { deferred, readLines } from "../deps.ts";
-
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
+import { deferred } from "../deps.ts";
 
 export type ErrorResult = {
   className: string; // eg SyntaxError
@@ -103,18 +100,6 @@ export class HeadlessBrowser {
   private debug_url: string | null = null;
 
   /**
-   * A way to keep track of the last command sent.
-   * Used to display the command in the error message if
-   * command errored
-   */
-  private last_command_sent = "";
-
-  /**
-   * A list of every command sent
-   */
-  private commands_sent: string[] = [];
-
-  /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   private next_message_id = 1;
@@ -162,9 +147,7 @@ export class HeadlessBrowser {
         "--disable-gpu",
         urlToVisit,
       ],
-      // stdout: "piped",
-      // stdin: "piped",
-      stderr: "piped"
+      stderr: "piped" // so stuff isn't displayed in the terminal for the user
     });
   }
 
@@ -185,19 +168,11 @@ export class HeadlessBrowser {
     this.socket = new WebSocket(debugUrl);
 
     this.socket.onopen = () => {
-      //this.connecting = false
-      //this.connected = true
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
         id: this.next_message_id
       }))
       this.next_message_id++
-      // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
-      // this.socket!.send(JSON.stringify({
-      //   method: "Network.enable",
-      //   id: this.next_message_id,
-      // }));
-      // this.next_message_id++;
     };
 
     // Listen for all events

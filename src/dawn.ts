@@ -6,38 +6,6 @@ import {
 import { assertEquals } from "../deps.ts";
 
 /**
- * visit
- *     Initial method to call on `Dawn`. Sets the ulr to visit
- */
-// interface IDawn {
-//   visit(url: string): Test
-// }
-
-/**
- * Entry point module
- *
- *     await Dawn().visit("...").click().assertPathIs(...)
- *
- * @constructor
- */
-// export function Dawn (): IDawn {
-//   const obj: Record<string, any> = {
-//     visit: (url: string) => {
-//       const p = Deno.run({
-//         cmd: ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "--headless", "--crash-dump-dir=/tmp", "--repl", url],
-//         stdin: "piped",
-//         stdout: "piped",
-//         stderr: "piped"
-//       })
-//       return new Test(
-//           url, p
-//       )
-//     }
-//   }
-//   return obj as IDawn
-// }
-
-/**
  * Responsible for assertions, and exposing the Headless Browser methods
  */
 export class Dawn extends HeadlessBrowser {
@@ -66,7 +34,9 @@ export class Dawn extends HeadlessBrowser {
    * @param text - The text to check for
    */
   public async assertSee(text: string): Promise<void> {
-    sleep(1000)
+    // Needs some extra time for the socket messages to come through.
+    sleep(500)
+
     const command =
       `document.documentElement.innerText.indexOf('${text}') >= 0`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
