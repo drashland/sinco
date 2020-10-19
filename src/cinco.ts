@@ -1,6 +1,7 @@
 import {
   DOMOutput,
-  HeadlessBrowser, sleep,
+  HeadlessBrowser,
+  sleep,
   SuccessResult,
 } from "./headless_browser.ts";
 import { assertEquals } from "../deps.ts";
@@ -35,7 +36,7 @@ export class Cinco extends HeadlessBrowser {
    */
   public async assertSee(text: string): Promise<void> {
     // Needs some extra time for the socket messages to come through.
-    sleep(500)
+    sleep(500);
 
     const command =
       `document.documentElement.innerText.indexOf('${text}') >= 0`;

@@ -7,12 +7,12 @@ Rhum.testPlan("tests/integration/tests_test.ts", () => {
       const cinco = new Cinco("https://chromestatus.com");
       await cinco.start();
       await cinco.assertUrlIs("https://chromestatus.com/features");
-      await cinco.click('a[href="/features/schedule"]')
-      await cinco.assertSee("Release timeline")
-      await cinco.assertUrlIs("https://chromestatus.com/features/schedule")
+      await cinco.click('a[href="/features/schedule"]');
+      await cinco.assertSee("Release timeline");
+      await cinco.assertUrlIs("https://chromestatus.com/features/schedule");
       await cinco.done();
     });
-  })
-})
+  });
+});
 
 Rhum.run();

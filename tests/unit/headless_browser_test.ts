@@ -17,19 +17,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
           await cinco.click("q;q");
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
         await cinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg: "DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: \"document.querySelector('q;q').click()\""
-        })
+          msg:
+            "DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: \"document.querySelector('q;q').click()\"",
+        });
       },
     );
     Rhum.testCase(
@@ -39,18 +40,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
           await cinco.click("a#dont-exist");
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
-        await cinco.done()
+        await cinco.done();
         Rhum.asserts.assertEquals(error, {
-          errored: true, msg: `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`
-        })
+          errored: true,
+          msg:
+            `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+        });
       },
     );
   });
@@ -73,19 +76,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
           await cinco.getInputValue("q;q");
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
-        await cinco.done()
+        await cinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg: `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value"`
-        })
+          msg:
+            `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value"`,
+        });
       },
     );
     Rhum.testCase(
@@ -95,19 +99,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
           await cinco.getInputValue('input[name="dontexist"]');
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
-        await cinco.done()
+        await cinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg: `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`
-        })
+          msg:
+            `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
+        });
       },
     );
     Rhum.testCase(
@@ -134,7 +139,7 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
       await cinco.start();
       await cinco.type('input[placeholder="Filter"]', "hello world");
       const val = await cinco.getInputValue('input[placeholder="Filter"]');
-      await cinco.done()
+      await cinco.done();
       Rhum.asserts.assertEquals(val, "hello world");
     });
     Rhum.testCase(
@@ -144,19 +149,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
-          await cinco.type('q;q', "hello");
+          await cinco.type("q;q", "hello");
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
-        await cinco.done()
+        await cinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg: `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value = "hello""`
-        })
+          msg:
+            `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value = "hello""`,
+        });
       },
     );
     Rhum.testCase(
@@ -166,19 +172,20 @@ Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
         await cinco.start();
         let error = {
           errored: false,
-          msg: ""
-        }
+          msg: "",
+        };
         try {
-          await cinco.type("input#dont-exist", 'qaloo');
+          await cinco.type("input#dont-exist", "qaloo");
         } catch (err) {
-          error.errored = true
-          error.msg = err.message
+          error.errored = true;
+          error.msg = err.message;
         }
-        await cinco.done()
+        await cinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg: `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`
-        })
+          msg:
+            `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
+        });
       },
     );
   });

@@ -133,7 +133,7 @@ export class HeadlessBrowser {
         chromePath = "start chrome";
         break;
       case "linux":
-        chromePath = "/usr/bin/google-chrome"
+        chromePath = "/usr/bin/google-chrome";
         break;
     }
     this.browser_process = Deno.run({
@@ -144,7 +144,7 @@ export class HeadlessBrowser {
         "--disable-gpu",
         urlToVisit,
       ],
-      stderr: "piped" // so stuff isn't displayed in the terminal for the user
+      stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
   }
 
@@ -161,15 +161,15 @@ export class HeadlessBrowser {
     const json = await res.json();
     const debugUrl = json[0]["webSocketDebuggerUrl"];
     this.debug_url = debugUrl;
-    this.connecting = true
+    this.connecting = true;
     this.socket = new WebSocket(debugUrl);
 
     this.socket.onopen = () => {
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
-        id: this.next_message_id
-      }))
-      this.next_message_id++
+        id: this.next_message_id,
+      }));
+      this.next_message_id++;
     };
 
     // Listen for all events
@@ -179,9 +179,9 @@ export class HeadlessBrowser {
       );
       if ("id" in message) { // message response
         if (message.id === 1) {
-          this.connected = true
-          this.connecting = false
-          return
+          this.connected = true;
+          this.connecting = false;
+          return;
         }
         const resolvable = this.resolvables[message.id];
         if (resolvable) {
@@ -199,21 +199,20 @@ export class HeadlessBrowser {
     // general socket handlers
     this.socket.onclose = () => {
       this.connected = false;
-      this.connecting = false
+      this.connecting = false;
       if (this.is_done === false) {
         // todo try reconnect
         throw new Error("Unhandled. todo");
       }
     };
     this.socket.onerror = (e) => {
-      this.connected = false
-      this.connecting = false
+      this.connected = false;
+      this.connecting = false;
       if (this.is_done === false) {
-        console.error(e)
+        console.error(e);
         throw new Error("Unencountered error");
       }
     };
-
   }
 
   /**
@@ -242,8 +241,8 @@ export class HeadlessBrowser {
       this.socket!.send(JSON.stringify(data));
       return await pending;
     } else if (this.connecting) {
-      await delay(100)
-      return await this.sendWebSocketMessage(method, params)
+      await delay(100);
+      return await this.sendWebSocketMessage(method, params);
     }
   }
 
@@ -261,7 +260,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((result as DOMOutput), command);
-    sleep(1000)// Need to wait, so click action has time to run before user sends next action
+    sleep(1000); // Need to wait, so click action has time to run before user sends next action
   }
 
   /**
@@ -304,16 +303,16 @@ export class HeadlessBrowser {
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    sleep(1000) // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
-    const promise = deferred()
+    sleep(1000); // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
+    const promise = deferred();
     this.is_done = true;
-    this.browser_process.stderr!.close()
+    this.browser_process.stderr!.close();
     this.browser_process.close();
-    this.socket!.addEventListener('close', function () {
-      promise.resolve()
-    })
+    this.socket!.addEventListener("close", function () {
+      promise.resolve();
+    });
     this.socket!.close();
-    await promise
+    await promise;
   }
 
   /**
@@ -332,7 +331,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((res as DOMOutput), command);
-    sleep(500)
+    sleep(500);
   }
 
   /**
