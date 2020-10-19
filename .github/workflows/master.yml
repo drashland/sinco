@@ -24,17 +24,10 @@ jobs:
         with:
           deno-version: ${{ matrix.deno }}
 
-      - name: Test
-        if: matrix.os == 'windows-latest'
-        run: |
-          pwd
-          ls 'C:\Program Files (x86)'
-          ls 'C:\Program Files (x86)\Google'
-          ls 'C:\Program Files(x86)\Google\Chrome'
-          ls 'C:\Program Files(x86)\Google\Chrome\Application'
-
       - name: Unit
-        run: deno test -A tests/unit
+        run: |
+          RUST_BACKTRACE=1
+          deno test -A tests/unit
 
       - name: Integration
         run: deno test -A tests/integration

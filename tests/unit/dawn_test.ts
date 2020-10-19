@@ -1,7 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { Cinco } from "../../mod.ts";
 
-Rhum.testPlan("tests/integration/cinco_test.ts", () => {
+Rhum.testPlan("tests/unit/cinco_test.ts", () => {
   Rhum.testSuite("assertUrlIs()", () => {
     Rhum.testCase("Assertion should work", async () => {
       const cinco = new Cinco("https://chromestatus.com");

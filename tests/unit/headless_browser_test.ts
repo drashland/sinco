@@ -1,7 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { Cinco } from "../../mod.ts";
 
-Rhum.testPlan("tests/integration/headless_browser_test.ts", () => {
+Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
   Rhum.testSuite("click()", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
       const cinco = new Cinco("https://chromestatus.com");
