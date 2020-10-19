@@ -1,6 +1,6 @@
 import {
   DOMOutput,
-  HeadlessBrowser,
+  HeadlessBrowser, sleep,
   SuccessResult,
 } from "./headless_browser.ts";
 import { assertEquals } from "../deps.ts";
@@ -66,6 +66,7 @@ export class Dawn extends HeadlessBrowser {
    * @param text - The text to check for
    */
   public async assertSee(text: string): Promise<void> {
+    sleep(1000)
     const command =
       `document.documentElement.innerText.indexOf('${text}') >= 0`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {

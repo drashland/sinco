@@ -16,6 +16,8 @@ import { delay } from "https://deno.land/std/async/mod.ts";
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
+const globalPromise = deferred()
+
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
   result?: unknown; // Present on success
@@ -123,6 +125,11 @@ export class HeadlessBrowser {
   public connected = false;
 
   /**
+   * Are we connectING to the endpoint
+   */
+  public connecting = false;
+
+  /**
    * Tracks whether the user is done or not, to determine whether to reconnect to socket on disconnect
    */
   private is_done = false;
@@ -166,7 +173,7 @@ export class HeadlessBrowser {
    * and initialises it so we can send events
    */
   public async start() {
-    // Wait until the endpoint is actually ready
+    // Wait until the endpoint is actually ready eg the debugger is listening (it isn't ready instantly)
     sleep(1000);
 
     // Now get the url to connect to
@@ -174,16 +181,23 @@ export class HeadlessBrowser {
     const json = await res.json();
     const debugUrl = json[0]["webSocketDebuggerUrl"];
     this.debug_url = debugUrl;
+    this.connecting = true
     this.socket = new WebSocket(debugUrl);
 
     this.socket.onopen = () => {
-      this.connected = true;
-      // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
+      //this.connecting = false
+      //this.connected = true
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
-        id: this.next_message_id,
-      }));
-      this.next_message_id++;
+        id: this.next_message_id
+      }))
+      this.next_message_id++
+      // this bit could be replaced by calling `this.sendWebSocketMessage`, but we don't want to use await here
+      // this.socket!.send(JSON.stringify({
+      //   method: "Network.enable",
+      //   id: this.next_message_id,
+      // }));
+      // this.next_message_id++;
     };
 
     // Listen for all events
@@ -192,6 +206,11 @@ export class HeadlessBrowser {
         event.data,
       );
       if ("id" in message) { // message response
+        if (message.id === 1) {
+          this.connected = true
+          this.connecting = false
+          return
+        }
         const resolvable = this.resolvables[message.id];
         if (resolvable) {
           if ("result" in message) { // success response
@@ -208,13 +227,16 @@ export class HeadlessBrowser {
     // general socket handlers
     this.socket.onclose = () => {
       this.connected = false;
+      this.connecting = false
       if (this.is_done === false) {
         // todo try reconnect
         throw new Error("Unhandled. todo");
       }
+      globalPromise.resolve()
     };
     this.socket.onerror = (e) => {
       this.connected = false
+      this.connecting = false
       if (this.is_done === false) {
         console.error(e)
         throw new Error("Unencountered error");
@@ -246,8 +268,11 @@ export class HeadlessBrowser {
       };
       if (params) data.params = params;
       const pending = this.resolvables[data.id] = deferred();
-      this.socket.send(JSON.stringify(data));
+      this.socket!.send(JSON.stringify(data));
       return await pending;
+    } else if (this.connecting) {
+      await delay(100)
+      return await this.sendWebSocketMessage(method, params)
     }
   }
 
@@ -299,8 +324,7 @@ export class HeadlessBrowser {
       }
     }
     this.checkForErrorResult((result as DOMOutput), command);
-    // TODO(any) we might need to wait here, because clicking something could be too fast and the next command might not work eg submit button for form, how do we know or how do we wait? The submission might send us to a different page but by then, the console is cleared and the next command(s) won't runn
-    // ...
+    sleep(1000)// Need to wait, so click action has time to run before user sends next action
   }
 
   /**
@@ -343,6 +367,7 @@ export class HeadlessBrowser {
    * Close/stop the sub process. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
+    sleep(2000) // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
     const promise = deferred()
     this.is_done = true;
     this.browser_process.stderr!.close()
@@ -352,6 +377,7 @@ export class HeadlessBrowser {
     })
     this.socket!.close();
     await promise
+    await globalPromise
   }
 
   /**
@@ -370,6 +396,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((res as DOMOutput), command);
+    sleep(1000)
   }
 
   /**
