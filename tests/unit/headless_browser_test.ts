@@ -1,16 +1,16 @@
-import { Rhum } from "../deps.ts";
+import { Rhum, Rhum2 } from "../deps.ts";
 import { Cinco } from "../../mod.ts";
 
-Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
-  Rhum.testSuite("click()", () => {
-    Rhum.testCase("It should allow clicking of elements", async () => {
+Rhum2.testPlan(() => {
+  Rhum2.testSuite("click()", () => {
+    Rhum2.testCase("It should allow clicking of elements", async () => {
       const cinco = new Cinco("https://chromestatus.com");
       await cinco.start();
       await cinco.click('a[href="/features/schedule"]');
       await cinco.assertSee("Release timeline");
       await cinco.done();
     });
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -26,14 +26,14 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             "DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: \"document.querySelector('q;q').click()\"",
         });
       },
     );
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -49,7 +49,7 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
@@ -57,19 +57,19 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       },
     );
   });
-  Rhum.testSuite("getInputValue()", () => {
-    Rhum.testCase(
+  Rhum2.testSuite("getInputValue()", () => {
+    Rhum2.testCase(
       "It should get the value for the given input element",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
         await cinco.type('input[placeholder="Filter"]', "hello world");
         const val = await cinco.getInputValue('input[placeholder="Filter"]');
-        Rhum.asserts.assertEquals(val, "hello world");
+        Rhum2.asserts.assertEquals(val, "hello world");
         await cinco.done();
       },
     );
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -85,14 +85,14 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value"`,
         });
       },
     );
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -108,41 +108,41 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
         });
       },
     );
-    Rhum.testCase(
+    Rhum2.testCase(
       "Should return undefined when element is not an input element",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
         await cinco.start();
         const val = await cinco.getInputValue('a[href="/features/schedule"]');
         await cinco.done();
-        Rhum.asserts.assertEquals(val, "undefined");
+        Rhum2.asserts.assertEquals(val, "undefined");
       },
     );
   });
-  Rhum.testSuite("waitForAjax()", () => {
-    Rhum.testCase(
+  Rhum2.testSuite("waitForAjax()", () => {
+    Rhum2.testCase(
       "It should wait for a long running ajax process to finish",
       async () => {
       },
     );
   });
-  Rhum.testSuite("type()", () => {
-    Rhum.testCase("It should set the value of the element", async () => {
+  Rhum2.testSuite("type()", () => {
+    Rhum2.testCase("It should set the value of the element", async () => {
       const cinco = new Cinco("https://chromestatus.com");
       await cinco.start();
       await cinco.type('input[placeholder="Filter"]', "hello world");
       const val = await cinco.getInputValue('input[placeholder="Filter"]');
       await cinco.done();
-      Rhum.asserts.assertEquals(val, "hello world");
+      Rhum2.asserts.assertEquals(val, "hello world");
     });
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -158,14 +158,14 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value = "hello""`,
         });
       },
     );
-    Rhum.testCase(
+    Rhum2.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
         const cinco = new Cinco("https://chromestatus.com");
@@ -181,7 +181,7 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
           error.msg = err.message;
         }
         await cinco.done();
-        Rhum.asserts.assertEquals(error, {
+        Rhum2.asserts.assertEquals(error, {
           errored: true,
           msg:
             `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
@@ -190,5 +190,3 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
     );
   });
 });
-
-Rhum.run();
