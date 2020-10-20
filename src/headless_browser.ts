@@ -192,9 +192,6 @@ export class HeadlessBrowser {
       }
     }
 
-    console.log(`the debug url: ` + this.debug_url)
-    this.socket = new WebSocket(this.debug_url || "");
-
     this.socket.onopen = () => {
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
