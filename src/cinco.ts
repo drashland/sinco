@@ -35,11 +35,8 @@ export class Cinco extends HeadlessBrowser {
    * @param text - The text to check for
    */
   public async assertSee(text: string): Promise<void> {
-    // Needs some extra time for the socket messages to come through.
-    sleep(500);
-
     const command =
-      `document.documentElement.innerText.indexOf('${text}') >= 0`;
+      `document.body.innerText.indexOf('${text}') >= 0`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
