@@ -1,9 +1,9 @@
-import { Rhum2 } from "../deps.ts";
+import { Rhum } from "../deps.ts";
 import { Cinco } from "../../mod.ts";
 
-Rhum2.testPlan(() => {
-  Rhum2.testSuite("Extensive test", () => {
-    Rhum2.testCase("Should handle many actions and assertions", async () => {
+Rhum.testPlan(() => {
+  Rhum.testSuite("Extensive test", () => {
+    Rhum.testCase("Should handle many actions and assertions", async () => {
       const cinco = new Cinco("https://chromestatus.com");
       console.log("starting");
       await cinco.start();
