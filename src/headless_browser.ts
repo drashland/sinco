@@ -191,6 +191,8 @@ export class HeadlessBrowser {
         // do nothing, loop again until it's ready
       }
     }
+
+    console.log(`the debug url: ` + this.debug_url)
     this.socket = new WebSocket(this.debug_url || "");
 
     this.socket.onopen = () => {
