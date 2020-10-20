@@ -12,7 +12,7 @@ Rhum.testPlan(() => {
       console.log("clicking");
       await cinco.click('a[href="/features/schedule"]');
       console.log("assert seeing");
-      await cinco.assertSee("Release timeline");
+      // await cinco.assertSee("Release timeline");
       console.log("asserting url");
       await cinco.assertUrlIs("https://chromestatus.com/features/schedule");
       console.log("done");
