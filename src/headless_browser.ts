@@ -139,30 +139,31 @@ export class HeadlessBrowser {
    * @param urlToVisit - The url to visit or open up
    */
   constructor(urlToVisit: string) {
+    const paths = {
+      windows_chrome_exe: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      windows_chrome_exe_x86: "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      linux: "/usr/bin/google-chrome"
+    };
     let chromePath = "";
     switch (Deno.build.os) {
       case "darwin":
-        chromePath =
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+        chromePath = paths.darwin;
         break;
       case "windows":
-        const pathOne =
-          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
-        if (existsSync(pathOne)) {
-          chromePath = pathOne;
+        if (existsSync(paths.windows_chrome_exe)) {
+          chromePath = paths.windows_chrome_exe;
           break;
         }
-        const pathTwo =
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-        if (existsSync(pathTwo)) {
-          chromePath = pathTwo;
+        if (existsSync(paths.windows_chrome_exe_x86)) {
+          chromePath = paths.windows_chrome_exe_x86;
           break;
         }
         throw new Error(
           "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
-        chromePath = "/usr/bin/google-chrome";
+        chromePath = paths.linux;
         break;
     }
     this.browser_process = Deno.run({
