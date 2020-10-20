@@ -24,9 +24,12 @@ jobs:
         with:
           deno-version: ${{ matrix.deno }}
 
+      - name: Install Rhum
+        run: deno install -A https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts
+
       - name: Unit
         run: |
-          deno test -A tests/unit
+          rhum tests/unit
 
       - name: Integration
         run: deno test -A tests/integration
