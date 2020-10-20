@@ -29,6 +29,7 @@ jobs:
 
       - name: Unit
         run: |
+          export PATH="/home/runner/.deno/bin:$PATH"
           rhum-cli tests/unit/headless_browser_test.ts
 
       - name: Integration
