@@ -208,12 +208,14 @@ export class HeadlessBrowser {
       const message: MessageResponse | NotificationResponse = JSON.parse(
         event.data,
       );
-      if ("id" in message) { // message response
-        if (message.id === 1) {
+      if ((message as NotificationResponse).method) {
+        if ((message as NotificationResponse).method === "Network.loadingFinished") {
           this.connected = true;
           this.connecting = false;
           return;
         }
+      }
+      if ("id" in message) { // message response
         const resolvable = this.resolvables[message.id];
         if (resolvable) {
           if ("result" in message) { // success response
