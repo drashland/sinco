@@ -192,7 +192,7 @@ export class HeadlessBrowser {
       }
     }
 
-    this.socket.onopen = () => {
+    this.socket!.onopen = () => {
       this.socket!.send(JSON.stringify({
         method: "Network.enable",
         id: this.next_message_id,
@@ -201,7 +201,7 @@ export class HeadlessBrowser {
     };
 
     // Listen for all events
-    this.socket.onmessage = (event) => {
+    this.socket!.onmessage = (event) => {
       const message: MessageResponse | NotificationResponse = JSON.parse(
         event.data,
       );
@@ -227,7 +227,7 @@ export class HeadlessBrowser {
     };
 
     // general socket handlers
-    this.socket.onclose = () => {
+    this.socket!.onclose = () => {
       this.connected = false;
       this.connecting = false;
       if (this.is_done === false) {
@@ -235,7 +235,7 @@ export class HeadlessBrowser {
         throw new Error("Unhandled. todo");
       }
     };
-    this.socket.onerror = (e) => {
+    this.socket!.onerror = (e) => {
       this.connected = false;
       this.connecting = false;
       if (this.is_done === false) {
