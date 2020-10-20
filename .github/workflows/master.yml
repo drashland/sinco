@@ -30,22 +30,22 @@ jobs:
       - name: Unit
         if: matrix.os != 'windows-latest'
         run: |
-          export PATH="/home/runner/.deno/bin:$PATH"
+          export PATH="/Users/runner/.deno/bin:$PATH"
           rhum-cli tests/unit/
 
       - name: Integration
         if: matrix.os != 'windows-latest'
         run: |
-          export PATH="/home/runner/.deno/bin:$PATH"
+          export PATH="/Users/runner/.deno/bin:$PATH"
           rhum-cli tests/integration
 
-      - name: Run Unit Tests (windows)
+      - name: Unit Tests (windows)
         if: matrix.os == 'windows-latest'
         run: |
           $env:Path += ";C:\Users\runneradmin\.deno\bin"
           rhum-cli tests/unit
 
-      - name: Run Integration Tests (windows)
+      - name: Integration Tests (windows)
         if: matrix.os == 'windows-latest'
         run: |
           $env:Path += ";C:\Users\runneradmin\.deno\bin"
