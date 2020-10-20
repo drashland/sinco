@@ -178,16 +178,20 @@ export class HeadlessBrowser {
    * and initialises it so we can send events
    */
   public async start() {
-    // Wait until the endpoint is actually ready eg the debugger is listening (it isn't ready instantly)
-    sleep(1000);
-
-    // Now get the url to connect to
-    const res = await fetch("http://localhost:9292/json/list");
-    const json = await res.json();
-    const debugUrl = json[0]["webSocketDebuggerUrl"];
-    this.debug_url = debugUrl;
     this.connecting = true;
-    this.socket = new WebSocket(debugUrl);
+    // Wait until the endpoint is actually ready eg the debugger is listening (it isn't ready instantly)
+    while (true) {
+      try {
+        const res = await fetch("http://localhost:9292/json/list")
+        const json = await res.json();
+        const debugUrl = json[0]["webSocketDebuggerUrl"];
+        this.debug_url = debugUrl
+        break
+      } catch (err) {
+        // do nothing, loop again until it's ready
+      }
+    }
+    this.socket = new WebSocket(this.debug_url || "");
 
     this.socket.onopen = () => {
       this.socket!.send(JSON.stringify({
