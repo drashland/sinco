@@ -1,9 +1,9 @@
-import { Rhum } from "../deps.ts";
+import { Rhum2 } from "../deps.ts";
 import { Cinco } from "../../mod.ts";
 
-Rhum.testPlan("tests/integration/tests_test.ts", () => {
-  Rhum.testSuite("Extensive test", () => {
-    Rhum.testCase("Should handle many actions and assertions", async () => {
+Rhum2.testPlan(() => {
+  Rhum2.testSuite("Extensive test", () => {
+    Rhum2.testCase("Should handle many actions and assertions", async () => {
       const cinco = new Cinco("https://chromestatus.com");
       console.log('starting')
       await cinco.start();
@@ -20,5 +20,3 @@ Rhum.testPlan("tests/integration/tests_test.ts", () => {
     });
   });
 });
-
-Rhum.run();
