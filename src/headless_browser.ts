@@ -15,6 +15,25 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
+const existsSync = (filename: string): boolean => {
+  try {
+    Deno.statSync(filename);
+    // successful, file or directory must exist
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      // file or directory does not exist
+      return false;
+    } else {
+      // unexpected error, maybe permissions, pass it along
+      throw error;
+    }
+  }
+};
+
+const webSocketClosePromise = deferred()
+const webSocketOpenPromise = deferred()
+
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
   result?: unknown; // Present on success
@@ -34,22 +53,6 @@ export function sleep(milliseconds: number): void {
     }
   }
 }
-
-const existsSync = (filename: string): boolean => {
-  try {
-    Deno.statSync(filename);
-    // successful, file or directory must exist
-    return true;
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      // file or directory does not exist
-      return false;
-    } else {
-      // unexpected error, maybe permissions, pass it along
-      throw error;
-    }
-  }
-};
 
 import { deferred, delay } from "../deps.ts";
 
@@ -96,6 +99,14 @@ export type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
+/**
+ * To use this class:
+ *
+ *     const { p, client } = await HeadlessBrowser.create(urlToVisit)
+ *     const headless = new HeadlessBrowser(p, client)
+ *     await headless.start()
+ *     await headless.click(...)
+ */
 export class HeadlessBrowser {
   /**
    * The sub process that runs headless chrome
@@ -105,27 +116,12 @@ export class HeadlessBrowser {
   /**
    * Our web socket connection to the remote debugging port
    */
-  private socket: WebSocket | null = null;
-
-  /**
-   * The endpoint our websocket connects to
-   */
-  private debug_url: string | null = null;
+  private socket: WebSocket;
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   private next_message_id = 1;
-
-  /**
-   * Are we connected to the endpoint through the websocket
-   */
-  public connected = false;
-
-  /**
-   * Are we connectING to the endpoint
-   */
-  public connecting = false;
 
   /**
    * Tracks whether the user is done or not, to determine whether to reconnect to socket on disconnect
@@ -136,14 +132,30 @@ export class HeadlessBrowser {
   private resolvables: { [key: number]: any } = {};
 
   /**
-   * @param urlToVisit - The url to visit or open up
+   * @param p - The sub process
+   * @param socket
    */
-  constructor(urlToVisit: string) {
+  constructor(p: Deno.Process, socket: WebSocket) {
+    this.browser_process = p
+    this.socket = socket
+    this.socket.onopen = () => {this.handleSocketOpen() }
+    this.socket.onclose = () => {this.handleSocketClose()}
+    this.socket.onmessage = (msg) => {this.handleSocketMessage(msg)}
+    this.socket.onerror = () => {this.handleSocketError()}
+  }
+
+  /**
+   * Creates the deno process and websocket connection needed
+   * to communicate with the chrome remote
+   *
+   * @returns The deno process running chrome, and the web socket instance
+   */
+  protected static async create (): Promise<{ p: Deno.Process, client: WebSocket}> {
     const paths = {
       windows_chrome_exe:
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       windows_chrome_exe_x86:
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -162,97 +174,78 @@ export class HeadlessBrowser {
           break;
         }
         throw new Error(
-          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
         chromePath = paths.linux;
         break;
     }
-    this.browser_process = Deno.run({
+    const p = Deno.run({
       cmd: [
         chromePath,
         "--headless",
         "--remote-debugging-port=9292",
         "--disable-gpu",
-        urlToVisit,
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
+    let debugUrl = ""
+    while (true) {
+      try {
+        const res = await fetch("http://localhost:9292/json/list")
+        const json = await res.json();
+        debugUrl = json[0]["webSocketDebuggerUrl"];
+        break
+      } catch (err) {
+        // do nothing, loop again until the endpoint is ready
+      }
+    }
+    const client = new WebSocket(debugUrl)
+    return { p, client }
+  }
+
+  private handleSocketOpen () {
+    webSocketOpenPromise.resolve()
+  }
+
+  private handleSocketClose ()  {
+    webSocketClosePromise.resolve()
+  }
+
+  private handleSocketMessage (msg: MessageEvent) {
+    if (this.is_done) {
+      return
+    }
+    const message: MessageResponse | NotificationResponse = JSON.parse(
+        msg.data,
+    );
+    if ("id" in message) { // message response
+      const resolvable = this.resolvables[message.id];
+      if (resolvable) {
+        if ("result" in message) { // success response
+          resolvable.resolve(message.result);
+        }
+        if ("error" in message) { // error response
+          // todo throw error  using error message
+          resolvable.reject(message.error);
+        }
+      }
+    }
+  }
+
+  private handleSocketError () {
+    throw new Error("WebSocket connection errored.")
   }
 
   /**
    * Creates the web socket connection to the headless chrome,
    * and initialises it so we can send events
    */
-  public async start() {
-    this.connecting = true;
-    // Wait until the endpoint is actually ready eg the debugger is listening (it isn't ready instantly)
-    while (true) {
-      try {
-        const res = await fetch("http://localhost:9292/json/list");
-        const json = await res.json();
-        const debugUrl = json[0]["webSocketDebuggerUrl"];
-        this.debug_url = debugUrl;
-        break;
-      } catch (err) {
-        // do nothing, loop again until it's ready
-      }
-    }
-    this.socket = new WebSocket(this.debug_url || "");
-
-    this.socket.onopen = () => {
-      this.socket!.send(JSON.stringify({
-        method: "Network.enable",
-        id: this.next_message_id,
-      }));
-      this.next_message_id++;
-    };
-
-    // Listen for all events
-    this.socket.onmessage = (event) => {
-      const message: MessageResponse | NotificationResponse = JSON.parse(
-        event.data,
-      );
-      if ((message as NotificationResponse).method) {
-        if (
-          (message as NotificationResponse).method === "Network.loadingFinished"
-        ) {
-          this.connected = true;
-          this.connecting = false;
-          return;
-        }
-      }
-      if ("id" in message) { // message response
-        const resolvable = this.resolvables[message.id];
-        if (resolvable) {
-          if ("result" in message) { // success response
-            resolvable.resolve(message.result);
-          }
-          if ("error" in message) { // error response
-            // todo throw error  using error message
-            resolvable.reject(message.error);
-          }
-        }
-      }
-    };
-
-    // general socket handlers
-    this.socket.onclose = () => {
-      this.connected = false;
-      this.connecting = false;
-      if (this.is_done === false) {
-        // todo try reconnect
-        throw new Error("Unhandled. todo");
-      }
-    };
-    this.socket.onerror = (e) => {
-      this.connected = false;
-      this.connecting = false;
-      if (this.is_done === false) {
-        console.error(e);
-        throw new Error("Unencountered error");
-      }
-    };
+  public async start(urlToVisit: string) {
+    await webSocketOpenPromise
+    const res = await this.sendWebSocketMessage("Page.navigate", {
+      url: urlToVisit
+    })
   }
 
   /**
@@ -267,7 +260,6 @@ export class HeadlessBrowser {
     method: string,
     params?: { [key: string]: unknown },
   ): Promise<unknown> {
-    if (this.connected) {
       const data: {
         id: number;
         method: string;
@@ -280,10 +272,6 @@ export class HeadlessBrowser {
       const pending = this.resolvables[data.id] = deferred();
       this.socket!.send(JSON.stringify(data));
       return await pending;
-    } else if (this.connecting) {
-      await delay(100);
-      return await this.sendWebSocketMessage(method, params);
-    }
   }
 
   /**
@@ -340,19 +328,15 @@ export class HeadlessBrowser {
   }
 
   /**
-   * Close/stop the sub process. Must be called when finished with all your testing
+   * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    sleep(1000); // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
-    const promise = deferred();
+    await delay(1000); // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
     this.is_done = true;
     this.browser_process.stderr!.close();
     this.browser_process.close();
-    this.socket!.addEventListener("close", function () {
-      promise.resolve();
-    });
-    this.socket!.close();
-    await promise;
+    this.socket.close();
+    await webSocketClosePromise;
   }
 
   /**
@@ -371,7 +355,6 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((res as DOMOutput), command);
-    sleep(500);
   }
 
   /**

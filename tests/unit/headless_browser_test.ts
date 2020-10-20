@@ -4,8 +4,7 @@ import { Cinco } from "../../mod.ts";
 Rhum.testPlan(() => {
   Rhum.testSuite("click()", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
-      const cinco = new Cinco("https://chromestatus.com");
-      await cinco.start();
+      const cinco = await Cinco.build("https://chromestatus.com");
       await cinco.click('a[href="/features/schedule"]');
       await cinco.assertSee("Release timeline");
       await cinco.done();
@@ -13,8 +12,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
@@ -36,8 +34,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
@@ -61,8 +58,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should get the value for the given input element",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         await cinco.type('input[placeholder="Filter"]', "hello world");
         const val = await cinco.getInputValue('input[placeholder="Filter"]');
         Rhum.asserts.assertEquals(val, "hello world");
@@ -72,8 +68,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
@@ -95,8 +90,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
@@ -118,8 +112,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "Should return undefined when element is not an input element",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const val = await cinco.getInputValue('a[href="/features/schedule"]');
         await cinco.done();
         Rhum.asserts.assertEquals(val, "undefined");
@@ -135,8 +128,7 @@ Rhum.testPlan(() => {
   });
   Rhum.testSuite("type()", () => {
     Rhum.testCase("It should set the value of the element", async () => {
-      const cinco = new Cinco("https://chromestatus.com");
-      await cinco.start();
+      const cinco = await Cinco.build("https://chromestatus.com");
       await cinco.type('input[placeholder="Filter"]', "hello world");
       const val = await cinco.getInputValue('input[placeholder="Filter"]');
       await cinco.done();
@@ -145,8 +137,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
@@ -168,8 +159,7 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = new Cinco("https://chromestatus.com");
-        await cinco.start();
+        const cinco = await Cinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",

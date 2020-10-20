@@ -4,17 +4,31 @@ import {
   sleep,
   SuccessResult,
 } from "./headless_browser.ts";
-import { assertEquals } from "../deps.ts";
+import {assertEquals, deferred, delay} from "../deps.ts";
 
 /**
  * Responsible for assertions, and exposing the Headless Browser methods
  */
 export class Cinco extends HeadlessBrowser {
   /**
-   * @param urlToVisit - Which url are we visiting?
+   * @param p - See HeadlessBrowser#constructor
+   * @param socket - See HeadlessBrowser#constructor
    */
-  constructor(urlToVisit: string) {
-    super(urlToVisit);
+  constructor(p: Deno.Process, socket: WebSocket) {
+    super(p, socket);
+  }
+
+  /**
+   * Creates the sub process, connects to the remote using WebSockets
+   * and preps for running tests
+   *
+   * @param urlToVisit - Initial url to visit
+   */
+  public static async build (urlToVisit: string): Promise<Cinco> {
+    const { p, client } = await HeadlessBrowser.create()
+    const cinco = new Cinco(p, client)
+    await cinco.start(urlToVisit)
+    return cinco
   }
 
   /**
