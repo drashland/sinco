@@ -51,7 +51,7 @@ const existsSync = (filename: string): boolean => {
   }
 };
 
-import {deferred, delay} from "../deps.ts";
+import { deferred, delay } from "../deps.ts";
 
 export type ErrorResult = {
   className: string; // eg SyntaxError
@@ -146,17 +146,21 @@ export class HeadlessBrowser {
           "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
         break;
       case "windows":
-        const pathOne = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+        const pathOne =
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
         if (existsSync(pathOne)) {
-          chromePath = pathOne
-          break
+          chromePath = pathOne;
+          break;
         }
-        const pathTwo = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        const pathTwo =
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
         if (existsSync(pathTwo)) {
-          chromePath = pathTwo
-          break
+          chromePath = pathTwo;
+          break;
         }
-        throw new Error("Cannot find path for chrome in windows. Submit an issue if you encounter this error")
+        throw new Error(
+          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+        );
       case "linux":
         chromePath = "/usr/bin/google-chrome";
         break;
@@ -182,16 +186,16 @@ export class HeadlessBrowser {
     // Wait until the endpoint is actually ready eg the debugger is listening (it isn't ready instantly)
     while (true) {
       try {
-        const res = await fetch("http://localhost:9292/json/list")
+        const res = await fetch("http://localhost:9292/json/list");
         const json = await res.json();
         const debugUrl = json[0]["webSocketDebuggerUrl"];
-        this.debug_url = debugUrl
-        break
+        this.debug_url = debugUrl;
+        break;
       } catch (err) {
         // do nothing, loop again until it's ready
       }
     }
-    this.socket = new WebSocket(this.debug_url || "")
+    this.socket = new WebSocket(this.debug_url || "");
 
     this.socket.onopen = () => {
       this.socket!.send(JSON.stringify({
@@ -207,7 +211,9 @@ export class HeadlessBrowser {
         event.data,
       );
       if ((message as NotificationResponse).method) {
-        if ((message as NotificationResponse).method === "Network.loadingFinished") {
+        if (
+          (message as NotificationResponse).method === "Network.loadingFinished"
+        ) {
           this.connected = true;
           this.connecting = false;
           return;

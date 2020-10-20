@@ -23,7 +23,7 @@ export class Cinco extends HeadlessBrowser {
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
-    sleep(500)
+    sleep(500);
     const res = await this.sendWebSocketMessage("DOM.getDocument");
     const actualUrl =
       (res as { root: { documentURL: string } }).root.documentURL;
@@ -36,9 +36,8 @@ export class Cinco extends HeadlessBrowser {
    * @param text - The text to check for
    */
   public async assertSee(text: string): Promise<void> {
-    sleep(500)
-    const command =
-      `document.body.innerText.indexOf('${text}') >= 0`;
+    sleep(500);
+    const command = `document.body.innerText.indexOf('${text}') >= 0`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
