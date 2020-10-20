@@ -4,7 +4,7 @@ import {
   sleep,
   SuccessResult,
 } from "./headless_browser.ts";
-import {assertEquals, deferred, delay} from "../deps.ts";
+import { assertEquals, deferred, delay } from "../deps.ts";
 
 /**
  * Responsible for assertions, and exposing the Headless Browser methods
@@ -24,11 +24,11 @@ export class Cinco extends HeadlessBrowser {
    *
    * @param urlToVisit - Initial url to visit
    */
-  public static async build (urlToVisit: string): Promise<Cinco> {
-    const { p, client } = await HeadlessBrowser.create()
-    const cinco = new Cinco(p, client)
-    await cinco.start(urlToVisit)
-    return cinco
+  public static async build(urlToVisit: string): Promise<Cinco> {
+    const { p, client } = await HeadlessBrowser.create();
+    const cinco = new Cinco(p, client);
+    await cinco.start(urlToVisit);
+    return cinco;
   }
 
   /**

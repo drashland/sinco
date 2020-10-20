@@ -31,8 +31,8 @@ const existsSync = (filename: string): boolean => {
   }
 };
 
-const webSocketClosePromise = deferred()
-const webSocketOpenPromise = deferred()
+const webSocketClosePromise = deferred();
+const webSocketOpenPromise = deferred();
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -136,12 +136,20 @@ export class HeadlessBrowser {
    * @param socket
    */
   constructor(p: Deno.Process, socket: WebSocket) {
-    this.browser_process = p
-    this.socket = socket
-    this.socket.onopen = () => {this.handleSocketOpen() }
-    this.socket.onclose = () => {this.handleSocketClose()}
-    this.socket.onmessage = (msg) => {this.handleSocketMessage(msg)}
-    this.socket.onerror = () => {this.handleSocketError()}
+    this.browser_process = p;
+    this.socket = socket;
+    this.socket.onopen = () => {
+      this.handleSocketOpen();
+    };
+    this.socket.onclose = () => {
+      this.handleSocketClose();
+    };
+    this.socket.onmessage = (msg) => {
+      this.handleSocketMessage(msg);
+    };
+    this.socket.onerror = () => {
+      this.handleSocketError();
+    };
   }
 
   /**
@@ -150,12 +158,14 @@ export class HeadlessBrowser {
    *
    * @returns The deno process running chrome, and the web socket instance
    */
-  protected static async create (): Promise<{ p: Deno.Process, client: WebSocket}> {
+  protected static async create(): Promise<
+    { p: Deno.Process; client: WebSocket }
+  > {
     const paths = {
       windows_chrome_exe:
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       windows_chrome_exe_x86:
-          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -174,7 +184,7 @@ export class HeadlessBrowser {
           break;
         }
         throw new Error(
-            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
         chromePath = paths.linux;
@@ -189,35 +199,35 @@ export class HeadlessBrowser {
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
-    let debugUrl = ""
+    let debugUrl = "";
     while (true) {
       try {
-        const res = await fetch("http://localhost:9292/json/list")
+        const res = await fetch("http://localhost:9292/json/list");
         const json = await res.json();
         debugUrl = json[0]["webSocketDebuggerUrl"];
-        break
+        break;
       } catch (err) {
         // do nothing, loop again until the endpoint is ready
       }
     }
-    const client = new WebSocket(debugUrl)
-    return { p, client }
+    const client = new WebSocket(debugUrl);
+    return { p, client };
   }
 
-  private handleSocketOpen () {
-    webSocketOpenPromise.resolve()
+  private handleSocketOpen() {
+    webSocketOpenPromise.resolve();
   }
 
-  private handleSocketClose ()  {
-    webSocketClosePromise.resolve()
+  private handleSocketClose() {
+    webSocketClosePromise.resolve();
   }
 
-  private handleSocketMessage (msg: MessageEvent) {
+  private handleSocketMessage(msg: MessageEvent) {
     if (this.is_done) {
-      return
+      return;
     }
     const message: MessageResponse | NotificationResponse = JSON.parse(
-        msg.data,
+      msg.data,
     );
     if ("id" in message) { // message response
       const resolvable = this.resolvables[message.id];
@@ -233,8 +243,8 @@ export class HeadlessBrowser {
     }
   }
 
-  private handleSocketError () {
-    throw new Error("WebSocket connection errored.")
+  private handleSocketError() {
+    throw new Error("WebSocket connection errored.");
   }
 
   /**
@@ -242,10 +252,10 @@ export class HeadlessBrowser {
    * and initialises it so we can send events
    */
   public async start(urlToVisit: string) {
-    await webSocketOpenPromise
+    await webSocketOpenPromise;
     const res = await this.sendWebSocketMessage("Page.navigate", {
-      url: urlToVisit
-    })
+      url: urlToVisit,
+    });
   }
 
   /**
@@ -260,18 +270,18 @@ export class HeadlessBrowser {
     method: string,
     params?: { [key: string]: unknown },
   ): Promise<unknown> {
-      const data: {
-        id: number;
-        method: string;
-        params?: { [key: string]: unknown };
-      } = {
-        id: this.next_message_id++,
-        method: method,
-      };
-      if (params) data.params = params;
-      const pending = this.resolvables[data.id] = deferred();
-      this.socket!.send(JSON.stringify(data));
-      return await pending;
+    const data: {
+      id: number;
+      method: string;
+      params?: { [key: string]: unknown };
+    } = {
+      id: this.next_message_id++,
+      method: method,
+    };
+    if (params) data.params = params;
+    const pending = this.resolvables[data.id] = deferred();
+    this.socket!.send(JSON.stringify(data));
+    return await pending;
   }
 
   /**
