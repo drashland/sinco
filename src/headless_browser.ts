@@ -258,7 +258,7 @@ export class HeadlessBrowser {
     method: string,
     params?: { [key: string]: unknown },
   ): Promise<unknown> {
-    if (this.connected && this.socket) {
+    if (this.connected) {
       const data: {
         id: number;
         method: string;
@@ -291,7 +291,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((result as DOMOutput), command);
-    sleep(1000); // Need to wait, so click action has time to run before user sends next action
+    await delay(1000); // Need to wait, so click action has time to run before user sends next action
   }
 
   /**

@@ -23,6 +23,7 @@ export class Cinco extends HeadlessBrowser {
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
+    sleep(500)
     const res = await this.sendWebSocketMessage("DOM.getDocument");
     const actualUrl =
       (res as { root: { documentURL: string } }).root.documentURL;
