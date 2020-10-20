@@ -140,10 +140,12 @@ export class HeadlessBrowser {
    */
   constructor(urlToVisit: string) {
     const paths = {
-      windows_chrome_exe: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      windows_chrome_exe_x86: "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      windows_chrome_exe:
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      windows_chrome_exe_x86:
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      linux: "/usr/bin/google-chrome"
+      linux: "/usr/bin/google-chrome",
     };
     let chromePath = "";
     switch (Deno.build.os) {
