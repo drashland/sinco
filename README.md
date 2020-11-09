@@ -23,8 +23,6 @@
 
 ---
 
-**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/sinco
-
 ## Table of Contents
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
@@ -98,7 +96,7 @@ See the features [here](https://drash.land/sinco#features)
 
 ## Why Use Sinco?
 
-Sinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Sinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
+Sinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Sinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply an API wrapper around headless chrome.
 
 Sinco takes concepts from the following:
 
@@ -116,11 +114,11 @@ Sinco takes concepts from the following:
 
 Contributors are welcomed!
 
-Please read through our [contributing guidelines](./.github/CONTRIBUTING.md). Included are directions for opening issues, coding standards, and notes on development.
+Please read through our [contributing guidelines](https://github.com/drashland/.github/blob/master/CONTRIBUTING.md). Included are directions for opening issues, coding standards, and notes on development.
 
 ## License
 
-By contributing your code, you agree to license your contribution under the [MIT License](./LICENSE).
+By contributing your code, you agree to license your contribution under the [MIT License](https://github.com/drashland/.github/blob/master/LICENSE).
 
 ## Acknowledgements
 
