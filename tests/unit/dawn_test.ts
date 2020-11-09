@@ -1,19 +1,19 @@
 import { Rhum } from "../deps.ts";
-import { Cinco } from "../../mod.ts";
+import { Sinco } from "../../mod.ts";
 
 Rhum.testPlan(() => {
   Rhum.testSuite("assertUrlIs()", () => {
     Rhum.testCase("Assertion should work", async () => {
-      const cinco = await Cinco.build("https://chromestatus.com");
-      await cinco.assertUrlIs("https://chromestatus.com/features");
-      await cinco.done();
+      const sinco = await Sinco.build("https://chromestatus.com");
+      await sinco.assertUrlIs("https://chromestatus.com/features");
+      await sinco.done();
     });
   });
   Rhum.testSuite("assertSee()", () => {
     Rhum.testCase("Assertion should work", async () => {
-      const cinco = await Cinco.build("https://chromestatus.com");
-      await cinco.assertSee("Chrome Platform Status");
-      await cinco.done();
+      const sinco = await Sinco.build("https://chromestatus.com");
+      await sinco.assertSee("Chrome Platform Status");
+      await sinco.done();
     });
   });
 });
