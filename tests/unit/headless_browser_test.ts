@@ -1,29 +1,29 @@
 import { Rhum } from "../deps.ts";
-import { Cinco } from "../../mod.ts";
+import { Sinco } from "../../mod.ts";
 
 Rhum.testPlan(() => {
   Rhum.testSuite("click()", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
-      const cinco = await Cinco.build("https://chromestatus.com");
-      await cinco.click('a[href="/features/schedule"]');
-      await cinco.assertSee("Release timeline");
-      await cinco.done();
+      const sinco = await Sinco.build("https://chromestatus.com");
+      await sinco.click('a[href="/features/schedule"]');
+      await sinco.assertSee("Release timeline");
+      await sinco.done();
     });
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.click("q;q");
+          await sinco.click("q;q");
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
@@ -34,18 +34,18 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.click("a#dont-exist");
+          await sinco.click("a#dont-exist");
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
@@ -58,28 +58,28 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should get the value for the given input element",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
-        await cinco.type('input[placeholder="Filter"]', "hello world");
-        const val = await cinco.getInputValue('input[placeholder="Filter"]');
+        const sinco = await Sinco.build("https://chromestatus.com");
+        await sinco.type('input[placeholder="Filter"]', "hello world");
+        const val = await sinco.getInputValue('input[placeholder="Filter"]');
         Rhum.asserts.assertEquals(val, "hello world");
-        await cinco.done();
+        await sinco.done();
       },
     );
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.getInputValue("q;q");
+          await sinco.getInputValue("q;q");
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
@@ -90,18 +90,18 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.getInputValue('input[name="dontexist"]');
+          await sinco.getInputValue('input[name="dontexist"]');
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
@@ -112,9 +112,9 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "Should return undefined when element is not an input element",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
-        const val = await cinco.getInputValue('a[href="/features/schedule"]');
-        await cinco.done();
+        const sinco = await Sinco.build("https://chromestatus.com");
+        const val = await sinco.getInputValue('a[href="/features/schedule"]');
+        await sinco.done();
         Rhum.asserts.assertEquals(val, "undefined");
       },
     );
@@ -128,27 +128,27 @@ Rhum.testPlan(() => {
   });
   Rhum.testSuite("type()", () => {
     Rhum.testCase("It should set the value of the element", async () => {
-      const cinco = await Cinco.build("https://chromestatus.com");
-      await cinco.type('input[placeholder="Filter"]', "hello world");
-      const val = await cinco.getInputValue('input[placeholder="Filter"]');
-      await cinco.done();
+      const sinco = await Sinco.build("https://chromestatus.com");
+      await sinco.type('input[placeholder="Filter"]', "hello world");
+      const val = await sinco.getInputValue('input[placeholder="Filter"]');
+      await sinco.done();
       Rhum.asserts.assertEquals(val, "hello world");
     });
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.type("q;q", "hello");
+          await sinco.type("q;q", "hello");
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
@@ -159,18 +159,18 @@ Rhum.testPlan(() => {
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const cinco = await Cinco.build("https://chromestatus.com");
+        const sinco = await Sinco.build("https://chromestatus.com");
         const error = {
           errored: false,
           msg: "",
         };
         try {
-          await cinco.type("input#dont-exist", "qaloo");
+          await sinco.type("input#dont-exist", "qaloo");
         } catch (err) {
           error.errored = true;
           error.msg = err.message;
         }
-        await cinco.done();
+        await sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:

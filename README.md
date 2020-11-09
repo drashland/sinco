@@ -1,14 +1,14 @@
 <p align="center">
-  <img height="200" src="https://drash.land/cinco/assets/img/cinco.svg" alt="Cinco logo">
-  <h1 align="center">Cinco</h1>
+  <img height="200" src="https://drash.land/sinco/assets/img/sinco.svg" alt="Sinco logo">
+  <h1 align="center">Sinco</h1>
 </p>
 <p align="center">Browser Automation and Testing Tool for Deno.</p>
 <p align="center">
-  <a href="https://github.com/drashland/cinco/releases">
-    <img src="https://img.shields.io/github/release/drashland/cinco.svg?color=bright_green&label=latest">
+  <a href="https://github.com/drashland/sinco/releases">
+    <img src="https://img.shields.io/github/release/drashland/sinco.svg?color=bright_green&label=latest">
   </a>
-  <a href="https://github.com/drashland/cinco/actions">
-    <img src="https://img.shields.io/github/workflow/status/drashland/cinco/master?label=ci">
+  <a href="https://github.com/drashland/sinco/actions">
+    <img src="https://img.shields.io/github/workflow/status/drashland/sinco/master?label=ci">
   </a>
   <a href="https://discord.gg/SgejNXq">
     <img src="https://img.shields.io/badge/chat-on%20discord-blue">
@@ -23,13 +23,13 @@
 
 ---
 
-**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/cinco
+**Documentation page coming soon!** For now, use https://doc.deno.land/https://deno.land/x/sinco
 
 ## Table of Contents
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Features](#features)
-- [Why use Cinco?](#why-use-cinco)
+- [Why use Sinco?](#why-use-sinco)
 - [Mirrors](#mirrors)
 - [Articles](#articles)
 - [Contributing](#contributing)
@@ -39,32 +39,33 @@
 ```typescript
 // File: app_test.ts
 
-import { HeadlessBrowser } from "https://deno.land/x/cinco@v0.1.0/mod.ts";
+import { HeadlessBrowser } from "https://deno.land/x/sinco@v0.1.0/mod.ts";
 
 Deno.test('I will pass', async () => {
-  // Initialise cinco
-  const cinco = new HeadlessBrowser("https://chromestatus.com")
-  await cinco.build()
+  // Initialise sinco
+  const sinco = new HeadlessBrowser("https://chromestatus.com")
+  await sinco.build()
 
   // Do stuff
-  await cinco.assertUrlIs("https://chromestatus.com/features")
-  await cinco.click('a[href="/features/schedule"]')
-  await cinco.assertUrlIs("https://chromestatus.com/features/schedule")
+  await sinco.assertUrlIs("https://chromestatus.com/features")
+  await sinco.click('a[href="/features/schedule"]')
+  await sinco.assertUrlIs("https://chromestatus.com/features/schedule")
 
   // Finish
-  await cinco.done()
+  await sinco.done()
 })
 
 Deno.test('I will fail', async () => {
-  // Initialise cinco
-  const cinco = new Cinco("https://chromestatus.com")
+  // Initialise sinco
+  const sinco = new HeadlessBrowser("https://chromestatus.com")
+  await sinco.build()
 
   // Do stuff
-  await cinco.assertUrlIs("https://chromestatus.com/feeaatureesss")
+  await sinco.assertUrlIs("https://chromestatus.com/feeaatureesss")
   // ...
 
   // Finish
-  await cinco.done()
+  await sinco.done()
 })
 ```
 
@@ -89,29 +90,23 @@ AssertionError: Values are not equal:
 
 ## Documentation
 
-[Full Documentation](https://drash.land/cinco)
+[Full Documentation](https://drash.land/sinco)
 
 ## Features
 
-- [x] [Click Elements](url)
-- [x] [Get Input Values](url)
-- [x] [Custom assertions](url)
-    - [x] `assertUrlIs`
-    - [x] `assertSee`
-- [x] [Wait For AJAX](url)
-- [x] [Type into an Input Tags](url)
+See the features [here](https://drash.land/sinco#features)
 
-## Why Use Cinco?
+## Why Use Sinco?
 
-Cinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Cinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
+Sinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Sinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply a layer on top of headless chrome.
 
-Cinco takes concepts from the following:
+Sinco takes concepts from the following:
 
 * <a href="https://laravel.com/docs/8.x/dusk" target="_BLANK">Laravel Dusk</a> &mdash; taking inspiration from the methods the Dusk API provides</a>
 
 ## Mirrors
 
-* [ ] https://nest.land/package/cinco
+* [ ] https://nest.land/package/sinco
 
 ## Articles
 
