@@ -15,24 +15,8 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-const existsSync = (filename: string): boolean => {
-  try {
-    Deno.statSync(filename);
-    // successful, file or directory must exist
-    return true;
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      // file or directory does not exist
-      return false;
-    } else {
-      // unexpected error, maybe permissions, pass it along
-      throw error;
-    }
-  }
-};
-
-const webSocketClosePromise = deferred();
-const webSocketOpenPromise = deferred();
+import {assertEquals, deferred, delay } from "../deps.ts";
+import { existsSync } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -45,18 +29,7 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: unknown;
 }
 
-export function sleep(milliseconds: number): void {
-  const start = new Date().getTime();
-  for (let i = 0; i < 1e7; i++) {
-    if ((new Date().getTime() - start) > milliseconds) {
-      break;
-    }
-  }
-}
-
-import { deferred, delay } from "../deps.ts";
-
-export type ErrorResult = {
+type ErrorResult = {
   className: string; // eg SyntaxError
   description: string; // eg SyntaxError: Unexpected Identifier
   objectId: {
@@ -67,7 +40,7 @@ export type ErrorResult = {
   type: string; // eg object
 };
 
-export type SuccessResult = {
+type SuccessResult = {
   value?: string; // only present if type is a string or boolean
   type: string; // the type of result, eg object or string,
   className: string; // eg Location if command is `window.location`, only present when type is object
@@ -75,11 +48,11 @@ export type SuccessResult = {
   objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
 };
 
-export type UndefinedResult = { // not sure when this happens, but i believe it to be when the result of a command is undefined, for example if a command is `window.loction`
+type UndefinedResult = { // not sure when this happens, but i believe it to be when the result of a command is undefined, for example if a command is `window.loction`
   type: string; // undefined
 };
 
-export type ExceptionDetails = { // exists when an error
+type ExceptionDetails = { // exists when an error
   columnNumber: number;
   exception: {
     className: string; // eg SyntaxError
@@ -94,29 +67,21 @@ export type ExceptionDetails = { // exists when an error
   text: string; // eg Uncaught
 };
 
-export type DOMOutput = {
+type DOMOutput = {
   result: SuccessResult | ErrorResult | UndefinedResult;
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
-/**
- * To use this class:
- *
- *     const { p, client } = await HeadlessBrowser.create(urlToVisit)
- *     const headless = new HeadlessBrowser(p, client)
- *     await headless.start()
- *     await headless.click(...)
- */
 export class HeadlessBrowser {
   /**
    * The sub process that runs headless chrome
    */
-  private readonly browser_process: Deno.Process;
+  private browser_process: Deno.Process | null = null;
 
   /**
    * Our web socket connection to the remote debugging port
    */
-  private socket: WebSocket;
+  private socket: WebSocket | null = null;
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
@@ -131,41 +96,22 @@ export class HeadlessBrowser {
   // deno-lint-ignore allow-no-explicit-any Could MessageResponse.result or ".error
   private resolvables: { [key: number]: any } = {};
 
-  /**
-   * @param p - The sub process
-   * @param socket
-   */
-  constructor(p: Deno.Process, socket: WebSocket) {
-    this.browser_process = p;
-    this.socket = socket;
-    this.socket.onopen = () => {
-      this.handleSocketOpen();
-    };
-    this.socket.onclose = () => {
-      this.handleSocketClose();
-    };
-    this.socket.onmessage = (msg) => {
-      this.handleSocketMessage(msg);
-    };
-    this.socket.onerror = () => {
-      this.handleSocketError();
-    };
+  constructor() {
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
   /**
-   * Creates the deno process and websocket connection needed
-   * to communicate with the chrome remote
-   *
-   * @returns The deno process running chrome, and the web socket instance
+   * Build the headless browser
    */
-  protected static async create(): Promise<
-    { p: Deno.Process; client: WebSocket }
-  > {
+  public async build () {
     const paths = {
       windows_chrome_exe:
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       windows_chrome_exe_x86:
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -184,18 +130,19 @@ export class HeadlessBrowser {
           break;
         }
         throw new Error(
-          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
         chromePath = paths.linux;
         break;
     }
-    const p = Deno.run({
+    this.browser_process = Deno.run({
       cmd: [
         chromePath,
         "--headless",
         "--remote-debugging-port=9292",
         "--disable-gpu",
+        "https://chromestatus.com"
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
@@ -210,78 +157,66 @@ export class HeadlessBrowser {
         // do nothing, loop again until the endpoint is ready
       }
     }
-    const client = new WebSocket(debugUrl);
-    return { p, client };
-  }
-
-  private handleSocketOpen() {
-    webSocketOpenPromise.resolve();
-  }
-
-  private handleSocketClose() {
-    webSocketClosePromise.resolve();
-  }
-
-  private handleSocketMessage(msg: MessageEvent) {
-    if (this.is_done) {
-      return;
+    this.socket = new WebSocket(debugUrl);
+    this.socket.onmessage = (msg) => {
+      this.handleSocketMessage(msg)
     }
-    const message: MessageResponse | NotificationResponse = JSON.parse(
-      msg.data,
-    );
-    if ("id" in message) { // message response
-      const resolvable = this.resolvables[message.id];
-      if (resolvable) {
-        if ("result" in message) { // success response
-          resolvable.resolve(message.result);
-        }
-        if ("error" in message) { // error response
-          // todo throw error  using error message
-          resolvable.reject(message.error);
-        }
-      }
-    }
-  }
-
-  private handleSocketError() {
-    throw new Error("WebSocket connection errored.");
+    const promise = deferred();
+    this.socket.onopen = function () {
+      promise.resolve()
+    };
+    await promise;
   }
 
   /**
-   * Creates the web socket connection to the headless chrome,
-   * and initialises it so we can send events
+   * Asserts a given url matches the current
+   *
+   * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
-  public async start(urlToVisit: string) {
-    await webSocketOpenPromise;
+  public async assertUrlIs(expectedUrl: string): Promise<void> {
+    // There's a whole bunch of other data it responds with, but we only care about documentURL
+    const res = await this.sendWebSocketMessage("DOM.getDocument") as {
+      root: {
+        documentURL: string
+      }
+    };
+    const actualUrl = res.root.documentURL;
+    assertEquals(actualUrl, expectedUrl);
+  }
+
+  /**
+   * Check if the given text exists on the dom
+   *
+   * @param text - The text to check for
+   */
+  public async assertSee(text: string): Promise<void> {
+    const command = `document.body.innerText.indexOf('${text}') >= 0`;
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command,
+    });
+    this.checkForErrorResult((res as DOMOutput), command);
+    // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
+    const exists = ((res as DOMOutput).result as SuccessResult).value;
+    assertEquals(exists, true);
+  }
+
+  /**
+   * Go to a specific page
+   *
+   * @param urlToVisit - The page to go to
+   */
+  public async goTo(urlToVisit: string) {
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
-    });
-  }
-
-  /**
-   * Main method to handle sending messages/events to the websocket endpoint.
-   *
-   * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
-   * @param params - Parameters required for the domain method
-   *
-   * @returns
-   */
-  protected async sendWebSocketMessage(
-    method: string,
-    params?: { [key: string]: unknown },
-  ): Promise<unknown> {
-    const data: {
-      id: number;
-      method: string;
-      params?: { [key: string]: unknown };
-    } = {
-      id: this.next_message_id++,
-      method: method,
+    }) as {
+      frameId: string,
+      loaderId: string,
+      errorText?: string // Only present when an error occurred, eg page doesn't exist
     };
-    if (params) data.params = params;
-    const pending = this.resolvables[data.id] = deferred();
-    this.socket!.send(JSON.stringify(data));
-    return await pending;
+    if (res.errorText) {
+      await this.done()
+      throw new Error(`"${res.errorText}" for navigating to page "${urlToVisit}`)
+    }
   }
 
   /**
@@ -341,12 +276,17 @@ export class HeadlessBrowser {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
+    // FIXME :: Something to do with the socket isnt closing
     await delay(1000); // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
     this.is_done = true;
-    this.browser_process.stderr!.close();
-    this.browser_process.close();
-    this.socket.close();
-    await webSocketClosePromise;
+    this.browser_process!.stderr!.close();
+    this.browser_process!.close();
+    const promise = deferred();
+    this.socket!.onclose = function () {
+      promise.resolve()
+    };
+    this.socket!.close();
+    await promise;
   }
 
   /**
@@ -367,13 +307,66 @@ export class HeadlessBrowser {
     this.checkForErrorResult((res as DOMOutput), command);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  private handleSocketMessage(msg: MessageEvent) {
+    if (this.is_done) {
+      return;
+    }
+    const message: MessageResponse | NotificationResponse = JSON.parse(
+      msg.data,
+    );
+    if ("id" in message) { // message response
+      const resolvable = this.resolvables[message.id];
+      if (resolvable) {
+        if ("result" in message) { // success response
+          resolvable.resolve(message.result);
+        }
+        if ("error" in message) { // error response
+          // todo throw error  using error message
+          resolvable.reject(message.error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Main method to handle sending messages/events to the websocket endpoint.
+   *
+   * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
+   * @param params - Parameters required for the domain method
+   *
+   * @returns
+   */
+  private async sendWebSocketMessage(
+    method: string,
+    params?: { [key: string]: unknown },
+  ): Promise<unknown> {
+    const data: {
+      id: number;
+      method: string;
+      params?: { [key: string]: unknown };
+    } = {
+      id: this.next_message_id++,
+      method: method,
+    };
+    if (params) data.params = params;
+    const pending = this.resolvables[data.id] = deferred();
+    this.socket!.send(JSON.stringify(data));
+    const result = await pending;
+    delete this.resolvables[data.id]
+    return result
+  }
+
   /**
    * Checks if the result is an error
    *
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  protected checkForErrorResult(result: DOMOutput, commandSent: string): void {
+  private checkForErrorResult(result: DOMOutput, commandSent: string): void {
     // Is an error
     if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
       const exceptionDetail = (result.exceptionDetails as ExceptionDetails);

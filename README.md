@@ -39,11 +39,12 @@
 ```typescript
 // File: app_test.ts
 
-import { Cinco } from "https://deno.land/x/cinco@v0.1.0/mod.ts";
+import { HeadlessBrowser } from "https://deno.land/x/cinco@v0.1.0/mod.ts";
 
 Deno.test('I will pass', async () => {
   // Initialise cinco
-  const cinco = new Cinco("https://chromestatus.com")
+  const cinco = new HeadlessBrowser("https://chromestatus.com")
+  await cinco.build()
 
   // Do stuff
   await cinco.assertUrlIs("https://chromestatus.com/features")

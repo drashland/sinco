@@ -1,1 +1,1 @@
-export { Cinco } from "./src/cinco.ts";
+export { HeadlessBrowser } from "./src/headless_browser.ts";
