@@ -262,17 +262,6 @@ export class HeadlessBrowser {
   }
 
   /**
-   * Wait for an AJAX request to finish, for example whe submitting a form,
-   * wait for the request to complete before doing anything else
-   */
-  public async waitForAjax(): Promise<void> {
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: "!$.active",
-    });
-    this.checkForErrorResult((res as DOMOutput), "!$.active");
-  }
-
-  /**
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {

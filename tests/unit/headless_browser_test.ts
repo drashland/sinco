@@ -119,13 +119,6 @@ Rhum.testPlan(() => {
       },
     );
   });
-  Rhum.testSuite("waitForAjax()", () => {
-    Rhum.testCase(
-      "It should wait for a long running ajax process to finish",
-      async () => {
-      },
-    );
-  });
   Rhum.testSuite("type()", () => {
     Rhum.testCase("It should set the value of the element", async () => {
       const sinco = await Sinco.build("https://chromestatus.com");
