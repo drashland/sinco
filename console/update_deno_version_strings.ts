@@ -26,16 +26,3 @@ await Deno.writeFile(
   "./.github/workflows/master.yml",
   encoder.encode(fileContent),
 );
-
-// Bumper workflow
-fileContent = decoder.decode(
-  await Deno.readFile("./.github/workflows/bumper.yml"),
-);
-fileContent = fileContent.replace(
-  /deno: ["[0-9.]+[0-9.]+[0-9]"]/g,
-  `deno: ["${latestDenoVersion}"]`,
-);
-await Deno.writeFile(
-  "./.github/workflows/bumper.yml",
-  encoder.encode(fileContent),
-);
