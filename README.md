@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="200" src="https://drash.land/dawn/assets/img/dawn.svg" alt="Dawn logo">
+  <img height="200" src="logo.svg" alt="Dawn logo">
   <h1 align="center">Dawn</h1>
 </p>
 <p align="center">Browser Automation and Testing Tool for Deno.</p>
