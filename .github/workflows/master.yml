@@ -13,16 +13,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        deno: ["1.4.5"]
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Deno v${{ matrix.deno }}
+      - name: Install Deno
         uses: denolib/setup-deno@master
-        with:
-          deno-version: ${{ matrix.deno }}
 
       - name: Install Rhum
         run: deno install -A https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts
@@ -52,19 +49,14 @@ jobs:
           rhum-cli tests/integration
 
   linter:
-    strategy:
-      matrix:
-        deno: ["1.4.5"]
     # Only one OS is required since fmt is cross platform
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Deno v${{ matrix.deno }}
+      - name: Install Deno
         uses: denolib/setup-deno@master
-        with:
-          deno-version: ${{ matrix.deno }}
 
       - name: Lint
         run: deno lint --unstable

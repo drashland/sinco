@@ -11,27 +11,8 @@ export const preReleaseFiles = [
     replaceTheRegex: regexes.egg_json,
     replaceWith: `"version": "{{ thisModulesLatestVersion }}"`,
   },
-  {
-    filename: "./README.md",
-    replaceTheRegex: regexes.import_export_statements,
-    replaceWith: `sinco@v{{ thisModulesLatestVersion }}`,
-  }
 ];
 
 export const bumperFiles = [
-  {
-    filename: "./.github/workflows/master.yml",
-    replaceTheRegex: regexes.yml_deno,
-    replaceWith: `deno: ["{{ latestDenoVersion }}"]`,
-  },
-  {
-    filename: "./.github/workflows/bumper.yml",
-    replaceTheRegex: regexes.yml_deno,
-    replaceWith: `deno: ["{{ latestDenoVersion }}"]`,
-  },
-  {
-    filename: "./.github/workflows/pre_release.yml",
-    replaceTheRegex: regexes.yml_deno,
-    replaceWith: `deno: ["{{ latestDenoVersion }}"]`,
-  },
+
 ];

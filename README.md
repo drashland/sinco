@@ -34,57 +34,8 @@
 - [License](#license)
 
 ## Quick Start
-```typescript
-// File: app_test.ts
 
-import { HeadlessBrowser } from "https://deno.land/x/sinco@v0.1.0/mod.ts";
-
-Deno.test('I will pass', async () => {
-  // Initialise sinco
-  const sinco = new HeadlessBrowser("https://chromestatus.com")
-  await sinco.build()
-
-  // Do stuff
-  await sinco.assertUrlIs("https://chromestatus.com/features")
-  await sinco.click('a[href="/features/schedule"]')
-  await sinco.assertUrlIs("https://chromestatus.com/features/schedule")
-
-  // Finish
-  await sinco.done()
-})
-
-Deno.test('I will fail', async () => {
-  // Initialise sinco
-  const sinco = new HeadlessBrowser("https://chromestatus.com")
-  await sinco.build()
-
-  // Do stuff
-  await sinco.assertUrlIs("https://chromestatus.com/feeaatureesss")
-  // ...
-
-  // Finish
-  await sinco.done()
-})
-```
-
-```
-$ deno test --allow-run --allow-net app_test.ts
-running 2 tests
-test I will pass ... ok (2550ms)
-test I will fail ... FAILED (1809ms)
-
-failures:
-
-I will fail
-AssertionError: Values are not equal:
-
-
-    [Diff] Actual / Expected
-
-
--   "https://chromestatus.com/features"
-+   "https://chromestatus.com/feeaatureesss"
-```
+Get started [here](https://drash.land/sinco/#/#quickstart) to create a basic browser test.
 
 ## Documentation
 
