@@ -1,15 +1,19 @@
 import { Rhum } from "../deps.ts";
-import { Sinco } from "../../mod.ts";
+import { HeadlessBrowser } from "../../mod.ts";
 
-Rhum.testPlan(() => {
+Rhum.testPlan("tests/integration/tests_test.ts", () => {
   Rhum.testSuite("Extensive test", () => {
     Rhum.testCase("Should handle many actions and assertions", async () => {
-      const sinco = await Sinco.build("https://chromestatus.com");
-      await sinco.assertUrlIs("https://chromestatus.com/features");
-      await sinco.click('a[href="/features/schedule"]');
-      await sinco.assertSee("Release timeline");
-      await sinco.assertUrlIs("https://chromestatus.com/features/schedule");
-      await sinco.done();
+      const Sinco = new HeadlessBrowser()
+      await Sinco.build();
+      await Sinco.goTo("https://chromestatus.com")
+      await Sinco.assertUrlIs("https://chromestatus.com/features");
+      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.assertSee("Release timeline");
+      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.done();
     });
   });
 });
+
+Rhum.run()

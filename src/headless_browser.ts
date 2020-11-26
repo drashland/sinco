@@ -72,6 +72,9 @@ type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
+const webSocketIsDonePromise = deferred()
+let messageTriggeredToCloseWS = false
+
 export class HeadlessBrowser {
   /**
    * The sub process that runs headless chrome
@@ -158,14 +161,25 @@ export class HeadlessBrowser {
       }
     }
     this.socket = new WebSocket(debugUrl);
-    this.socket.onmessage = (msg) => {
-      this.handleSocketMessage(msg)
-    }
     const promise = deferred();
     this.socket.onopen = function () {
       promise.resolve()
     };
-    await promise;
+    await promise
+    this.socket.onclose = function () {
+      webSocketIsDonePromise.resolve()
+    };
+    this.socket.onerror = function () {
+      webSocketIsDonePromise.resolve()
+    }
+    this.socket.onmessage = (msg) => {
+      if (messageTriggeredToCloseWS === true) {
+        this.socket!.close()
+      } else {
+        this.handleSocketMessage(msg)
+      }
+    }
+    //await this.sendWebSocketMessage("DOM.getDocument") IF WE HAVE LEAKING OPS, TRY UNCOMMENT THIS
   }
 
   /**
@@ -265,17 +279,19 @@ export class HeadlessBrowser {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    // FIXME :: Something to do with the socket isnt closing
-    await delay(1000); // If we try close before the ws endpoint has not finished sending all messages from the Network.enable method, async ops are leaked
-    this.is_done = true;
+    this.is_done = true; // TODO Might not be needed
     this.browser_process!.stderr!.close();
     this.browser_process!.close();
-    const promise = deferred();
-    this.socket!.onclose = function () {
-      promise.resolve()
-    };
-    this.socket!.close();
-    await promise;
+
+    // Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
+    messageTriggeredToCloseWS = true
+    this.socket!.send(JSON.stringify({
+      id: this.next_message_id++,
+      method: "DOM.getDocument" // Can be anything really, we just wanna trigger an event
+    }))
+
+    // Then wait for the promise to be resolved when the WS client is done
+    await webSocketIsDonePromise;
   }
 
   /**

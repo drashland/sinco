@@ -1,1 +1,1 @@
-export { Rhum } from "https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts";
+export { Rhum } from "https://deno.land/x/rhum/mod.ts";
