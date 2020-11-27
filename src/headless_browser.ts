@@ -1,5 +1,4 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
-import { readLines } from "https://deno.land/std/io/mod.ts";
 
 // Success response
 // switch (result.result.type) {
@@ -16,7 +15,7 @@ import { readLines } from "https://deno.land/std/io/mod.ts";
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import { assertEquals, deferred, delay } from "../deps.ts";
+import { assertEquals, deferred, delay, readLines } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
@@ -106,9 +105,11 @@ export class HeadlessBrowser {
    */
   public async build() {
     const paths = {
-      windowsChromeExe:
+      // deno-lint-ignore camelcase
+      windows_chrome_exe:
         "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      windowsChromeExeX86:
+      // deno-lint-ignore camelcase
+      windows_chrome_exe_x86:
         "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",

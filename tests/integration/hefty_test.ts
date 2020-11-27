@@ -1,7 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { HeadlessBrowser } from "../../mod.ts";
 
-Rhum.testPlan("tests/integration/tests_test.ts", () => {
+Rhum.testPlan("tests/integration/hefty_test.ts", () => {
   Rhum.testSuite("Extensive test", () => {
     Rhum.testCase("Should handle many actions and assertions", async () => {
       const Sinco = new HeadlessBrowser();
