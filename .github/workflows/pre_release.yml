@@ -22,3 +22,4 @@ jobs:
             -H "Content-Type: application/json" \
             --data '{"event_type": "pre_release", "client_payload": { "repo": "sinco", "module": "sinco", "version": "${{ github.ref }}" }}' \
             https://api.github.com/repos/drashland/castle/dispatches
+
