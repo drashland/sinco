@@ -15,7 +15,7 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import { assertEquals, deferred, delay, readLines } from "../deps.ts";
+import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
@@ -93,10 +93,12 @@ export class HeadlessBrowser {
   /**
    * To keep hold of promises waiting for a notification from the websocket
    */
-  private notification_resolvables: { [key: string]: any } = {};
+  private notification_resolvables: { [key: string]: Deferred<void> } = {};
 
-  // deno-lint-ignore no-explicit-any Could MessageResponse.result or ".error
-  private resolvables: { [key: number]: any } = {};
+  /**
+   * To keep hold of our promises waiting for messages from the websocket
+   */
+  private resolvables: { [key: number]: Deferred<unknown> } = {};
 
   constructor() {
   }
