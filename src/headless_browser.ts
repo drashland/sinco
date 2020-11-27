@@ -93,7 +93,7 @@ export class HeadlessBrowser {
   /**
    * To keep hold of promises waiting for a notification from the websocket
    */
-  private notification_resolvables: { [key: string]: any } = {}
+  private notification_resolvables: { [key: string]: any } = {};
 
   // deno-lint-ignore no-explicit-any Could MessageResponse.result or ".error
   private resolvables: { [key: number]: any } = {};
@@ -190,7 +190,7 @@ export class HeadlessBrowser {
     };
 
     // Enable page notifications, so we can wait for page events, such as when a page has loaded
-   await this.sendWebSocketMessage("Page.enable")
+    await this.sendWebSocketMessage("Page.enable");
   }
 
   /**
@@ -231,7 +231,8 @@ export class HeadlessBrowser {
    * @param urlToVisit - The page to go to
    */
   public async goTo(urlToVisit: string) {
-    const notificationPromise = this.notification_resolvables["Page.loadEventFired"] = deferred()
+    const notificationPromise = this
+      .notification_resolvables["Page.loadEventFired"] = deferred();
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
     }) as {
@@ -239,7 +240,7 @@ export class HeadlessBrowser {
       loaderId: string;
       errorText?: string; // Only present when an error occurred, eg page doesn't exist
     };
-    await notificationPromise
+    await notificationPromise;
     if (res.errorText) {
       //await this.done()
       throw new Error(
@@ -257,7 +258,8 @@ export class HeadlessBrowser {
    * @param selector - The tag name, id or class
    */
   public async click(selector: string): Promise<void> {
-    const notificationPromise = this.notification_resolvables["Page.loadEventFired"] = deferred()
+    const notificationPromise = this
+      .notification_resolvables["Page.loadEventFired"] = deferred();
     const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
@@ -266,11 +268,11 @@ export class HeadlessBrowser {
     try {
       this.checkForErrorResult((result as DOMOutput), command);
     } catch (err) {
-      notificationPromise.resolve()
-      throw new Error(err.message)
+      notificationPromise.resolve();
+      throw new Error(err.message);
     }
-    await notificationPromise
-    delete this.notification_resolvables["Page.loadEventFired"]
+    await notificationPromise;
+    delete this.notification_resolvables["Page.loadEventFired"];
   }
 
   /**
@@ -356,9 +358,9 @@ export class HeadlessBrowser {
       }
     }
     if ("method" in message) { // Notification response
-      const resolvable = this.notification_resolvables[message.method]
+      const resolvable = this.notification_resolvables[message.method];
       if (resolvable) {
-        resolvable.resolve()
+        resolvable.resolve();
       }
     }
   }
