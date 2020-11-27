@@ -91,7 +91,7 @@ export class HeadlessBrowser {
    */
   private next_message_id = 1;
 
-  // deno-lint-ignore allow-no-explicit-any Could MessageResponse.result or ".error
+  // deno-lint-ignore no-explicit-any Could MessageResponse.result or ".error
   private resolvables: { [key: number]: any } = {};
 
   constructor() {
@@ -106,9 +106,9 @@ export class HeadlessBrowser {
    */
   public async build() {
     const paths = {
-      windows_chrome_exe:
+      windowsChromeExe:
         "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      windows_chrome_exe_x86:
+      windowsChromeExeX86:
         "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
