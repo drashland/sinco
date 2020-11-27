@@ -90,6 +90,11 @@ export class HeadlessBrowser {
    */
   private next_message_id = 1;
 
+  /**
+   * To keep hold of promises waiting for a notification from the websocket
+   */
+  private notification_resolvables: { [key: string]: any } = {}
+
   // deno-lint-ignore no-explicit-any Could MessageResponse.result or ".error
   private resolvables: { [key: number]: any } = {};
 
@@ -183,6 +188,9 @@ export class HeadlessBrowser {
         this.handleSocketMessage(msg);
       }
     };
+
+    // Enable page notifications, so we can wait for page events, such as when a page has loaded
+   await this.sendWebSocketMessage("Page.enable")
   }
 
   /**
@@ -223,6 +231,7 @@ export class HeadlessBrowser {
    * @param urlToVisit - The page to go to
    */
   public async goTo(urlToVisit: string) {
+    const notificationPromise = this.notification_resolvables["Page.loadEventFired"] = deferred()
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
     }) as {
@@ -230,13 +239,13 @@ export class HeadlessBrowser {
       loaderId: string;
       errorText?: string; // Only present when an error occurred, eg page doesn't exist
     };
+    await notificationPromise
     if (res.errorText) {
       //await this.done()
       throw new Error(
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
     }
-    await delay(2000); // FIXME(ed): We need another way of checking when the page is fully loaded. Check the res object
   }
 
   /**
@@ -248,12 +257,20 @@ export class HeadlessBrowser {
    * @param selector - The tag name, id or class
    */
   public async click(selector: string): Promise<void> {
+    const notificationPromise = this.notification_resolvables["Page.loadEventFired"] = deferred()
     const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
-    this.checkForErrorResult((result as DOMOutput), command);
-    await delay(1000); // FIXME(ed): Need to wait, so click action has time to run before user sends next action, but we can't have hard coded values. Need to check when the page properly loads. investigate
+    // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
+    try {
+      this.checkForErrorResult((result as DOMOutput), command);
+    } catch (err) {
+      notificationPromise.resolve()
+      throw new Error(err.message)
+    }
+    await notificationPromise
+    delete this.notification_resolvables["Page.loadEventFired"]
   }
 
   /**
@@ -338,6 +355,12 @@ export class HeadlessBrowser {
         }
       }
     }
+    if ("method" in message) { // Notification response
+      const resolvable = this.notification_resolvables[message.method]
+      if (resolvable) {
+        resolvable.resolve()
+      }
+    }
   }
 
   /**
@@ -361,9 +384,9 @@ export class HeadlessBrowser {
       method: method,
     };
     if (params) data.params = params;
-    const pending = this.resolvables[data.id] = deferred();
+    const messagePromise = this.resolvables[data.id] = deferred();
     this.socket!.send(JSON.stringify(data));
-    const result = await pending;
+    const result = await messagePromise;
     delete this.resolvables[data.id];
     return result;
   }

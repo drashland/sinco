@@ -9,13 +9,6 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       await Sinco.build();
       const res = await fetch("http://localhost:9292/json/list");
       const json = await res.json();
-
-      // `json` should hold data AND exist for the headless browser
-
-      // Should default to chromestatus.com
-      Rhum.asserts.assertEquals(json[0]["type"], "page");
-      Rhum.asserts.assertEquals(json[0]["url"], "https://chromestatus.com/");
-
       // Our ws client should be able to connect if the browser is running
       const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
       const promise = deferred();
