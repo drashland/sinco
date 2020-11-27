@@ -74,7 +74,6 @@ type DOMOutput = {
 };
 
 const webSocketIsDonePromise = deferred()
-let messageTriggeredToCloseWS = false
 
 export class HeadlessBrowser {
   /**
@@ -91,11 +90,6 @@ export class HeadlessBrowser {
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   private next_message_id = 1;
-
-  /**
-   * Tracks whether the user is done or not, to determine whether to reconnect to socket on disconnect
-   */
-  private is_done = false;
 
   // deno-lint-ignore allow-no-explicit-any Could MessageResponse.result or ".error
   private resolvables: { [key: number]: any } = {};
@@ -178,7 +172,7 @@ export class HeadlessBrowser {
       webSocketIsDonePromise.resolve()
     }
     this.socket.onmessage = (msg) => {
-      //console.log(messageTriggeredToCloseWS)
+      // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data)
       if (data.id && data.id === -1)  {
         this.socket!.close()
@@ -186,7 +180,6 @@ export class HeadlessBrowser {
         this.handleSocketMessage(msg)
       }
     }
-    //this.sendWebSocketMessage("DOM.getDocument")// IF WE HAVE LEAKING OPS, TRY UNCOMMENT THIS
   }
 
   /**
@@ -255,7 +248,7 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((result as DOMOutput), command);
-    await delay(1000); // Need to wait, so click action has time to run before user sends next action
+    await delay(1000); // FIXME(ed): Need to wait, so click action has time to run before user sends next action, but we can't have hard coded values. Need to check when the page properly loads. investigate
   }
 
   /**
@@ -287,9 +280,7 @@ export class HeadlessBrowser {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    this.is_done = true; // TODO Might not be needed
     // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    //messageTriggeredToCloseWS = true
     const p = deferred()
     this.socket!.onclose = function () {
       p.resolve()
@@ -298,7 +289,6 @@ export class HeadlessBrowser {
       id: -1,
       method: "DOM.getDocument" // Can be anything really, we just wanna trigger an event
     }))
-
     // Then wait for the promise to be resolved when the WS client is done
     await p;
 
@@ -329,9 +319,6 @@ export class HeadlessBrowser {
   //////////////////////////////////////////////////////////////////////////////
 
   private handleSocketMessage(msg: MessageEvent) {
-    if (this.is_done) {
-      return;
-    }
     const message: MessageResponse | NotificationResponse = JSON.parse(
       msg.data,
     );
@@ -342,8 +329,7 @@ export class HeadlessBrowser {
           resolvable.resolve(message.result);
         }
         if ("error" in message) { // error response
-          // todo throw error  using error message
-          resolvable.reject(message.error);
+          resolvable.resolve(message.error);
         }
       }
     }
