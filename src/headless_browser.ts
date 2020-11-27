@@ -1,4 +1,5 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
+import { readLines } from "https://deno.land/std/io/mod.ts"
 
 // Success response
 // switch (result.result.type) {
@@ -149,6 +150,12 @@ export class HeadlessBrowser {
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
+    // Wait until browser is ready
+    for await (const line of readLines(this.browser_process.stderr as  Deno.Reader)) {
+      if (line.indexOf("DevTools listening on ws://") > -1) {
+        break
+      }
+    }
     let debugUrl = "";
     while (true) {
       try {
@@ -160,26 +167,26 @@ export class HeadlessBrowser {
         // do nothing, loop again until the endpoint is ready
       }
     }
+    // Connect websocket
     this.socket = new WebSocket(debugUrl);
     const promise = deferred();
     this.socket.onopen = function () {
       promise.resolve()
     };
     await promise
-    this.socket.onclose = function () {
-      webSocketIsDonePromise.resolve()
-    };
-    this.socket.onerror = function () {
+    this.socket.onerror = function (e) {
       webSocketIsDonePromise.resolve()
     }
     this.socket.onmessage = (msg) => {
-      if (messageTriggeredToCloseWS === true) {
+      //console.log(messageTriggeredToCloseWS)
+      const data = JSON.parse(msg.data)
+      if (data.id && data.id === -1)  {
         this.socket!.close()
       } else {
         this.handleSocketMessage(msg)
       }
     }
-    //await this.sendWebSocketMessage("DOM.getDocument") IF WE HAVE LEAKING OPS, TRY UNCOMMENT THIS
+    //this.sendWebSocketMessage("DOM.getDocument")// IF WE HAVE LEAKING OPS, TRY UNCOMMENT THIS
   }
 
   /**
@@ -228,9 +235,10 @@ export class HeadlessBrowser {
       errorText?: string // Only present when an error occurred, eg page doesn't exist
     };
     if (res.errorText) {
-      await this.done()
-      throw new Error(`"${res.errorText}" for navigating to page "${urlToVisit}`)
+      //await this.done()
+      throw new Error(`${res.errorText}: Error for navigating to page "${urlToVisit}"`)
     }
+    await delay(2000) // FIXME(ed): We need another way of checking when the page is fully loaded. Check the res object
   }
 
   /**
@@ -280,18 +288,22 @@ export class HeadlessBrowser {
    */
   public async done(): Promise<void> {
     this.is_done = true; // TODO Might not be needed
-    this.browser_process!.stderr!.close();
-    this.browser_process!.close();
-
-    // Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    messageTriggeredToCloseWS = true
+    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
+    //messageTriggeredToCloseWS = true
+    const p = deferred()
+    this.socket!.onclose = function () {
+      p.resolve()
+    };
     this.socket!.send(JSON.stringify({
-      id: this.next_message_id++,
+      id: -1,
       method: "DOM.getDocument" // Can be anything really, we just wanna trigger an event
     }))
 
     // Then wait for the promise to be resolved when the WS client is done
-    await webSocketIsDonePromise;
+    await p;
+
+    this.browser_process!.stderr!.close();
+    this.browser_process!.close();
   }
 
   /**

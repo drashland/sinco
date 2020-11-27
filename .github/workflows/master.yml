@@ -21,32 +21,40 @@ jobs:
       - name: Install Deno
         uses: denolib/setup-deno@master
 
-      - name: Install Rhum
-        run: deno install -A https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts
-
-      - name: Unit
-        if: matrix.os != 'windows-latest'
+      - name: Run Integration Tests
         run: |
-          export PATH="~/.deno/bin:$PATH"
-          rhum-cli tests/unit/
+          deno test -A tests/integration
 
-      - name: Integration
-        if: matrix.os != 'windows-latest'
+      - name: Run Unit Tests
         run: |
-          export PATH="~/.deno/bin:$PATH"
-          rhum-cli tests/integration
+          deno test -A tests/unit
 
-      - name: Unit Tests (windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          $env:Path += ";C:\Users\runneradmin\.deno\bin"
-          rhum-cli tests/unit
-
-      - name: Integration Tests (windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          $env:Path += ";C:\Users\runneradmin\.deno\bin"
-          rhum-cli tests/integration
+#      - name: Install Rhum
+#        run: deno install -A https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts
+#
+#      - name: Unit
+#        if: matrix.os != 'windows-latest'
+#        run: |
+#          export PATH="~/.deno/bin:$PATH"
+#          rhum-cli tests/unit/
+#
+#      - name: Integration
+#        if: matrix.os != 'windows-latest'
+#        run: |
+#          export PATH="~/.deno/bin:$PATH"
+#          rhum-cli tests/integration
+#
+#      - name: Unit Tests (windows)
+#        if: matrix.os == 'windows-latest'
+#        run: |
+#          $env:Path += ";C:\Users\runneradmin\.deno\bin"
+#          rhum-cli tests/unit
+#
+#      - name: Integration Tests (windows)
+#        if: matrix.os == 'windows-latest'
+#        run: |
+#          $env:Path += ";C:\Users\runneradmin\.deno\bin"
+#          rhum-cli tests/integration
 
   linter:
     # Only one OS is required since fmt is cross platform
