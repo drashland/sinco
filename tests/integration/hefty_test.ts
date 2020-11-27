@@ -4,9 +4,9 @@ import { HeadlessBrowser } from "../../mod.ts";
 Rhum.testPlan("tests/integration/tests_test.ts", () => {
   Rhum.testSuite("Extensive test", () => {
     Rhum.testCase("Should handle many actions and assertions", async () => {
-      const Sinco = new HeadlessBrowser()
+      const Sinco = new HeadlessBrowser();
       await Sinco.build();
-      await Sinco.goTo("https://chromestatus.com")
+      await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
       await Sinco.click('a[href="/features/schedule"]');
       await Sinco.assertSee("Release timeline");
@@ -16,6 +16,6 @@ Rhum.testPlan("tests/integration/tests_test.ts", () => {
   });
 });
 
-Rhum.run()
+Rhum.run();
 
 // TODO :: Afdd a bunch of tests for ensuring async op leaks dfontt appeear

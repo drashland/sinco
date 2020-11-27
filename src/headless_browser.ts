@@ -1,5 +1,5 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
-import { readLines } from "https://deno.land/std/io/mod.ts"
+import { readLines } from "https://deno.land/std/io/mod.ts";
 
 // Success response
 // switch (result.result.type) {
@@ -16,7 +16,7 @@ import { readLines } from "https://deno.land/std/io/mod.ts"
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import {assertEquals, deferred, delay } from "../deps.ts";
+import { assertEquals, deferred, delay } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
@@ -73,7 +73,7 @@ type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
-const webSocketIsDonePromise = deferred()
+const webSocketIsDonePromise = deferred();
 
 export class HeadlessBrowser {
   /**
@@ -104,12 +104,12 @@ export class HeadlessBrowser {
   /**
    * Build the headless browser
    */
-  public async build () {
+  public async build() {
     const paths = {
       windows_chrome_exe:
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       windows_chrome_exe_x86:
-          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -128,7 +128,7 @@ export class HeadlessBrowser {
           break;
         }
         throw new Error(
-            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
         chromePath = paths.linux;
@@ -140,14 +140,16 @@ export class HeadlessBrowser {
         "--headless",
         "--remote-debugging-port=9292",
         "--disable-gpu",
-        "https://chromestatus.com"
+        "https://chromestatus.com",
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
     });
     // Wait until browser is ready
-    for await (const line of readLines(this.browser_process.stderr as  Deno.Reader)) {
+    for await (
+      const line of readLines(this.browser_process.stderr as Deno.Reader)
+    ) {
       if (line.indexOf("DevTools listening on ws://") > -1) {
-        break
+        break;
       }
     }
     let debugUrl = "";
@@ -165,21 +167,21 @@ export class HeadlessBrowser {
     this.socket = new WebSocket(debugUrl);
     const promise = deferred();
     this.socket.onopen = function () {
-      promise.resolve()
+      promise.resolve();
     };
-    await promise
+    await promise;
     this.socket.onerror = function (e) {
-      webSocketIsDonePromise.resolve()
-    }
+      webSocketIsDonePromise.resolve();
+    };
     this.socket.onmessage = (msg) => {
       // 2nd part of the dirty fix 1
-      const data = JSON.parse(msg.data)
-      if (data.id && data.id === -1)  {
-        this.socket!.close()
+      const data = JSON.parse(msg.data);
+      if (data.id && data.id === -1) {
+        this.socket!.close();
       } else {
-        this.handleSocketMessage(msg)
+        this.handleSocketMessage(msg);
       }
-    }
+    };
   }
 
   /**
@@ -191,8 +193,8 @@ export class HeadlessBrowser {
     // There's a whole bunch of other data it responds with, but we only care about documentURL
     const res = await this.sendWebSocketMessage("DOM.getDocument") as {
       root: {
-        documentURL: string
-      }
+        documentURL: string;
+      };
     };
     const actualUrl = res.root.documentURL;
     assertEquals(actualUrl, expectedUrl);
@@ -223,15 +225,17 @@ export class HeadlessBrowser {
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
     }) as {
-      frameId: string,
-      loaderId: string,
-      errorText?: string // Only present when an error occurred, eg page doesn't exist
+      frameId: string;
+      loaderId: string;
+      errorText?: string; // Only present when an error occurred, eg page doesn't exist
     };
     if (res.errorText) {
       //await this.done()
-      throw new Error(`${res.errorText}: Error for navigating to page "${urlToVisit}"`)
+      throw new Error(
+        `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
+      );
     }
-    await delay(2000) // FIXME(ed): We need another way of checking when the page is fully loaded. Check the res object
+    await delay(2000); // FIXME(ed): We need another way of checking when the page is fully loaded. Check the res object
   }
 
   /**
@@ -281,14 +285,14 @@ export class HeadlessBrowser {
    */
   public async done(): Promise<void> {
     // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    const p = deferred()
+    const p = deferred();
     this.socket!.onclose = function () {
-      p.resolve()
+      p.resolve();
     };
     this.socket!.send(JSON.stringify({
       id: -1,
-      method: "DOM.getDocument" // Can be anything really, we just wanna trigger an event
-    }))
+      method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
+    }));
     // Then wait for the promise to be resolved when the WS client is done
     await p;
 
@@ -359,8 +363,8 @@ export class HeadlessBrowser {
     const pending = this.resolvables[data.id] = deferred();
     this.socket!.send(JSON.stringify(data));
     const result = await pending;
-    delete this.resolvables[data.id]
-    return result
+    delete this.resolvables[data.id];
+    return result;
   }
 
   /**
