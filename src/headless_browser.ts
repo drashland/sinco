@@ -271,9 +271,9 @@ export class HeadlessBrowser {
   /**
    * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
    */
-  public async waitForPageChange (): Promise<void> {
+  public async waitForPageChange(): Promise<void> {
     const notificationPromise = this
-        .notification_resolvables["Page.loadEventFired"] = deferred();
+      .notification_resolvables["Page.loadEventFired"] = deferred();
     await notificationPromise;
     delete this.notification_resolvables["Page.loadEventFired"];
   }
@@ -344,11 +344,11 @@ export class HeadlessBrowser {
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
    */
-  public async waitForAnchorChange (): Promise<void> {
+  public async waitForAnchorChange(): Promise<void> {
     const notificationPromise = this
-        .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
-    await notificationPromise
-    delete this.notification_resolvables["Page.navigatedWithinDocument"]
+      .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
+    await notificationPromise;
+    delete this.notification_resolvables["Page.navigatedWithinDocument"];
   }
 
   //////////////////////////////////////////////////////////////////////////////

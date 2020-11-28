@@ -330,13 +330,13 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       const Sinco = new HeadlessBrowser();
       await Sinco.build();
       await Sinco.goTo("https://chromestatus.com");
-      await Sinco.assertUrlIs("https://chromestatus.com/features")
-      await Sinco.click('a[href="/features/schedule"]')
+      await Sinco.assertUrlIs("https://chromestatus.com/features");
+      await Sinco.click('a[href="/features/schedule"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule")
-      await Sinco.done()
-    })
-  })
+      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.done();
+    });
+  });
 
   Rhum.testSuite("waitForAnchorChange()", () => {
     Rhum.testCase("Waits for any anchor changes after an action", async () => {
@@ -345,10 +345,10 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.type('input[placeholder="Filter"]', "Gday");
       await Sinco.waitForAnchorChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features#Gday")
-      await Sinco.done()
-    })
-  })
+      await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
+      await Sinco.done();
+    });
+  });
 });
 
 Rhum.run();
