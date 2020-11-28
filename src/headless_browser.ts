@@ -260,19 +260,20 @@ export class HeadlessBrowser {
    * @param selector - The tag name, id or class
    */
   public async click(selector: string): Promise<void> {
-    const notificationPromise = this
-      .notification_resolvables["Page.loadEventFired"] = deferred();
     const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
     // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
-    try {
-      this.checkForErrorResult((result as DOMOutput), command);
-    } catch (err) {
-      notificationPromise.resolve();
-      throw new Error(err.message);
-    }
+    this.checkForErrorResult((result as DOMOutput), command);
+  }
+
+  /**
+   * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
+   */
+  public async waitForPageChange (): Promise<void> {
+    const notificationPromise = this
+        .notification_resolvables["Page.loadEventFired"] = deferred();
     await notificationPromise;
     delete this.notification_resolvables["Page.loadEventFired"];
   }
@@ -338,6 +339,16 @@ export class HeadlessBrowser {
       expression: command,
     });
     this.checkForErrorResult((res as DOMOutput), command);
+  }
+
+  /**
+   * Wait for anchor navigation. Usually used when typing into an input field
+   */
+  public async waitForAnchorChange (): Promise<void> {
+    const notificationPromise = this
+        .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
+    await notificationPromise
+    delete this.notification_resolvables["Page.navigatedWithinDocument"]
   }
 
   //////////////////////////////////////////////////////////////////////////////
