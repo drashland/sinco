@@ -21,4 +21,4 @@ Deno.test("My test", async () => {
 
   // Once finished, close
   await Sinco.done();
-})
+});

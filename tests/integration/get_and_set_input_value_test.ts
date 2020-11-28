@@ -9,4 +9,4 @@ Deno.test("My web app works as expected", async () => {
   const val = await Sinco.getInputValue('input[placeholder="Filter"]');
   assertEquals(val, "hello world");
   await Sinco.done();
-})
+});

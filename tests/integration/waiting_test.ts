@@ -12,4 +12,4 @@ Deno.test("My web app works as expected", async () => {
   await Sinco.waitForPageChange();
   await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
   await Sinco.done();
-})
+});
