@@ -10,7 +10,6 @@ export class TestsResource extends Drash.Http.Resource {
     content = content
         .replace("{{ dir }}", dir)
         .replace("{{ filename }}", filename)
-    console.log(content)
     this.response.body = content
     return this.response
   }
@@ -18,8 +17,9 @@ export class TestsResource extends Drash.Http.Resource {
   public async POST () {
     const dir = this.request.getUrlQueryParam("dir") || ""
     const filename = this.request.getUrlQueryParam("filename") || ""
+    const pathToTest = "tests/browser/" + dir + (filename ? "/" + filename : "")
     const p  = Deno.run({
-      cmd: ["deno", "test", "-A", "tests/browser/" + dir + "/" + filename]
+      cmd: ["deno", "test", "-A", pathToTest]
     })
     let debugUrl = "";
     let count = 0
@@ -37,7 +37,6 @@ export class TestsResource extends Drash.Http.Resource {
         break
       }
     }
-
     this.response.body = {
       dir: dir,
       filename,

@@ -25,11 +25,21 @@
         </div>
     </div>
     <script>
-      document.querySelector('.test-file').addEventListener("click", async function (e) { // TODO :: use query selector all
-        const filename = e.target.innerText
-        const dir = e.target.parentElement.innerText
-        await fetch("http://localhost:1668/run?dir=" + dir + "&filename=" + filename)
-      })
+        const $testDirectories = document.querySelectorAll(".menu-header-main-item")
+        $testDirectories.forEach(elem => {
+          elem.addEventListener("click", async function (e) {
+            const dir = e.target.innerText
+            await fetch("http://localhost:1668/run?dir=" + dir)
+          })
+        })
+        const $testFiles = document.querySelectorAll(".menu-header-sub-item")
+        $testFiles.forEach(elem => {
+          elem.addEventListener("click", async function (e) {
+            const filename = e.target.innerText
+            const dir = e.target.closest("ul").previousSibling.innerText
+            await fetch("http://localhost:1668/run?dir=" + dir + "&filename=" + filename)
+          })
+        })
     </script>
     <style>
         #title {
