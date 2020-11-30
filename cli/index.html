@@ -3,14 +3,15 @@
 <head>
 </head>
 <body>
+    <input hidden="true" value="{{ testFiles }}">
     <h1 id="title">{{ projectName }}</h1>
     <div id="container">
         <div id="sidebar">
             <ul>
                 <li>
                     <p class="menu-header">Tests</p>
-                    <ul>
-                        {{ testSectionForSidebar }}
+                    <ul id="tests-list">
+
                     </ul>
                 </li>
             </ul>
@@ -25,19 +26,34 @@
         </div>
     </div>
     <script>
-        const $testDirectories = document.querySelectorAll(".menu-header-main-item")
-        $testDirectories.forEach(elem => {
-          elem.addEventListener("click", async function (e) {
-            const dir = e.target.innerText
-            await fetch("http://localhost:1668/run?dir=" + dir)
+        window.addEventListener("DOMContentLoaded", function () {
+          const rawTestFiles = decodeURIComponent(document.querySelector('input').value)
+          const testFiles = JSON.parse(rawTestFiles)
+          let html = "<li>"
+          Object.keys(testFiles).forEach(dir => {
+            html += "<p class='menu-header-main-item'>" + dir + "</p><ul>"
+            testFiles[dir].forEach(fileName => {
+              html += "<li><p class='menu-header-sub-item'>" + fileName + "</p></li>"
+            })
+            html += "</ul></li>"
           })
-        })
-        const $testFiles = document.querySelectorAll(".menu-header-sub-item")
-        $testFiles.forEach(elem => {
-          elem.addEventListener("click", async function (e) {
-            const filename = e.target.innerText
-            const dir = e.target.closest("ul").previousSibling.innerText
-            await fetch("http://localhost:1668/run?dir=" + dir + "&filename=" + filename)
+          html += "</ul></li>"
+          document.getElementById('tests-list').innerHTML = html
+
+          const $testDirectories = document.querySelectorAll(".menu-header-main-item")
+          $testDirectories.forEach(elem => {
+            elem.addEventListener("click", async function (e) {
+              const dir = e.target.innerText
+              await fetch("http://localhost:64942/run?dir=" + dir)
+            })
+          })
+          const $testFiles = document.querySelectorAll(".menu-header-sub-item")
+          $testFiles.forEach(elem => {
+            elem.addEventListener("click", async function (e) {
+              const filename = e.target.innerText
+              const dir = e.target.closest("ul").previousSibling.innerText
+              await fetch("http://localhost:64942/run?dir=" + dir + "&filename=" + filename)
+            })
           })
         })
     </script>

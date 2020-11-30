@@ -12,7 +12,7 @@ export class RunResource extends Drash.Http.Resource {
   public GET () {
     const dir = this.request.getUrlQueryParam("dir") || ""
     const filename = this.request.getUrlQueryParam("filename") || ""
-    const url = "http://localhost:1668/tests?dir=" + dir + (filename ? "&filename=" + filename : "")
+    const url = "http://localhost:64942/tests?dir=" + dir + (filename ? "&filename=" + filename : "")
     console.log(dir, filename)
     Deno.run({
       cmd: ["open", "-na", "Google Chrome", "--args", "--new-window", url]

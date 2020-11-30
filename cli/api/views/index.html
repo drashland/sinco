@@ -3,23 +3,11 @@
 <head>
 </head>
 <body>
+    <input hidden="true" value="{{ testFiles }}">
     <h1 id="title">{{ projectName }}</h1>
     <div id="container">
         <div id="sidebar">
-            <ul>
-                <li>
-                    <p id="directory-name">{{ dir }}</p>
-                    <ul>
-                        <li>
-                            <p id="filename">{{ filename }}</p>
-                            <ul>
-                                <li>
-                                    <p>test</p>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
+            <ul id="tests-list">
             </ul>
         </div>
         <div id="main">
@@ -44,6 +32,7 @@
             text-align: center;
             margin-left: 1em;
             margin-right: 1em;
+            margin-top: 2em;
         }
         #sidebar {
             width: 30%;
@@ -69,11 +58,11 @@
         #sidebar p.menu-header-sub-item {
             padding-left: 2.5em;
         }
-        #sidebar p.menu-header-main-item:hover,
-        #sidebar p.menu-header-sub-item:hover {
-            cursor: pointer;
-            color: #ff7700;
-        }
+        /*#sidebar p.menu-header-main-item:hover,*/
+        /*#sidebar p.menu-header-sub-item:hover {*/
+        /*    cursor: pointer;*/
+        /*    color: #ff7700;*/
+        /*}*/
         li {
             list-style-type: none;
         }
@@ -99,14 +88,29 @@
         a:hover {
             color: #333333
         }
+        iframe {
+            width: 100%;
+        }
     </style>
 </body>
 <script>
+  const testFiles = JSON.parse(decodeURIComponent(document.querySelector('input').value))
+  console.log(testFiles)
+  let html = ""
+  Object.keys(testFiles).forEach(dir => {
+    html += `<li><p class="menu-header">${dir}</p><ul>`
+    testFiles[dir].forEach(filename => {
+      html += `<li><p class="menu-header-main-item">${filename}</p><ul></ul></li>`
+    })
+    html += "</ul></li>"
+  })
+  document.getElementById("tests-list").innerHTML = html
+
   window.addEventListener("DOMContentLoaded", async function () {
     const dir = document.getElementById("directory-name").textContent
     const filename = document.getElementById("filename").textContent
     const data = JSON.stringify({ dir, filename })
-    const res = await fetch("http://localhost:1668/tests", {
+    const res = await fetch("http://localhost:64942/tests", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

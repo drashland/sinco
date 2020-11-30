@@ -5,12 +5,12 @@ import {Drash} from "../deps.ts";
 const server = new Drash.Http.Server({
   resources: [
     TestsResource,
-    RunResource
+    RunResource,
   ]
 })
 
 await server.run({
     hostname: "localhost",
-    port: 1668
+    port: 64942
   })
   console.log('server running')
