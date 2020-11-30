@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<body>
+<header>
+    <h1>{{ projectName }}</h1>
+</header>
+<div id="container" style="display: flex">
+    <div id="sidebar" style="width: 50%; background-color: rgb(40, 38, 51)">
+        <ul>
+            <li style="color: #f4f4f4">
+                Tests
+                {{ testSectionForSidebar }}
+            </li>
+        </ul>
+    </div>
+    <div id="main" style="width: 50%">
+        <h2>Hello from deno</h2>
+    </div>
+</div>
+<script>
+  document.querySelector('.test-file').addEventListener("click", async function (e) { // TODO :: use query selector all
+    const filename = e.target.innerText
+    const dir = e.target.parentElement.innerText
+    await fetch("http://localhost:1668/run?dir=" + dir + "&filename=" + filename)
+  })
+</script>
+<style>
+    #sidebar > ul {
+        padding-left: 0.5em;
+    }
+    #sidebar > ul > li > ul {
+        padding-left: 1em
+    }
+    #sidebar > ul > li > ul > li > ul {
+        padding-left: 1em;
+    }
+    li {
+        list-style-type: none;
+    }
+    body {
+        background-color: #f4f4f4;
+        font-family: 'Nunito', Helvetica, Arial, sans-serif;
+        font-size: 1.1rem;
+        line-height: 2.25rem;
+    }
+    span {
+        display: flex;
+    }
+</style>
+</body>
+</html>

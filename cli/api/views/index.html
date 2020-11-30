@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<p id="dir">{{ dir }}</p>
+<p id="filename">{{ filename }}</p>
+<iframe height="500px" width="800px" id="the-iframe" src=""></iframe>
+</body>
+<script>
+  window.addEventListener("DOMContentLoaded", async function () {
+    const dir = document.getElementById("dir").textContent
+    const filename = document.getElementById("filename").textContent
+    const data = JSON.stringify({ dir, filename })
+    const res = await fetch("http://localhost:1668/tests", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": data.length
+      },
+      body: data
+    })
+    const json = await res.json()
+    document.getElementById("the-iframe").src = json.debugUrl
+  })
+</script>
+</html>
