@@ -11,13 +11,13 @@ export function getProjectName (): string {
 async function startWebApp () {
   const p = Deno.run({
     cmd: ["deno", "run", "-A", "--unstable", "cli/api/app.ts"],
-    stdout: "piped"
+    //stdout: "piped"
   })
-  for await (const line of readLines(p.stdout)) {
-    if (line === "server running") {
-      break
-    }
-  }
+  // for await (const line of readLines(p.stdout)) {
+  //   if (line === "server running") {
+  //     break
+  //   }
+  // }
 }
 
 // eg if we have tests/browser/pages/home_page_test.ts: { pages: ["home_page_test.ts"] }

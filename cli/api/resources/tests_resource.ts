@@ -1,5 +1,6 @@
 import {Drash} from "../../deps.ts";
 import {constructTestFilesList, getProjectName} from "../../commands/open.ts";
+import {processTestOutput, socket} from "../socket.ts"
 
 export class TestsResource extends Drash.Http.Resource {
   static paths = ["/tests"]
@@ -27,8 +28,11 @@ export class TestsResource extends Drash.Http.Resource {
     const filename = this.request.getUrlQueryParam("filename") || ""
     const pathToTest = "tests/browser/" + dir + (filename ? "/" + filename : "")
     const p  = Deno.run({
-      cmd: ["deno", "test", "-A", pathToTest]
+      cmd: ["deno", "test", "-A", pathToTest],
+      stdout: "piped",
+      stderr: "piped"
     })
+    processTestOutput(p)
     let debugUrl = "";
     let count = 0
     while (true) {
