@@ -50,15 +50,14 @@ async function startCommand (): Promise<void> {
     cmd: ["deno", "run", "-A", "--unstable", "cli/api/app.ts"]
   })
   const testSectionForSidebar: string = (function () {
-    let str = "<ul>"
+    let str = "<li>"
     Object.keys(allTestFiles).forEach(subDirName => {
-      str += "<li>" + subDirName + "<ul>"
+      str += "<p class='menu-header-main-item'>" + subDirName + "</p><ul>"
       allTestFiles[subDirName].forEach(fileName => {
-        str += "<li class='test-file'>" + fileName + "</li>"
+        str += "<li><p class='menu-header-sub-item'>" + fileName + "</p></li>"
       })
       str += "</ul></li>"
     })
-    str += "</ul>"
     return str
   })()
   let html = new TextDecoder().decode(Deno.readFileSync("./cli/index.html"))

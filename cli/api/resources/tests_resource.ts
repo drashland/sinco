@@ -18,7 +18,7 @@ export class TestsResource extends Drash.Http.Resource {
   public async POST () {
     const dir = this.request.getUrlQueryParam("dir") || ""
     const filename = this.request.getUrlQueryParam("filename") || ""
-    Deno.run({
+    const p  = Deno.run({
       cmd: ["deno", "test", "-A", "tests/browser/" + dir + "/" + filename]
     })
     let debugUrl = "";
@@ -37,6 +37,7 @@ export class TestsResource extends Drash.Http.Resource {
         break
       }
     }
+
     this.response.body = {
       dir: dir,
       filename,
