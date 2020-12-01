@@ -1,12 +1,12 @@
 import {Webview, walkSync} from "../deps.ts";
-import {closeServers, startWebAndSocketServer} from "../api/app.ts";
+import {closeServers, startServers} from "../api/app.ts";
 import {constructTestFilesList, getProjectName} from "../utils.ts";
 
 export async function open (): Promise<void> {
   console.log("INFO Starting up.. this may take a few seconds.")
 
   // get server ready to handle requests from the gui
-  await startWebAndSocketServer()
+  await startServers()
 
   // Create and open GUI
   const projectName = getProjectName()

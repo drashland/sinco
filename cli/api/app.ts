@@ -1,7 +1,7 @@
 import { socket } from "./socket.ts";
 import {server} from "./server.ts";
 
-export async function startWebAndSocketServer () {
+export async function startServers () {
   await server.run({
     hostname: "localhost",
     port: 64942
