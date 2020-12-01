@@ -1,23 +1,11 @@
-import {WebView, walkSync} from "../deps.ts";
-import {readLines} from "../../deps.ts";
+import {Webview, walkSync} from "../deps.ts";
+import {closeServers, startWebAndSocketServer} from "../api/app.ts";
 
 export function getProjectName (): string {
   const cwd = Deno.cwd();
   const parts = cwd.split("/")
   const dirName = parts[parts.length - 1]
   return dirName
-}
-
-async function startWebApp () {
-  const p = Deno.run({
-    cmd: ["deno", "run", "-A", "--unstable", "cli/api/app.ts"],
-    //stdout: "piped"
-  })
-  // for await (const line of readLines(p.stdout)) {
-  //   if (line === "server running") {
-  //     break
-  //   }
-  // }
 }
 
 // eg if we have tests/browser/pages/home_page_test.ts: { pages: ["home_page_test.ts"] }
@@ -48,14 +36,18 @@ export function constructTestFilesList (): {[key: string]: string[]} {
 }
 
 export async function open (): Promise<void> {
-  // We do a subprocess here because for some reason, if we try run the server normally, requests to the api just hang.. INVESTIGATE
-  await startWebApp()
+  console.log("INFO Starting up.. this may take a few seconds.")
+
+  // get server ready to handle requests from the gui
+  await startWebAndSocketServer()
+
+  // Create and open GUI
   const projectName = getProjectName()
   let html = new TextDecoder().decode(Deno.readFileSync("./cli/index.html"))
   html = html
       .replace("{{ projectName }}", projectName)
       .replace("{{ testFiles }}", encodeURIComponent(JSON.stringify(constructTestFilesList())))
-  await new WebView({
+  const webView = new Webview({
     title: projectName,
     url: `data:text/html,${encodeURIComponent(html)}`,
     height: 650,
@@ -63,5 +55,9 @@ export async function open (): Promise<void> {
     resizable: true,
     debug: true,
     frameless: false,
-  }).run();
+  })
+  await webView.run();
+
+  // Reaches here when window is closed, so do a cleanup
+  await closeServers()
 }

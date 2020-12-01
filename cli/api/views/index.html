@@ -101,6 +101,7 @@
     </style>
 </body>
 <script>
+  let currentDebugUrl = ""
   // Display the list of tests in the sidebar. This data is is  placed into the view from the server so we can easily extract it
   const testFiles = JSON.parse(decodeURIComponent(document.querySelector('input').value))
   let html = ""
@@ -170,6 +171,7 @@
     })
     const json = await res.json()
     document.getElementById("the-iframe").src = json.debugUrl
+    currentDebugUrl = json.debugUrl;
   })
 </script>
 </html>
