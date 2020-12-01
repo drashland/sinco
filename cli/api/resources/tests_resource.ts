@@ -1,5 +1,5 @@
 import {Drash, walkSync} from "../../deps.ts";
-import {constructTestFilesList, getProjectName} from "../../commands/open.ts";
+import {constructTestFilesList, getProjectName} from "../../utils.ts";
 import {processTestOutput, socket} from "../socket.ts"
 
 export class TestsResource extends Drash.Http.Resource {
