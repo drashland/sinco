@@ -40,13 +40,13 @@
           html += "</ul></li>"
           document.getElementById('tests-list').innerHTML = html
 
-          const $testDirectories = document.querySelectorAll(".menu-header-main-item")
-          $testDirectories.forEach(elem => {
-            elem.addEventListener("click", async function (e) {
-              const dir = e.target.innerText
-              await fetch("http://localhost:64942/run?dir=" + dir)
-            })
-          })
+          // const $testDirectories = document.querySelectorAll(".menu-header-main-item")
+          // $testDirectories.forEach(elem => {
+          //   elem.addEventListener("click", async function (e) {
+          //     const dir = e.target.innerText
+          //     await fetch("http://localhost:64942/run?dir=" + dir)
+          //   })
+          // })
           const $testFiles = document.querySelectorAll(".menu-header-sub-item")
           $testFiles.forEach(elem => {
             elem.addEventListener("click", async function (e) {
@@ -100,7 +100,7 @@
         #sidebar p.menu-header-sub-item {
             padding-left: 2.5em;
         }
-        #sidebar p.menu-header-main-item:hover,
+        /*#sidebar p.menu-header-main-item:hover,*/
         #sidebar p.menu-header-sub-item:hover {
             cursor: pointer;
             color: #ff7700;

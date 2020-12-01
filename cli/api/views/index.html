@@ -90,6 +90,13 @@
         }
         iframe {
             width: 100%;
+            border: none;
+        }
+        .red {
+            color: #ff4f4f !important;
+        }
+        .green {
+            color: #019e01 !important;
         }
     </style>
 </body>
@@ -100,7 +107,7 @@
   Object.keys(testFiles).forEach(dir => {
     html += `<li><p class="menu-header">${dir}</p><ul>`
     testFiles[dir].forEach(filename => {
-      html += `<li><p class="menu-header-main-item" data-filename="${filename}">${filename}</p><ul></ul></li>`
+      html += `<li><p class="menu-header-main-item">${filename}</p><ul data-result-set="${filename}"></ul></li>`
     })
     html += "</ul></li>"
   })
@@ -120,15 +127,27 @@
       }
       const data = JSON.parse(evt.data)
       const message = data.message
-      // TODO :: Need to display the test case name for the tets file. How do  we know which test file the test case came from?
+      const list = document.querySelector(`ul[data-result-set="${message.filename}"`)
       if (data.to === "test-success") {
         if (message.testCase) {
-          let html = "<li><p class='menu-header-sub-item'>" + message.testName + "</p></li>"
-          document.
+          let html = "<li><p class='menu-header-sub-item green'>" + message.testName + "</p></li>"
+          list.innerHTML = list.innerHTML + html
+        }
+        if (message.testResult) {
+          let html = "<li><p class='menu-header-sub-item'>" + "Passed: " + message.testResult.passed + "; Failed: " + message.testResult.failed + "</p></li>"
+          list.innerHTML = list.innerHTML + html
         }
       }
       if (data.to === "test-failure") {
-
+        if (message.testCase) {
+          let html = "<li><p class='menu-header-sub-item red'>" + message.testName + "</p></li>"
+          // TODO DISPLAY THE ASSERTION ERROR TOO
+          list.innerHTML = list.innerHTML + html
+        }
+        if (message.testResult) {
+          let html = "<li><p class='menu-header-sub-item'>" + "Passed: " + message.testResult.passed + "; Failed: " + message.testResult.failed + "</p></li>"
+          list.innerHTML = list.innerHTML + html
+        }
       }
     }
 
