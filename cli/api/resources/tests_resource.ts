@@ -28,32 +28,11 @@ export class TestsResource extends Drash.Http.Resource {
     const dir = this.request.getBodyParam("dir") as string || ""
     const filename = this.request.getBodyParam("filename") as string || ""
     const pathToTest = "tests/browser/" + dir + (filename ? "/" + filename : "")
-    const p  = Deno.run({
+    const p = Deno.run({
       cmd: ["deno", "test", "-A", pathToTest],
       stdout: "piped",
       stderr: "piped"
     })
     processTestOutput(p, filename)
-    let debugUrl = "";
-    let count = 0
-    while (true) {
-      count++
-      try {
-        const headlessRes = await fetch("http://localhost:9292/json/list")
-        const jsonRes = await headlessRes.json()
-        debugUrl = "http://localhost:9292" + jsonRes[0]["devtoolsFrontendUrl"]
-        break
-      } catch (err) {
-      }
-      if (count > 1000) {
-        break
-      }
-    }
-    this.response.body = {
-      dir: dir,
-      filename,
-      debugUrl
-    }
-    return this.response
   }
 }
