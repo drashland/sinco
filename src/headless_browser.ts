@@ -232,7 +232,12 @@ export class HeadlessBrowser {
       };
     };
     const actualUrl = res.root.documentURL;
-    assertEquals(actualUrl, expectedUrl);
+    try {
+      assertEquals(actualUrl, expectedUrl);
+    } catch (err) {
+      await this.done()
+      throw new Error(err.message)
+    }
   }
 
   /**
