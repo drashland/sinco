@@ -34,5 +34,9 @@ export class TestsResource extends Drash.Http.Resource {
       stderr: "piped"
     })
     processTestOutput(p, filename)
+    this.response.body = {
+      done: true
+    }
+    return this.response
   }
 }

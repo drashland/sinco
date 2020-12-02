@@ -1,7 +1,7 @@
 import { HeadlessBrowser } from "../../../mod.ts";
 import { assertEquals } from "https://deno.land/std@0.78.0/testing/asserts.ts";
 
-Deno.test("My test", async () => {
+Deno.test("User is redirected when logging in", async () => {
   // Setup
   const Sinco = new HeadlessBrowser();
   await Sinco.build(); // Creates the headless browser
@@ -16,7 +16,7 @@ Deno.test("My test", async () => {
   await Sinco.done();
 });
 
-Deno.test("My test", async () => {
+Deno.test("Button for home page redirects to new page", async () => {
   // Setup
   const Sinco = new HeadlessBrowser();
   await Sinco.build(); // Creates the headless browser
@@ -31,7 +31,7 @@ Deno.test("My test", async () => {
   await Sinco.done();
 });
 
-Deno.test("My test", async () => {
+Deno.test("Title is ste for the home page", async () => {
   // Setup
   const Sinco = new HeadlessBrowser();
   await Sinco.build(); // Creates the headless browser

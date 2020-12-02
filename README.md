@@ -37,6 +37,8 @@
 
 Get started [here](https://drash.land/sinco/#/#quickstart) to create a basic browser test.
 
+You can also install the CLI to run an interactive GUI application to run your tests from. See the documentation [here](https://drash.land/sinco/cli)
+
 ## Documentation
 
 [Full Documentation](https://drash.land/sinco)
@@ -52,6 +54,7 @@ Sinco is a first of it's kind for Deno, allowing you, the developer, to test the
 Sinco takes concepts from the following:
 
 * <a href="https://laravel.com/docs/8.x/dusk" target="_BLANK">Laravel Dusk</a> &mdash; taking inspiration from the methods the Dusk API provides</a>
+* <a href="https://cypress.io" target="_BLANK">Cypress.io</a> &mdash; taking inspiration from the GUI</a>
 
 ## Mirrors
 

@@ -9,7 +9,7 @@ import {version} from "./cli/commands/version.ts";
 
 const c = new CliService(Deno.args);
 
-c.addSubcommand(["help", "--help"], async () => {
+c.addSubcommand(["help", "--help"], () => {
   console.log(helpMessage);
 });
 
