@@ -22,3 +22,5 @@ c.addSubcommand("open", async (args: string[]) => {
 });
 
 c.run()
+
+// TODO :: add > Run again button to header, add loading component for sidebar when running tests, add bug report button

@@ -173,25 +173,26 @@
     </style>
 </body>
 <script>
-  // Display the list of tests in the sidebar. This data is is  placed into the view from the server so we can easily extract it
-  const testFiles = JSON.parse(decodeURIComponent(document.querySelector('input').value))
-  let html = ""
-  Object.keys(testFiles).forEach(dir => {
-    html += `<li><p class="menu-header">${dir}</p><ul>`
-    testFiles[dir].forEach(filename => {
-      html += `<li><p class="menu-header-main-item">${filename}</p><ul data-result-set="${filename}"></ul></li>`
-    })
-    html += "</ul></li>"
-  })
-  document.getElementById("tests-list").innerHTML = html
-
   window.addEventListener("DOMContentLoaded", async function () {
+    // Display the list of tests in the sidebar. This data is is  placed into the view from the server so we can easily extract it
+    const testFiles = JSON.parse(decodeURIComponent(document.querySelector('input').value))
+    let html = ""
+    Object.keys(testFiles).forEach(dir => {
+      html += `<li><p class="menu-header">${dir}</p><ul>`
+      testFiles[dir].forEach(filename => {
+        html += `<li><p class="menu-header-main-item">${filename}</p><ul data-result-set="${filename}"></ul></li>`
+      })
+      html += "</ul></li>"
+    })
+    document.getElementById("tests-list").innerHTML = html
+
     let iframeLoaded = false
+
     // Listen for events when running the tests, so we can display output in the sidebar
     const client =  new WebSocket("ws://localhost:64943")
     client.onopen = function () {
       client.send(JSON.stringify({
-        connect_to: ["test-success", "test-failure", "new-debug-url"]
+        connect_to: ["test-success", "test-failure", "new-debug-url", "test-case-failure-result"]
       }))
     }
     client.onmessage =  function (evt) {
@@ -202,20 +203,20 @@
       const message = data.message
       const list = document.querySelector(`ul[data-result-set="${message.filename}"`)
       if (data.to === "test-success") {
+        console.log('got test success')
         let html = ""
         if (message.testCase) {
-          html = "<li><p class='menu-header-sub-item green'>" + message.testName + "</p></li>"
+          html = `<li><p data-case-name="${message.testName}" class="menu-header-sub-item green">${message.testName}</p></li>`
         }
         if (message.testResult) {
-          html = "<li><p class='menu-header-sub-item'>" + "Passed: " + message.testResult.passed + "; Failed: " + message.testResult.failed + "</p></li>"
+          html = `<li><p class='menu-header-sub-item'>Passed: ${message.testResult.passed}; Failed: ${message.testResult.failed}</p></li>`
         }
         list.innerHTML = list.innerHTML + html
       }
       if (data.to === "test-failure") {
         let html = ""
         if (message.testCase) {
-          html = "<li><p class='menu-header-sub-item red'>" + message.testName + "</p></li>"
-          // TODO DISPLAY THE ASSERTION ERROR TOO
+          html = `<li><p data-case-name="${message.testName}" class="menu-header-sub-item red">${message.testName}</p></li>`
         }
         if (message.testResult) {
           html = "<li><p class='menu-header-sub-item'>" + "Passed: " + message.testResult.passed + "; Failed: " + message.testResult.failed + "</p></li>"
@@ -230,6 +231,13 @@
           document.getElementById("the-iframe").style.display = "block"
           iframeLoaded = true
         }
+      }
+      if (data.to === "test-case-failure-result") {
+        console.log(message)
+            const caseElem = document.querySelector(`p[data-case-name="${decodeURIComponent(message.testCaseName)}"]`)
+            message.message.forEach(msg => {
+              caseElem.innerHTML += "<p>" + message.message  + "</p>"
+            })
       }
     }
 

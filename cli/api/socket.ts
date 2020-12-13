@@ -7,6 +7,7 @@ export const socket = new Server()
 socket.on("test-success", (data: Packet) => {})
 socket.on("test-failure", (data: Packet) => {})
 socket.on("new-debug-url", (data: Packet) => {})
+socket.on("test-case-failure-result", (data: Packet) => {})
 
 async function emitNewDebugUrl () {
   let debugUrl = "";
@@ -33,6 +34,9 @@ async function emitNewDebugUrl () {
 // TODO :: Somewhere, get the failures stdout when test finished (only displays when testing is finished) then pass it  back to  the client, and the client will display the assertion errors under the respective test case
 
 async function processStdout (p: Deno.Process, filename: string) {
+  let testRunFailed = false;
+  let failuresOutput: string[] = []
+  const failedTestCaseNames: string[] = []
   for await (const line of readLines(p.stdout!)) {
     console.log('stdout: ' + line)
     if (line.indexOf("test") === 0 && line.indexOf(" ... ") > -1) { // running a test case. the  name and result
@@ -40,6 +44,8 @@ async function processStdout (p: Deno.Process, filename: string) {
           .slice(5) // remove "test "
           .split(" ... ")[0]
       if (line.indexOf("FAILED") > -1) { // test case failed
+        failedTestCaseNames.push(testName)
+        console.log('sending ets failure evt')
         socket.to("test-failure", {
           testName,
           testCase: true,
@@ -47,7 +53,7 @@ async function processStdout (p: Deno.Process, filename: string) {
           testFinished: false,
           testResult: null
         })
-      } else { // test case passed
+      } else if (line.indexOf("ok") > -1 && line.indexOf("test ") === 0) { // test case passed
         socket.to("test-success", {
           testName,
           testCase: true,
@@ -72,7 +78,51 @@ async function processStdout (p: Deno.Process, filename: string) {
           failed
         }
       })
+    } else if (line === "failures:") { // to tell this function we have reached  the 'failures' block
+      if (testRunFailed === false) {
+        testRunFailed = true
+      }
+    } else if (testRunFailed) { // collate  the output so we can easily send it
+      if (line === "" ||  line === "\n") {
+        continue
+      }
+      failuresOutput.push(line)
     }
+  }
+  if (testRunFailed && failuresOutput.length) {
+    const failureOutputStr: string  = failuresOutput.join("\n").split(/failures:/)[0];
+    failedTestCaseNames.forEach((name, i) => {
+      if (i + 1 === failedTestCaseNames.length) {
+        // TODO :: Just need to display this on the client now.. the client gets the message, just needs to add html
+        // for the last test case
+        const singleTestCaseArr = failureOutputStr
+            .substr(failureOutputStr.indexOf(name), failureOutputStr.lastIndexOf(failedTestCaseNames[0]))
+            .replace(/\[.*m/g, "")
+            .replace(/\\u1b/g, "")
+            .replace(/\x1b/g, "")
+            .split("\n") // So we can loop through on the client
+            .filter(str => str.trim() !== "")
+        singleTestCaseArr.shift() // Removes the test case name as we dont need it
+        socket.to("test-case-failure-result", {
+          message:  singleTestCaseArr,
+          testCaseName: name
+        })
+      } else {
+        const singleTestCaseArr = failureOutputStr
+            .substr(failureOutputStr.indexOf(name), failureOutputStr.indexOf(failedTestCaseNames[i + 1]))
+            .replace(/\[.*m/g, "")
+            .replace(/\\u1b/g, "")
+            .replace(/\x1b/g, "")
+            .split("\n") // So we can loop through on the client
+            .filter(str => str.trim() !== "" || !str.trim())
+        singleTestCaseArr.shift() // Removes the test case name as we dont need it
+        socket.to("test-case-failure-result", {
+          message: singleTestCaseArr,
+          testCaseName: name
+        })
+      }
+
+    })
   }
 }
 

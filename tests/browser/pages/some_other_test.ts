@@ -37,7 +37,7 @@ Deno.test("Can delete a comment for the video", async () => {
   await Sinco.build(); // Creates the headless browser
   await Sinco.goTo("https://chromestatus.com"); // Go to this page
   // Do any actions and assertions, in any order
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
+  await Sinco.assertUrlIs("https://chromestatus.com/features#heheheeh");
   await Sinco.type('input[placeholder="Filter"]', "Hello");
   await Sinco.waitForAnchorChange();
   await Sinco.assertUrlIs("https://chromestatus.com/features#Hello");
