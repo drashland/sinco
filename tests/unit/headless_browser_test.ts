@@ -182,6 +182,27 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
     );
   });
 
+  Rhum.testSuite("evaluatePage()", () => {
+    Rhum.testCase("It should evaluate function on current frame", async () => {
+      const Sinco = new HeadlessBrowser();
+      await Sinco.build();
+      await Sinco.goTo("https://chromestatus.com");
+      const parentConstructor = await Sinco.evaluatePage(() => {
+        return 1 + 2;
+      });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(parentConstructor, 3);
+    });
+    Rhum.testCase("It should evaluate string on current frame", async () => {
+      const Sinco = new HeadlessBrowser();
+      await Sinco.build();
+      await Sinco.goTo("https://chromestatus.com");
+      const parentConstructor = await Sinco.evaluatePage(`1 + 2`);
+      await Sinco.done();
+      Rhum.asserts.assertEquals(parentConstructor, 3);
+    });
+  });
+
   Rhum.testSuite("getInputValue()", () => {
     Rhum.testCase(
       "It should get the value for the given input element",
