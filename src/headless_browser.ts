@@ -16,7 +16,7 @@
 // }
 
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
-import { existsSync } from "./utility.ts";
+import { exists } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -127,11 +127,11 @@ export class HeadlessBrowser {
         chromePath = paths.darwin;
         break;
       case "windows":
-        if (existsSync(paths.windows_chrome_exe)) {
+        if (await exists(paths.windows_chrome_exe)) {
           chromePath = paths.windows_chrome_exe;
           break;
         }
-        if (existsSync(paths.windows_chrome_exe_x86)) {
+        if (await exists(paths.windows_chrome_exe_x86)) {
           chromePath = paths.windows_chrome_exe_x86;
           break;
         }
