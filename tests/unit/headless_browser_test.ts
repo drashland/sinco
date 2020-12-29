@@ -187,11 +187,11 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       const Sinco = new HeadlessBrowser();
       await Sinco.build();
       await Sinco.goTo("https://chromestatus.com");
-      const parentConstructor = await Sinco.evaluatePage(() => {
-        return 1 + 2;
+      const result = await Sinco.evaluatePage(() => {
+        return document.children;
       });
       await Sinco.done();
-      Rhum.asserts.assertEquals(parentConstructor, 3);
+      Rhum.asserts.assertEquals(typeof result, "object");
     });
     Rhum.testCase("It should evaluate string on current frame", async () => {
       const Sinco = new HeadlessBrowser();
