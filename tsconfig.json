@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "deno.ns", "es2018"]
+    "lib": [
+      "deno.ns",
+      "dom",
+      "dom.iterable",
+      "ES2018"
+    ]
   }
 }

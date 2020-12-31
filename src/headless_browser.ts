@@ -185,7 +185,7 @@ export class HeadlessBrowser {
     this.socket.onmessage = (msg) => {
       // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data);
-      if (data.method === 'Page.frameStartedLoading') {
+      if (data.method === "Page.frameStartedLoading") {
         this.frame_id = data.params.frameId;
       }
       if (data.id && data.id === -1) {
@@ -277,26 +277,32 @@ export class HeadlessBrowser {
    *
    * @param pageCommand - The function to be called.
    */
-  public async evaluatePage(pageCommand: Function | string): Promise<any> {
-    if (typeof pageCommand === 'string') {
+  public async evaluatePage(pageCommand: Function | string): Promise<unknown> {
+    if (typeof pageCommand === "string") {
       const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
       });
       return result.value;
     }
 
-    if (typeof pageCommand === 'function') {
-      const { executionContextId } = await this.sendWebSocketMessage("Page.createIsolatedWorld", {
-        frameId: this.frame_id
-      });
+    if (typeof pageCommand === "function") {
+      const { executionContextId } = await this.sendWebSocketMessage(
+        "Page.createIsolatedWorld",
+        {
+          frameId: this.frame_id,
+        },
+      );
 
-      const { result } = await this.sendWebSocketMessage('Runtime.callFunctionOn', {
-        functionDeclaration: pageCommand.toString(),
-        executionContextId: executionContextId,
-        returnByValue: true,
-        awaitPromise: true,
-        userGesture: true,
-      });
+      const { result } = await this.sendWebSocketMessage(
+        "Runtime.callFunctionOn",
+        {
+          functionDeclaration: pageCommand.toString(),
+          executionContextId: executionContextId,
+          returnByValue: true,
+          awaitPromise: true,
+          userGesture: true,
+        },
+      );
       return result.value;
     }
   }
