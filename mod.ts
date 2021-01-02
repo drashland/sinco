@@ -1,1 +1,1 @@
-export { Dawn } from "./src/dawn.ts";
+export { HeadlessBrowser } from "./src/headless_browser.ts";
