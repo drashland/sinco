@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="200" src="https://drash.land/sinco/assets/img/sinco.svg" alt="Sinco logo">
+  <img height="200" src="logo.svg" alt="Sinco logo">
   <h1 align="center">Sinco</h1>
 </p>
 <p align="center">Browser Automation and Testing Tool for Deno.</p>
