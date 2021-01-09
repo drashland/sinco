@@ -38,7 +38,7 @@ Deno.test("Assertion methods cleanup when an assertion fails", async () => {
   } catch (err) {
     gotError = true;
     errMsg = err.message
-        // deno-lint-ignore no-control-regex
+      // deno-lint-ignore no-control-regex
       .replace(/\x1b/g, "") // or \x1b\[90m
       .replace(/\[1m/g, "")
       .replace(/\[[0-9][0-9]m/g, "")
