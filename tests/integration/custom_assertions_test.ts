@@ -7,4 +7,4 @@ Deno.test("My web app works as expected", async () => {
   await Sinco.assertUrlIs("https://chromestatus.com/features");
   await Sinco.assertSee("Chrome versions");
   await Sinco.done();
-})
+});

@@ -1,5 +1,5 @@
 import { HeadlessBrowser } from "../../mod.ts";
-import {assertEquals} from "../../deps.ts";
+import { assertEquals } from "../../deps.ts";
 
 /**
  * The reason for this test is because originally, when an assertion  method failed,
@@ -31,28 +31,32 @@ Deno.test("Assertion methods cleanup when an assertion fails", async () => {
   await Sinco.build();
   await Sinco.goTo("https://chromestatus.com");
   await Sinco.assertUrlIs("https://chromestatus.com/features");
-  let gotError = false
-  let errMsg = ""
+  let gotError = false;
+  let errMsg = "";
   try {
     await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
   } catch (err) {
-    gotError = true
+    gotError = true;
     errMsg = err.message
-        .replace(/\x1b/g, "") // or \x1b\[90m
-        .replace(/\[1m/g, "")
-        .replace(/\[[0-9][0-9]m/g, "")
-        .replace(/\n/g, "")
+        // deno-lint-ignore no-control-regex
+      .replace(/\x1b/g, "") // or \x1b\[90m
+      .replace(/\[1m/g, "")
+      .replace(/\[[0-9][0-9]m/g, "")
+      .replace(/\n/g, "");
   }
-  assertEquals(gotError, true)
-  assertEquals(errMsg, "Values are not equal:    [Diff] Actual / Expected-   false+   true")
+  assertEquals(gotError, true);
+  assertEquals(
+    errMsg,
+    "Values are not equal:    [Diff] Actual / Expected-   false+   true",
+  );
   // Now we should be able to run tests again without it hanging
-  const Sinco2 = new HeadlessBrowser()
-  await Sinco2.build()
+  const Sinco2 = new HeadlessBrowser();
+  await Sinco2.build();
   await Sinco2.goTo("https://chromestatus.com");
   await Sinco2.assertUrlIs("https://chromestatus.com/features");
   try {
     await Sinco2.assertSee("Chrome Versions");
   } catch (err) {
-
+    //
   }
-})
+});

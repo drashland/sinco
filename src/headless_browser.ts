@@ -98,7 +98,7 @@ export class HeadlessBrowser {
   /**
    * Track if we've closed the sub process, so we dont try close it when it already has been
    */
-  private browser_process_closed = false
+  private browser_process_closed = false;
 
   /**
    * To keep hold of our promises waiting for messages from the websocket
@@ -214,7 +214,7 @@ export class HeadlessBrowser {
     };
     const actualUrl = res.root.documentURL;
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
-      await this.done()
+      await this.done();
     }
     assertEquals(actualUrl, expectedUrl);
   }
@@ -231,9 +231,10 @@ export class HeadlessBrowser {
     });
     this.checkForErrorResult((res as DOMOutput), command);
     // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
-    const exists = ((res as DOMOutput).result as SuccessResult).value as boolean;
+    const exists = ((res as DOMOutput).result as SuccessResult)
+      .value as boolean;
     if (exists !== true) {
-      await this.done()
+      await this.done();
     }
     assertEquals(exists, true);
   }
@@ -335,7 +336,7 @@ export class HeadlessBrowser {
     if (this.browser_process_closed === false) {
       this.browser_process!.stderr!.close();
       this.browser_process!.close();
-      this.browser_process_closed = true
+      this.browser_process_closed = true;
     }
   }
 
