@@ -16,7 +16,7 @@
 // }
 
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
-import { existsSync } from "./utility.ts";
+import { exists } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -41,8 +41,8 @@ type ErrorResult = {
 };
 
 type SuccessResult = {
-  value?: string; // only present if type is a string or boolean
-  type: string; // the type of result, eg object or string,
+  value?: string | boolean; // only present if type is a string or boolean
+  type: string; // the type of result that the `value` will be, eg object or string or boolean, ,
   className: string; // eg Location if command is `window.location`, only present when type is object
   description: string; // eg Location if command is `window.location`, only present when type is object
   objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
@@ -97,6 +97,11 @@ export class HeadlessBrowser {
   private notification_resolvables: { [key: string]: Deferred<void> } = {};
 
   /**
+   * Track if we've closed the sub process, so we dont try close it when it already has been
+   */
+  private browser_process_closed = false;
+
+  /**
    * To keep hold of our promises waiting for messages from the websocket
    */
   private resolvables: { [key: number]: Deferred<unknown> } = {};
@@ -128,11 +133,11 @@ export class HeadlessBrowser {
         chromePath = paths.darwin;
         break;
       case "windows":
-        if (existsSync(paths.windows_chrome_exe)) {
+        if (await exists(paths.windows_chrome_exe)) {
           chromePath = paths.windows_chrome_exe;
           break;
         }
-        if (existsSync(paths.windows_chrome_exe_x86)) {
+        if (await exists(paths.windows_chrome_exe_x86)) {
           chromePath = paths.windows_chrome_exe_x86;
           break;
         }
@@ -212,6 +217,9 @@ export class HeadlessBrowser {
       };
     };
     const actualUrl = res.root.documentURL;
+    if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
+      await this.done();
+    }
     assertEquals(actualUrl, expectedUrl);
   }
 
@@ -227,7 +235,11 @@ export class HeadlessBrowser {
     });
     this.checkForErrorResult((res as DOMOutput), command);
     // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
-    const exists = ((res as DOMOutput).result as SuccessResult).value;
+    const exists = ((res as DOMOutput).result as SuccessResult)
+      .value as boolean;
+    if (exists !== true) {
+      await this.done();
+    }
     assertEquals(exists, true);
   }
 
@@ -339,8 +351,9 @@ export class HeadlessBrowser {
     if (type === "undefined") { // not an input elem
       return "undefined";
     }
-    this.checkForErrorResult((res  as DOMOutput), command);
-    const value = (res.result as SuccessResult).value;
+    this.checkForErrorResult((res as DOMOutput), command);
+    // Tried and tested, value and type are a string
+    const value = ((res as DOMOutput).result as SuccessResult).value as string;
     return value || "";
   }
 
@@ -348,20 +361,24 @@ export class HeadlessBrowser {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    const p = deferred();
-    this.socket!.onclose = function () {
-      p.resolve();
-    };
-    this.socket!.send(JSON.stringify({
-      id: -1,
-      method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
-    }));
-    // Then wait for the promise to be resolved when the WS client is done
-    await p;
-
-    this.browser_process!.stderr!.close();
-    this.browser_process!.close();
+    if (this.socket!.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
+      // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
+      const p = deferred();
+      this.socket!.onclose = function () {
+        p.resolve();
+      };
+      this.socket!.send(JSON.stringify({
+        id: -1,
+        method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
+      }));
+      // Then wait for the promise to be resolved when the WS client is done
+      await p;
+    }
+    if (this.browser_process_closed === false) {
+      this.browser_process!.stderr!.close();
+      this.browser_process!.close();
+      this.browser_process_closed = true;
+    }
   }
 
   /**
