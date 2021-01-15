@@ -23,11 +23,11 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          deno test -A tests/integration
+          deno test -A tests/integration --config tsconfig.json
 
       - name: Run Unit Tests
         run: |
-          deno test -A tests/unit
+          deno test -A tests/unit --config tsconfig.json
 
 #      - name: Install Rhum
 #        run: deno install -A https://raw.githubusercontent.com/drashland/rhum/rhum-cli/mod.ts
