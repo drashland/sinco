@@ -6,10 +6,14 @@ Deno.test("Manipulate Webpage", async () => {
   await Sinco.build();
   await Sinco.goTo("https://chromestatus.com");
 
-  let updatedBody = await Sinco.evaluatePage(() => {
+  const updatedBody = await Sinco.evaluatePage(() => {
+    // deno-lint-ignore no-undef
     const prevBody = document.body.children.length;
+    // deno-lint-ignore no-undef
     const newEl = document.createElement("p");
+    // deno-lint-ignore no-undef
     document.body.appendChild(newEl);
+    // deno-lint-ignore no-undef
     return prevBody === document.body.children.length - 1;
   });
   assertEquals(updatedBody, true);

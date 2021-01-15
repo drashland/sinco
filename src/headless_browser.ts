@@ -69,7 +69,7 @@ type ExceptionDetails = { // exists when an error
 
 type DOMOutput = {
   result: SuccessResult | ErrorResult | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
+  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist,
 };
 
 const webSocketIsDonePromise = deferred();
@@ -277,7 +277,9 @@ export class HeadlessBrowser {
    *
    * @param pageCommand - The function to be called.
    */
-  public async evaluatePage(pageCommand: Function | string): Promise<unknown> {
+  public async evaluatePage(
+    pageCommand: () => unknown | string,
+  ): Promise<unknown> {
     if (typeof pageCommand === "string") {
       const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
@@ -337,8 +339,8 @@ export class HeadlessBrowser {
     if (type === "undefined") { // not an input elem
       return "undefined";
     }
-    this.checkForErrorResult((res as DOMOutput), command);
-    const value = ((res as DOMOutput).result as SuccessResult).value;
+    this.checkForErrorResult((res  as DOMOutput), command);
+    const value = (res.result as SuccessResult).value;
     return value || "";
   }
 
@@ -377,7 +379,7 @@ export class HeadlessBrowser {
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     });
-    this.checkForErrorResult((res as DOMOutput), command);
+    this.checkForErrorResult(res, command);
   }
 
   /**
@@ -428,6 +430,7 @@ export class HeadlessBrowser {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
+    // deno-lint-ignore no-explicit-any The return value could literally be anything
   ): Promise<any> {
     const data: {
       id: number;

@@ -188,6 +188,7 @@ Rhum.testPlan("tests/unit/headless_browser_test.ts", () => {
       await Sinco.build();
       await Sinco.goTo("https://drash.land");
       const pageTitle = await Sinco.evaluatePage(() => {
+        // deno-lint-ignore no-undef
         return document.title;
       });
       await Sinco.done();
