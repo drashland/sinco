@@ -290,7 +290,7 @@ export class HeadlessBrowser {
    * @param pageCommand - The function to be called.
    */
   public async evaluatePage(
-    pageCommand: () => unknown | string,
+    pageCommand: (() => unknown) | string,
   ): Promise<unknown> {
     if (typeof pageCommand === "string") {
       const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
