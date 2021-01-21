@@ -1,6 +1,6 @@
 import { HeadlessBrowser } from "../../mod.ts";
 
-Deno.test("My web app works as expected", async () => {
+Deno.test("Waiting - Tutorial for this feature in the docs should work", async () => {
   const Sinco = new HeadlessBrowser();
   await Sinco.build();
   await Sinco.goTo("https://chromestatus.com");
