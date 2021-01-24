@@ -47,10 +47,10 @@ type Exception = {
   objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
   subtype: string; // eg error
   type: string; // eg object
-}
+};
 type ExceptionDetails = { // exists when an error
   columnNumber: number;
-  exception: Exception
+  exception: Exception;
   exceptionId: number;
   lineNumber: number;
   scriptId: string; // eg "12"
@@ -199,9 +199,9 @@ export class HeadlessBrowser {
     // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
     const res = await this.sendWebSocketMessage("DOM.getDocument") as {
       root: {
-        documentURL: string
-      }
-    }
+        documentURL: string;
+      };
+    };
     const actualUrl = res.root.documentURL;
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
       await this.done();
@@ -220,11 +220,11 @@ export class HeadlessBrowser {
       expression: command,
     }) as { // Tried and tested
       result: {
-        type: "boolean",
-        value: boolean
-      }
+        type: "boolean";
+        value: boolean;
+      };
     };
-    const exists = res.result.value
+    const exists = res.result.value;
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
       await this.done();
     }
@@ -270,16 +270,16 @@ export class HeadlessBrowser {
     }) as {
       //  If all went ok and an elem was clicked
       result: {
-        type: "undefined"
-      }
+        type: "undefined";
+      };
     } | { // else a other error, eg no elem exists with the selector, or `selector` is `">>"`
-      result: Exception,
-      exceptionDetails: ExceptionDetails
-    }
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
+    };
 
     // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
     if ("exceptionDetails" in result) {
-      this.checkForErrorResult(result, command)
+      this.checkForErrorResult(result, command);
     }
   }
 
@@ -310,19 +310,19 @@ export class HeadlessBrowser {
       expression: command,
     }) as {
       result: {
-        type: "undefined" | "string",
-        value?: string
-      }
+        type: "undefined" | "string";
+        value?: string;
+      };
     } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception,
-      exceptionDetails: ExceptionDetails
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
     };
     const type = (res as DOMOutput).result.type;
     if (type === "undefined") { // not an input elem
       return "undefined";
     }
     if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command)
+      this.checkForErrorResult(res, command);
     }
     // Tried and tested, value and type are a string aand `res.result.value` definitely exists at this stage
     const value = (res.result as { value: string }).value;
@@ -368,13 +368,13 @@ export class HeadlessBrowser {
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
     }) as {
-      result: Exception,
-      exceptionDetails: ExceptionDetails
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
     } | {
       result: {
-        type: string,
-        value: string
-      }
+        type: string;
+        value: string;
+      };
     };
     if ("exceptionDetails" in res) {
       this.checkForErrorResult(res, command);
