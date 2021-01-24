@@ -458,10 +458,8 @@ export class HeadlessBrowser {
       const exceptionDetail = result.exceptionDetails;
       const errorMessage = exceptionDetail.exception.description;
       if (errorMessage.includes("SyntaxError")) { // a syntax error
+        console.log('syntax error')
         const message = errorMessage.replace("SyntaxError: ", "");
-        throw new SyntaxError(message + ": `" + commandSent + "`");
-      } else if (errorMessage.includes("DOMException")) {
-        const message = errorMessage.replace("DOMException: ", "");
         throw new SyntaxError(message + ": `" + commandSent + "`");
       } else { // any others, unsure what they'd be
         throw new Error(`${errorMessage}: "${commandSent}"`);
