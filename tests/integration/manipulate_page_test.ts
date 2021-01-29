@@ -26,16 +26,21 @@ Deno.test("Evaluating a script - Tutorial for this feature in the documentation 
   await Sinco.build();
   await Sinco.goTo("https://chromestatus.com");
   const pageTitle = await Sinco.evaluatePage(() => {
+    // deno-lint-ignore no-undef
     return document.title;
   });
   const sum = await Sinco.evaluatePage(`1 + 10`);
   const oldBodyLength = await Sinco.evaluatePage(() => {
+    // deno-lint-ignore no-undef
     return document.body.children.length;
   });
   const newBodyLength = await Sinco.evaluatePage(() => {
+    // deno-lint-ignore no-undef
     const p = document.createElement("p");
     p.textContent = "Hello world!";
+    // deno-lint-ignore no-undef
     document.body.appendChild(p);
+    // deno-lint-ignore no-undef
     return document.body.children.length;
   });
   await Sinco.done();
