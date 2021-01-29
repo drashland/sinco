@@ -4,6 +4,7 @@
       "deno.ns",
       "dom",
       "dom.iterable",
+      "dom.asynciterable",
       "ES2018"
     ]
   }

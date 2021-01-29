@@ -1,9 +1,3 @@
-declare global {
-  interface ReadableStream<R = any> {
-    [Symbol.asyncIterator](options?: { preventCancel?: boolean; }): AsyncIterableIterator<R>;
-  }
-}
-
 import { Rhum } from "../deps.ts";
 import { HeadlessBrowser } from "../../mod.ts";
 import { deferred } from "../../deps.ts";
