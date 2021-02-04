@@ -7,9 +7,9 @@ services:
       context: .
       dockerfile: chrome.dockerfile
     volumes:
-    - ./docker_test_file.ts:/var/www/docker-test/src/docker_test.ts
-    - ../../../src/headless_browser.ts:/var/www/docker-test/src/headless_browser.ts
-    - ../../../deps.ts:/var/www/docker-test/deps.ts
-    - ../../../src/utility.ts:/var/www/docker-test/src/utility.ts
-    command: bash -c "deno test -A"
+      - ../../../src:/var/www/docker-test/src
+      - ../../../tests:/var/www/docker-test/tests
+      - ../../../deps.ts:/var/www/docker-test/deps.ts
+      - ../../../mod.ts:/var/www/docker-test/mod.ts
+    command: bash -c "pwd && ls && deno test -A tests/integration && deno test -A tests/unit"
     working_dir: /var/www/docker-test

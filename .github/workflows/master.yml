@@ -9,6 +9,19 @@ on:
       - master
 
 jobs:
+  docker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Deno
+        uses: denolib/setup-deno@master
+
+      - name: Run Docker Tests
+        run: |
+          cd tests/integration/docker_test
+          docker-compose up
+
   tests:
     strategy:
       matrix:
@@ -24,8 +37,6 @@ jobs:
       - name: Run Integration Tests
         run: |
           deno test -A tests/integration
-          cd tests/integration/docker_test
-          docker-compose up
 
       - name: Run Unit Tests
         run: |
