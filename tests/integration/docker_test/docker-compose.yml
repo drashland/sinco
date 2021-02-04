@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  chrome:
+    container_name: chrome_driver
+    build:
+      context: .
+      dockerfile: chrome.dockerfile
+    volumes:
+    - ./docker_test.ts:/var/www/docker-test/src/docker_test.ts
+    - ../../../src/headless_browser.ts:/var/www/docker-test/src/headless_browser.ts
+    - ../../../deps.ts:/var/www/docker-test/deps.ts
+    - ../../../src/utility.ts:/var/www/docker-test/src/utility.ts
+    command: bash -c "deno test -A"
+    working_dir: /var/www/docker-test
