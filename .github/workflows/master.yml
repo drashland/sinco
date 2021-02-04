@@ -24,7 +24,7 @@ jobs:
       - name: Run Integration Tests
         run: |
           deno test -A tests/integration
-          cd tests/integration/docker-test
+          cd tests/integration/docker_test
           docker-compose up
 
       - name: Run Unit Tests
