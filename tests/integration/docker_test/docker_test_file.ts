@@ -1,6 +1,6 @@
 import { HeadlessBrowser } from "./headless_browser.ts";
 
-Deno.test("My web app works as expected", async () => {
+Deno.test("Sinco can support docker", async () => {
   const Sinco = new HeadlessBrowser();
   await Sinco.build();
   await Sinco.goTo("https://chromestatus.com");

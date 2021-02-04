@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: chrome.dockerfile
     volumes:
-    - ./docker_test.ts:/var/www/docker-test/src/docker_test.ts
+    - ./docker_test_file.ts:/var/www/docker-test/src/docker_test.ts
     - ../../../src/headless_browser.ts:/var/www/docker-test/src/headless_browser.ts
     - ../../../deps.ts:/var/www/docker-test/deps.ts
     - ../../../src/utility.ts:/var/www/docker-test/src/utility.ts
