@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  chrome:
+    container_name: chrome_driver
+    build:
+      context: .
+      dockerfile: chrome.dockerfile
+    volumes:
+      - ../../../src:/var/www/docker-test/src
+      - ../../../tests:/var/www/docker-test/tests
+      - ../../../deps.ts:/var/www/docker-test/deps.ts
+      - ../../../mod.ts:/var/www/docker-test/mod.ts
+    command: bash -c "pwd && ls && deno test -A tests/integration && deno test -A tests/unit"
+    working_dir: /var/www/docker-test

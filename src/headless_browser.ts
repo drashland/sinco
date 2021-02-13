@@ -143,6 +143,7 @@ export class HeadlessBrowser {
         "--headless",
         "--remote-debugging-port=9292",
         "--disable-gpu",
+        "--no-sandbox",
         "https://chromestatus.com",
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
