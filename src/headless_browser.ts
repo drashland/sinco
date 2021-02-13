@@ -64,6 +64,17 @@ type DOMOutput = {
 
 const webSocketIsDonePromise = deferred();
 
+
+type Browsers = "chrome" | "firefox"
+
+interface Options {
+  browser: Browsers
+}
+
+interface ConstructorOptions {
+  browser?: Browsers
+}
+
 export class HeadlessBrowser {
   /**
    * The sub process that runs headless chrome
@@ -96,7 +107,14 @@ export class HeadlessBrowser {
    */
   private resolvables: { [key: number]: Deferred<unknown> } = {};
 
-  constructor() {
+  private options: Options = {
+    browser: "chrome"
+  }
+
+  constructor(options: ConstructorOptions = {}) {
+    if (options.browser) {
+      this.options.browser = options.browser
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -107,37 +125,7 @@ export class HeadlessBrowser {
    * Build the headless browser
    */
   public async build() {
-    const paths = {
-      // deno-lint-ignore camelcase
-      windows_chrome_exe:
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      // deno-lint-ignore camelcase
-      windows_chrome_exe_x86:
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      linux: "/usr/bin/google-chrome",
-    };
-    let chromePath = "";
-    switch (Deno.build.os) {
-      case "darwin":
-        chromePath = paths.darwin;
-        break;
-      case "windows":
-        if (await exists(paths.windows_chrome_exe)) {
-          chromePath = paths.windows_chrome_exe;
-          break;
-        }
-        if (await exists(paths.windows_chrome_exe_x86)) {
-          chromePath = paths.windows_chrome_exe_x86;
-          break;
-        }
-        throw new Error(
-          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
-        );
-      case "linux":
-        chromePath = paths.linux;
-        break;
-    }
+    const chromePath = await this.getChromePath()
     this.browser_process = Deno.run({
       cmd: [
         chromePath,
@@ -157,27 +145,20 @@ export class HeadlessBrowser {
         break;
       }
     }
-    let debugUrl = "";
-    while (true) {
-      try {
-        const res = await fetch("http://localhost:9292/json/list");
-        const json = await res.json();
-        debugUrl = json[0]["webSocketDebuggerUrl"];
-        break;
-      } catch (err) {
-        // do nothing, loop again until the endpoint is ready
-      }
-    }
+    const debugUrl = await this.getWebSocketUrl("localhost", 9292);
     // Connect websocket
     this.socket = new WebSocket(debugUrl);
+    // Wait until its open
     const promise = deferred();
     this.socket.onopen = function () {
       promise.resolve();
     };
     await promise;
+    // Register error listener
     this.socket.onerror = function (e) {
       webSocketIsDonePromise.resolve();
     };
+    // Register on message listenerr
     this.socket.onmessage = (msg) => {
       // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data);
@@ -190,7 +171,6 @@ export class HeadlessBrowser {
         this.handleSocketMessage(msg);
       }
     };
-
     // Enable page notifications, so we can wait for page events, such as when a page has loaded
     await this.sendWebSocketMessage("Page.enable");
   }
@@ -436,6 +416,71 @@ export class HeadlessBrowser {
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the websocket url we use to create a ws client with.
+   * Requires the headless chrome process to be running, as
+   * this is what actually starts the remote debugging url
+   *
+   * @param hostname - The hostname to fetch from
+   * @param port -  The port for the hostname to fetch from
+   *
+   * @returns The url to connect to
+   */
+  private async getWebSocketUrl (hostname: string, port: number)  {
+    let debugUrl = "";
+    while (true) {
+      try {
+        const res = await fetch(`http://${hostname}:${port}/json/list`);
+        const json = await res.json();
+        debugUrl = json[0]["webSocketDebuggerUrl"];
+        break;
+      } catch (err) {
+        // do nothing, loop again until the endpoint is ready
+      }
+    }
+    return debugUrl
+  }
+
+  /**
+   * Gets the full path to the chrome executable on the users filesystem
+   *
+   * @returns The path to chrome
+   */
+  private async getChromePath (): Promise<string> {
+    const paths = {
+      // deno-lint-ignore camelcase
+      windows_chrome_exe:
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      // deno-lint-ignore camelcase
+      windows_chrome_exe_x86:
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      linux: "/usr/bin/google-chrome",
+    };
+    let chromePath = "";
+    switch (Deno.build.os) {
+      case "darwin":
+        chromePath = paths.darwin;
+        break;
+      case "windows":
+        if (await exists(paths.windows_chrome_exe)) {
+          chromePath = paths.windows_chrome_exe;
+          break;
+        }
+        if (await exists(paths.windows_chrome_exe_x86)) {
+          chromePath = paths.windows_chrome_exe_x86;
+          break;
+        }
+        throw new Error(
+            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+        );
+      case "linux":
+        chromePath = paths.linux;
+        break;
+    }
+    return chromePath
+  }
 
   private handleSocketMessage(msg: MessageEvent) {
     const message: MessageResponse | NotificationResponse = JSON.parse(
