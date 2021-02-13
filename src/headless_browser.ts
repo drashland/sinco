@@ -29,17 +29,6 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: unknown;
 }
 
-type ErrorResult = {
-  className: string; // eg SyntaxError
-  description: string; // eg SyntaxError: Unexpected Identifier
-  objectId: {
-    injectedScriptId: number;
-    id: number;
-  };
-  subtype: string; // eg error
-  type: string; // eg object
-};
-
 type SuccessResult = {
   value?: string | boolean; // only present if type is a string or boolean
   type: string; // the type of result that the `value` will be, eg object or string or boolean, ,
@@ -52,15 +41,16 @@ type UndefinedResult = { // not sure when this happens, but i believe it to be w
   type: string; // undefined
 };
 
+type Exception = {
+  className: string; // eg SyntaxError
+  description: string; // eg SyntaxError: Uncaught identifier
+  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
+  subtype: string; // eg error
+  type: string; // eg object
+};
 type ExceptionDetails = { // exists when an error
   columnNumber: number;
-  exception: {
-    className: string; // eg SyntaxError
-    description: string; // eg SyntaxError: Uncaught identifier
-    objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-    subtype: string; // eg error
-    type: string; // eg object
-  };
+  exception: Exception;
   exceptionId: number;
   lineNumber: number;
   scriptId: string; // eg "12"
@@ -68,8 +58,8 @@ type ExceptionDetails = { // exists when an error
 };
 
 type DOMOutput = {
-  result: SuccessResult | ErrorResult | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist,
+  result: SuccessResult | Exception | UndefinedResult;
+  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
 const webSocketIsDonePromise = deferred();
@@ -154,6 +144,7 @@ export class HeadlessBrowser {
         "--headless",
         "--remote-debugging-port=9292",
         "--disable-gpu",
+        "--no-sandbox",
         "https://chromestatus.com",
       ],
       stderr: "piped", // so stuff isn't displayed in the terminal for the user
@@ -210,7 +201,7 @@ export class HeadlessBrowser {
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
-    // There's a whole bunch of other data it responds with, but we only care about documentURL
+    // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
     const res = await this.sendWebSocketMessage("DOM.getDocument") as {
       root: {
         documentURL: string;
@@ -232,12 +223,14 @@ export class HeadlessBrowser {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
-    });
-    this.checkForErrorResult((res as DOMOutput), command);
-    // Tried and tested, and `result` is `{result: { type: "boolean", value: false } }`
-    const exists = ((res as DOMOutput).result as SuccessResult)
-      .value as boolean;
-    if (exists !== true) {
+    }) as { // Tried and tested
+      result: {
+        type: "boolean";
+        value: boolean;
+      };
+    };
+    const exists = res.result.value;
+    if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
       await this.done();
     }
     assertEquals(exists, true);
@@ -279,9 +272,20 @@ export class HeadlessBrowser {
     const command = `document.querySelector('${selector}').click()`;
     const result = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
-    });
+    }) as {
+      //  If all went ok and an elem was clicked
+      result: {
+        type: "undefined";
+      };
+    } | { // else a other error, eg no elem exists with the selector, or `selector` is `">>"`
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
+    };
+
     // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
-    this.checkForErrorResult((result as DOMOutput), command);
+    if ("exceptionDetails" in result) {
+      this.checkForErrorResult(result, command);
+    }
   }
 
   /**
@@ -346,14 +350,24 @@ export class HeadlessBrowser {
     const command = `document.querySelector('${selector}').value`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
-    });
+    }) as {
+      result: {
+        type: "undefined" | "string";
+        value?: string;
+      };
+    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
+    };
     const type = (res as DOMOutput).result.type;
     if (type === "undefined") { // not an input elem
       return "undefined";
     }
-    this.checkForErrorResult((res as DOMOutput), command);
-    // Tried and tested, value and type are a string
-    const value = ((res as DOMOutput).result as SuccessResult).value as string;
+    if ("exceptionDetails" in res) {
+      this.checkForErrorResult(res, command);
+    }
+    // Tried and tested, value and type are a string aand `res.result.value` definitely exists at this stage
+    const value = (res.result as { value: string }).value;
     return value || "";
   }
 
@@ -395,8 +409,18 @@ export class HeadlessBrowser {
     const command = `document.querySelector('${selector}').value = "${value}"`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
-    });
-    this.checkForErrorResult(res, command);
+    }) as {
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
+    } | {
+      result: {
+        type: string;
+        value: string;
+      };
+    };
+    if ("exceptionDetails" in res) {
+      this.checkForErrorResult(res, command);
+    }
   }
 
   /**
@@ -474,9 +498,10 @@ export class HeadlessBrowser {
   private checkForErrorResult(result: DOMOutput, commandSent: string): void {
     // Is an error
     if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
-      const exceptionDetail = (result.exceptionDetails as ExceptionDetails);
+      const exceptionDetail = result.exceptionDetails;
       const errorMessage = exceptionDetail.exception.description;
-      if (exceptionDetail.exception.description.indexOf("SyntaxError") > -1) { // a syntax error
+      if (errorMessage.includes("SyntaxError")) { // a syntax error
+        console.log("syntax error");
         const message = errorMessage.replace("SyntaxError: ", "");
         throw new SyntaxError(message + ": `" + commandSent + "`");
       } else { // any others, unsure what they'd be
