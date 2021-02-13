@@ -59,7 +59,7 @@ type ExceptionDetails = { // exists when an error
 
 type DOMOutput = {
   result: SuccessResult | Exception | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.loction`, there is no `exceptionnDetails` property, but if the command is `window.` (syntax error), this prop will exist
+  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
 const webSocketIsDonePromise = deferred();
@@ -79,6 +79,7 @@ export class HeadlessBrowser {
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   private next_message_id = 1;
+  private frame_id = null;
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
@@ -180,6 +181,9 @@ export class HeadlessBrowser {
     this.socket.onmessage = (msg) => {
       // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data);
+      if (data.method === "Page.frameStartedLoading") {
+        this.frame_id = data.params.frameId;
+      }
       if (data.id && data.id === -1) {
         this.socket!.close();
       } else {
@@ -281,6 +285,43 @@ export class HeadlessBrowser {
     // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
     if ("exceptionDetails" in result) {
       this.checkForErrorResult(result, command);
+    }
+  }
+
+  /**
+   * Invoke a function or string expression on the current frame.
+   *
+   * @param pageCommand - The function to be called.
+   */
+  public async evaluatePage(
+    pageCommand: (() => unknown) | string,
+  ): Promise<unknown> {
+    if (typeof pageCommand === "string") {
+      const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
+        expression: pageCommand,
+      });
+      return result.value;
+    }
+
+    if (typeof pageCommand === "function") {
+      const { executionContextId } = await this.sendWebSocketMessage(
+        "Page.createIsolatedWorld",
+        {
+          frameId: this.frame_id,
+        },
+      );
+
+      const { result } = await this.sendWebSocketMessage(
+        "Runtime.callFunctionOn",
+        {
+          functionDeclaration: pageCommand.toString(),
+          executionContextId: executionContextId,
+          returnByValue: true,
+          awaitPromise: true,
+          userGesture: true,
+        },
+      );
+      return result.value;
     }
   }
 
@@ -430,7 +471,8 @@ export class HeadlessBrowser {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
-  ): Promise<unknown> {
+    // deno-lint-ignore no-explicit-any The return value could literally be anything
+  ): Promise<any> {
     const data: {
       id: number;
       method: string;

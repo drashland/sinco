@@ -1,7 +1,7 @@
 import { HeadlessBrowser } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 
-Deno.test("My test", async () => {
+Deno.test("Tutorial for Getting Started in the docs should work", async () => {
   // Setup
   const Sinco = new HeadlessBrowser();
   await Sinco.build(); // Creates the headless browser
