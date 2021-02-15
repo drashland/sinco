@@ -1,1 +1,1 @@
-export { HeadlessBrowser } from "./src/headless_browser.ts";
+export { ChromeClient } from "./src/chrome_client.ts";

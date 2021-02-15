@@ -1,10 +1,9 @@
-import { HeadlessBrowser } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
+import {ChromeClient} from "../../mod.ts";
 
 Deno.test("Tutorial for Getting Started in the docs should work", async () => {
   // Setup
-  const Sinco = new HeadlessBrowser();
-  await Sinco.build(); // Creates the headless browser
+  const Sinco = await ChromeClient.build();
   await Sinco.goTo("https://chromestatus.com"); // Go to this page
 
   // Do any actions and assertions, in any order

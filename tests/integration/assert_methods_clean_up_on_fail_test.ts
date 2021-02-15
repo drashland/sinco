@@ -1,5 +1,5 @@
-import { HeadlessBrowser } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
+import {ChromeClient} from "../../mod.ts";
 
 /**
  * The reason for this test is because originally, when an assertion  method failed,
@@ -27,8 +27,7 @@ import { assertEquals } from "../../deps.ts";
 // THIS TEST SHOULD NOT HANG, IF IT DOES, THEN THIS TEST FAILS
 
 Deno.test("Assertion methods cleanup when an assertion fails", async () => {
-  const Sinco = new HeadlessBrowser();
-  await Sinco.build();
+  const Sinco = await ChromeClient.build();
   await Sinco.goTo("https://chromestatus.com");
   await Sinco.assertUrlIs("https://chromestatus.com/features");
   let gotError = false;
@@ -50,8 +49,7 @@ Deno.test("Assertion methods cleanup when an assertion fails", async () => {
     "Values are not equal:    [Diff] Actual / Expected-   false+   true",
   );
   // Now we should be able to run tests again without it hanging
-  const Sinco2 = new HeadlessBrowser();
-  await Sinco2.build();
+  const Sinco2 = await ChromeClient.build();
   await Sinco2.goTo("https://chromestatus.com");
   await Sinco2.assertUrlIs("https://chromestatus.com/features");
   try {

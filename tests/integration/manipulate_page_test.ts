@@ -1,9 +1,8 @@
-import { HeadlessBrowser } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
+import {ChromeClient} from "../../mod.ts";
 
 Deno.test("Manipulate Webpage", async () => {
-  const Sinco = new HeadlessBrowser();
-  await Sinco.build();
+  const Sinco = await ChromeClient.build();
   await Sinco.goTo("https://chromestatus.com");
 
   const updatedBody = await Sinco.evaluatePage(() => {
@@ -22,8 +21,7 @@ Deno.test("Manipulate Webpage", async () => {
 });
 
 Deno.test("Evaluating a script - Tutorial for this feature in the documentation works", async () => {
-  const Sinco = new HeadlessBrowser();
-  await Sinco.build();
+  const Sinco = await ChromeClient.build();
   await Sinco.goTo("https://chromestatus.com");
   const pageTitle = await Sinco.evaluatePage(() => {
     // deno-lint-ignore no-undef

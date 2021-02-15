@@ -1,8 +1,7 @@
-import { HeadlessBrowser } from "../../mod.ts";
+import {ChromeClient} from "../../mod.ts";
 
 Deno.test("Clicking elements - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = new HeadlessBrowser();
-  await Sinco.build();
+  const Sinco = await ChromeClient.build();
   await Sinco.goTo("https://chromestatus.com");
   await Sinco.click('a[href="/features/schedule"]');
   await Sinco.waitForPageChange();
