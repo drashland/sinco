@@ -134,7 +134,7 @@ export interface BuildOptions {
  *     const Firefox = await FirefoxClient.build()
  *     await Firefox.<api_method>
  */
-class FirefoxClient {
+export class FirefoxClient {
   private readonly conn: Deno.Conn
 
   private readonly iter: AsyncIterableIterator<Uint8Array>
@@ -186,15 +186,15 @@ class FirefoxClient {
         'user_pref("devtools.debugger.prompt-connection", false);' + "\n" +
         'user_pref("devtools.debugger.remote-enabled", true);'
     ))
-    // Get the path to the users firefox binary TODO :: Support windows and linux
-    const firefoxPath = "/Applications/Firefox.app/Contents/MacOS/firefox"
+    // Get the path to the users firefox binary
+    const firefoxPath = this.getFirefoxPath()
     // Create the arguments we will use when spawning the headless browser
     const args = [
       "--start-debugger-server", // todo :: only needs 1ddash for windows?
       buildOptions.debuggerServerPort.toString(),
       "--profile", // todo :: only needs 1ddash for windows?
       tmpDirName,
-      //"--headless", // todo :: only needs 1ddash for windows?
+      "--headless", // todo :: only needs 1ddash for windows?
       buildOptions.defaultUrl
     ]
     // Create the sub process to start the browser
@@ -324,9 +324,23 @@ class FirefoxClient {
       message: parsedJson
     }
   }
-}
 
-const Firefox = await FirefoxClient.build()
-//console.log(await Firefox.navigateTo("https://google.com"))
+  /**
+   * Get full path to the firefox binary on the user'ss filesystem.
+   * Thanks to [caspervonb](https://github.com/caspervonb/deno-web/blob/master/browser.ts)
+   *
+   * @returns the path
+   */
+  private static getFirefoxPath (): string {
+    switch (Deno.build.os) {
+      case "darwin":
+        return "/Applications/Firefox.app/Contents/MacOS/firefox";
+      case "linux":
+        return "/usr/bin/firefox";
+      case "windows":
+        return "C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
+    }
+  }
+}
 
 
