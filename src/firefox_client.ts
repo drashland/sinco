@@ -14,6 +14,8 @@
  */
 
 import { Buffer } from "../deps.ts"
+import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
+
 
 const UNSOLICITED_EVENTS = [
   'tabNavigated', 'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
@@ -230,20 +232,16 @@ export class FirefoxClient {
       stderr: "piped",
       stdout: "piped"
     })
-    // Wait a few seconds for it to start
-    const p = new Promise(resolve => {
-      setTimeout(() => {
-        resolve("")
-      }, 5000)
-    })
-    await p
+    await new Promise((resolve) => setTimeout(resolve, 3000)); // TODO(edward) Replace this by checking is the port is taken as it's a faster and better check. This si what foxdriver does
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort
     })
     const iter = Deno.iter(conn)
-    await iter.next() // get 'welcome' message out the way
+    for await (const line of Deno.iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
+      break
+    }
     // Get actor (tab) that we use to interact with
     const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root") // "root" required as the "to" when we send a request to get tabs
     const tab = await TempFirefoxClient.listTabs()
@@ -253,11 +251,24 @@ export class FirefoxClient {
       listeners: [
           "PageError",
           "ConsoleAPI",
-          "NetworkActivity"
+          "NetworkActivity",
+          "FileActivity"
       ]
     }, tab.consoleActor)
+    // Wait a few seconds for it to start. This is what foxdriver recommends
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // TODO(edward) I think we need a method to wait until the page has loaded, just like our chrome class has, so after we build, the actor(s) aren't taken up and the page is definitely loaded
+    // ...
     // Return the client :)
     return new FirefoxClient(conn, iter, browserProcess, actor, tab)
+  }
+
+  public async assertSee(text: string): Promise<void> {
+    throw new Error(`NOT IMPLEMENTED. See ChromeClient#assertSee`)
+  }
+
+  public async assertUrlIs(url: string): Promise<void> {
+    throw new Error(`NOT IMPLEMENTED. See ChromeClient#assertUrlIs`)
   }
 
   /**
@@ -267,28 +278,57 @@ export class FirefoxClient {
    */
   public async goTo(url: string): Promise<void> {
     await this.request("navigateTo", { url })
+    // TODO(edward) I think we need a method to wait until the page has loaded, just like our chrome class has, so after we build, the actor(s) aren't taken up and the page is definitely loaded
+    // ...
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
   }
 
+  public async click(selector: string): Promise<void> {
+    throw new Error(`NOT IMPLEMENTED. See ChromeClient#click`)
+  }
+
+  public async getInputValue(selector: string): Promise<void> {
+    throw new Error(`NOT IMPLEMENTED. See ChromeClient#getInputValue`)
+  }
+
+  public async type(selector: string, value: string): Promise<void> {
+    throw new Error(`NOT IMPLEMENTED. See ChromeClient#type`)
+  }
+
+  /**
+   * Evaluate a script for the current context of the page.
+   * In short: Run JavaScript just like you would in the console.
+   *
+   * Internal message: This method requires "PageError" and "ConsoleAPI" listeners to be enabled.
+   *
+   * @param pageCommand - The string or function to evaluate against.
+   *
+   * @example
+   *
+   *     const title = await Firefox.evaluatePage(`document.title`)
+   *     const children = await Firefox.evaluatePage(() => document.body.children)
+   *
+   * @returns TODO(edward): Adjust this when return type is understood
+   */
   public async evaluatePage(pageCommand: (() => unknown) | string): Promise<unknown> {
     if (typeof pageCommand === "string") {
       const message = await this.request("evaluateJS", {
         text: pageCommand,
-      }, "server1.conn0.child4/consoleActor2");
-      console.log(`\nFINSIHED\n`)
-      console.log('\nmessage from eval:\n')
-      console.log(message)
+      }, this.tab!.consoleActor);
+      // TODO(edward): Check what `message` is so we can return the proper data
       return message
     }
 
     if (typeof pageCommand === "function") {
-      const { message } = await this.request(
+      // TODO(edward) We might need to do something else to handle a function, likee how our chrome class does. If not, then we can just combin these two conditionals into a single block
+      const message = await this.request(
           "evaluateJS",
           {
             text: pageCommand.toString()
           },
+          this.tab!.consoleActor
       );
-      console.log(message)
+      // TODO(edward): Check what `message` is so we can return the proper data
       return message
     }
   }
@@ -318,11 +358,11 @@ export class FirefoxClient {
    * @returns The tab, holding the actor we use every other request
    */
   public async listTabs (): Promise<Tab> {
-    let listTabsResponse = (await this.request("listTabs", {}, "root")).message as ListTabsResponse
+    let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     if (!listTabsResponse.tabs) {
       // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
-      listTabsResponse = (await this.request("listTabs", {}, "root")).message as ListTabsResponse
+      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     }
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
     // For firefox > 75 consoleActor is not available within listTabs request
@@ -330,10 +370,27 @@ export class FirefoxClient {
       const tabActorRequest = await this.request("getTarget", {}, tab.actor)
       tab = {
         ...tab,
-        ...tabActorRequest.message.frame
+        ...tabActorRequest.frame
       }
     }
     return tab
+  }
+
+  private async receiveMessage (): Promise<any> {
+    const result = await this.iter.next()
+    const value = result.value
+    const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
+    const sep = /[0-9]{1,3}:/g
+    const packets = decodedValue
+        .split(sep)
+        .filter(packet => packet !== "" && packet.length !== 1)
+    const jsonPackets = packets.map(packet => JSON.parse(packet))
+    const jsonPacket = jsonPackets.filter(packet => {
+      return UNSOLICITED_EVENTS.includes(packet.type) === false
+    })[0]
+    if (!jsonPacket)
+      return await this.receiveMessage()
+    return jsonPacket
   }
 
   /**
@@ -349,10 +406,7 @@ export class FirefoxClient {
    *   - id: Unsure what this corresponds to
    *   - message: This is a parsed JSON response that was assigned to th id, thus the response from thee request
    */
-  private async request (type: string, params = {}, actor?: string): Promise<{
-    id: number,
-    message: Record<string, any>
-  }>
+  private async request (type: string, params = {}, actor?: string): Promise<any>
   {
     // Construct data in required format to send
     const message = {
@@ -365,41 +419,13 @@ export class FirefoxClient {
     // Send message
     await this.conn.write(new TextEncoder().encode(encodedMessage))
     // Receive the response
-    const getResponse = async (): Promise<{ id: number, parsedJson: Record<string, any>}> => {
-      // TODO :: Need to a way to jsonify responses with multiple messages, eg `123: { ... }92: { ... }`
-      const result = await this.iter.next()
-      const value = result.value
-      const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
-      const colonIndex = decodedValue.indexOf(":");
-      const id = Number(decodedValue.substr(0, colonIndex))
-      const jsonString = decodedValue.substr(colonIndex + 1)
-      console.log("msg from req: " + jsonString)
-      try {
-        JSON.parse(jsonString)
-      } catch (err) {
-        return await getResponse()
-      }
-      const parsedJson = JSON.parse(jsonString)
-      if (UNSOLICITED_EVENTS.includes(parsedJson.type) === false) {
-        console.log(`\nGOT GOOD RES\n`)
-        return {
-          id,
-          parsedJson
-        }
-      }
-      console.log(`\nNOT GOOD RES\n`)
-      return await getResponse()
-    }
-    const { parsedJson, id } = await getResponse()
+    const packet = await this.receiveMessage()
     // Check for errors
-    if ("error" in parsedJson) {
-      throw new Error(`${parsedJson.error}: ${parsedJson.message}`)
+    if ("error" in packet) {
+      throw new Error(`${packet.error}: ${packet.message}`)
     }
     // Return result
-    return {
-      id,
-      message: parsedJson
-    }
+    return packet
   }
 
   /**
@@ -424,10 +450,12 @@ console.log('buidling')
 const a = await FirefoxClient.build({
   defaultUrl: "https://drash.land"
 })
-console.log('gotoing')
-await a.goTo("https://drash.land")
+//console.log('gotoing')
+//await a.goTo("https://drash.land")
 console.log('evaling')
-await a.evaluatePage(`document.title`)
+const b = await a.evaluatePage(`document.title`)
+console.log('b:')
+console.log(b)
 
 
 
