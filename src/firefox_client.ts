@@ -15,6 +15,12 @@
 
 import { Buffer } from "../deps.ts"
 
+const UNSOLICITED_EVENTS = [
+  'tabNavigated', 'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
+  'propertyChange', 'newMutations', 'appOpen', 'appClose', 'appInstall', 'appUninstall',
+  'frameUpdate', 'tabListChanged'
+]
+
 interface Message {
   type: string // seems to be the domain, eg navigateTo,
   to:  string // actor name
@@ -23,17 +29,35 @@ interface Message {
 
 interface Tab {
   actor: string // eg "server1.conn18.tabDescriptor1",
-  browserContextID: null | number,
+  browserContextID: number,
   isZombieTab: boolean,
-  outerWindowId: "" | number,
-  selected: boolean, // If this is the web page we are viewing
+  outerWindowId: number,
+  selected: true, // If this is the web page we are viewing
   title: string // Title of the web page
   traits: {
-    watcher: boolean
+    isBrowsingContext: true
   },
-  url: "" | string // eg "https://chromestatus.com/features"
-  consoleActor?: unknown // only present on firefox < 76
-  frame?: unknown
+  url: string // eg "https://chromestatus.com/features"
+  consoleActor: string,
+  inspectorActor: string,
+  styleSheetsActor: string,
+  storageActor: string,
+  memoryActor: string,
+  framerateActor: string,
+  reflowActor: string,
+  cssPropertiesActor: string,
+  performanceActor: string,
+  animationsActor: string,
+  responsiveActor: string,
+  contentViewerActor: string,
+  webExtensionInspectedWindowActor: string,
+  accessibilityActor: string,
+  screenshotActor: string,
+  changesActor: string,
+  webSocketActor: string,
+  eventSourceActor: string,
+  manifestActor: string,
+  networkContentActor: string
 }
 
 interface ListTabsResponse {
@@ -143,17 +167,20 @@ export class FirefoxClient {
 
   private readonly actor: string
 
+  private readonly tab: Tab | null = null
+
   /**
    * @param conn - The established connection object
    * @param iter - An iterator of `conn`
    * @param browserProcess - The running sub process for the browser
    * @param actor - The actor used to make requests eg the tab name we run actions on
    */
-  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string) {
+  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string, tab: Tab | null = null) {
     this.conn = conn
     this.iter = iter
     this.browser_process = browserProcess
     this.actor = actor
+    this.tab = tab
   }
 
   /**
@@ -194,11 +221,10 @@ export class FirefoxClient {
       buildOptions.debuggerServerPort.toString(),
       "--profile", // todo :: only needs 1ddash for windows?
       tmpDirName,
-      "--headless", // todo :: only needs 1ddash for windows?
+      //"--headless", // todo :: only needs 1ddash for windows?
       buildOptions.defaultUrl
     ]
     // Create the sub process to start the browser
-    // TODO FIXME TODO FIXME START HERE :: There seems to be an error when we run this, i think maybe the proces hasnt startedd because if we remove all the sub process code and do it manually from the cli, it works
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
@@ -208,13 +234,13 @@ export class FirefoxClient {
     const p = new Promise(resolve => {
       setTimeout(() => {
         resolve("")
-      }, 3000)
+      }, 5000)
     })
     await p
     // Connect
     const conn = await Deno.connect({
-      hostname: "0.0.0.0",
-      port: 9293
+      hostname: buildOptions.hostname,
+      port: buildOptions.debuggerServerPort
     })
     const iter = Deno.iter(conn)
     await iter.next() // get 'welcome' message out the way
@@ -222,8 +248,16 @@ export class FirefoxClient {
     const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root") // "root" required as the "to" when we send a request to get tabs
     const tab = await TempFirefoxClient.listTabs()
     const actor = tab.actor
+    // Start listeners for console. This is required if we wish to use things like `evaluateJS`
+    await TempFirefoxClient.request("startListeners", {
+      listeners: [
+          "PageError",
+          "ConsoleAPI",
+          "NetworkActivity"
+      ]
+    }, tab.consoleActor)
     // Return the client :)
-    return new FirefoxClient(conn, iter, browserProcess, actor)
+    return new FirefoxClient(conn, iter, browserProcess, actor, tab)
   }
 
   /**
@@ -231,9 +265,32 @@ export class FirefoxClient {
    *
    * @param url - The full url, eg "https://google.com"
    */
-  public async navigateTo(url: string): Promise<void> {
-     await this.request("navigateTo", { url })
+  public async goTo(url: string): Promise<void> {
+    await this.request("navigateTo", { url })
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
+  }
+
+  public async evaluatePage(pageCommand: (() => unknown) | string): Promise<unknown> {
+    if (typeof pageCommand === "string") {
+      const message = await this.request("evaluateJS", {
+        text: pageCommand,
+      }, "server1.conn0.child4/consoleActor2");
+      console.log(`\nFINSIHED\n`)
+      console.log('\nmessage from eval:\n')
+      console.log(message)
+      return message
+    }
+
+    if (typeof pageCommand === "function") {
+      const { message } = await this.request(
+          "evaluateJS",
+          {
+            text: pageCommand.toString()
+          },
+      );
+      console.log(message)
+      return message
+    }
   }
 
   /**
@@ -242,8 +299,8 @@ export class FirefoxClient {
   public async done(): Promise<void> {
     try {
       this.conn.close()
-      this.browser_process.stderr.close();
-      this.browser_process.stdout.close()
+      this.browser_process.stderr!.close();
+      this.browser_process.stdout!.close()
       this.browser_process.close();
     } catch (err) {
       // ... do nothing
@@ -295,9 +352,10 @@ export class FirefoxClient {
   private async request (type: string, params = {}, actor?: string): Promise<{
     id: number,
     message: Record<string, any>
-  }> {
+  }>
+  {
     // Construct data in required format to send
-    const message: Message = {
+    const message = {
       type,
       to: actor ? actor : this.actor,
       ...params
@@ -307,16 +365,35 @@ export class FirefoxClient {
     // Send message
     await this.conn.write(new TextEncoder().encode(encodedMessage))
     // Receive the response
-    const result = await this.iter.next()
-    const value = result.value
-    const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
-    const colonIndex = decodedValue.indexOf(":");
-    const id = Number(decodedValue.substr(0, colonIndex))
-    const jsonString = decodedValue.substr(colonIndex + 1)
-    const parsedJson = JSON.parse(jsonString)
+    const getResponse = async (): Promise<{ id: number, parsedJson: Record<string, any>}> => {
+      // TODO :: Need to a way to jsonify responses with multiple messages, eg `123: { ... }92: { ... }`
+      const result = await this.iter.next()
+      const value = result.value
+      const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
+      const colonIndex = decodedValue.indexOf(":");
+      const id = Number(decodedValue.substr(0, colonIndex))
+      const jsonString = decodedValue.substr(colonIndex + 1)
+      console.log("msg from req: " + jsonString)
+      try {
+        JSON.parse(jsonString)
+      } catch (err) {
+        return await getResponse()
+      }
+      const parsedJson = JSON.parse(jsonString)
+      if (UNSOLICITED_EVENTS.includes(parsedJson.type) === false) {
+        console.log(`\nGOT GOOD RES\n`)
+        return {
+          id,
+          parsedJson
+        }
+      }
+      console.log(`\nNOT GOOD RES\n`)
+      return await getResponse()
+    }
+    const { parsedJson, id } = await getResponse()
     // Check for errors
     if ("error" in parsedJson) {
-      throw new Error(`${parsedJson.error}:  ${parsedJson.message}`)
+      throw new Error(`${parsedJson.error}: ${parsedJson.message}`)
     }
     // Return result
     return {
@@ -342,5 +419,16 @@ export class FirefoxClient {
     }
   }
 }
+
+console.log('buidling')
+const a = await FirefoxClient.build({
+  defaultUrl: "https://drash.land"
+})
+console.log('gotoing')
+await a.goTo("https://drash.land")
+console.log('evaling')
+await a.evaluatePage(`document.title`)
+
+
 
 
