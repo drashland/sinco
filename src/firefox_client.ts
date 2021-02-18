@@ -13,9 +13,8 @@
  *    /Applications/Firefox.app/Contents/MacOS/firefox --start-debugger-server 9293 --profile /tmp/firefox_dev_profile https://chromestatus.com
  */
 
-import { Buffer } from "../deps.ts"
+import {Buffer, deferred} from "../deps.ts"
 import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
-
 
 const UNSOLICITED_EVENTS = [
   'tabNavigated', 'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
@@ -171,6 +170,12 @@ export class FirefoxClient {
 
   private readonly tab: Tab | null = null
 
+  private current_actor_in_progress:  string | null = null
+
+  private current_op: any | null = null
+
+  private incoming: Uint8Array = new Uint8Array()
+
   /**
    * @param conn - The established connection object
    * @param iter - An iterator of `conn`
@@ -213,7 +218,8 @@ export class FirefoxClient {
     await Deno.writeFile(devProfilePath, new TextEncoder().encode(
         'user_pref("devtools.chrome.enabled", true);' + "\n" +
         'user_pref("devtools.debugger.prompt-connection", false);' + "\n" +
-        'user_pref("devtools.debugger.remote-enabled", true);'
+        'user_pref("devtools.debugger.remote-enabled", true);' +  "\n" +
+        `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);` // Don't open that extra tab
     ))
     // Get the path to the users firefox binary
     const firefoxPath = this.getFirefoxPath()
@@ -223,7 +229,7 @@ export class FirefoxClient {
       buildOptions.debuggerServerPort.toString(),
       "--profile", // todo :: only needs 1ddash for windows?
       tmpDirName,
-      //"--headless", // todo :: only needs 1ddash for windows?
+      "--headless", // todo :: only needs 1ddash for windows?
       buildOptions.defaultUrl
     ]
     // Create the sub process to start the browser
@@ -251,13 +257,17 @@ export class FirefoxClient {
       listeners: [
           "PageError",
           "ConsoleAPI",
-          "NetworkActivity",
-          "FileActivity"
+          //"NetworkActivity",
+          //"FileActivity"
       ]
     }, tab.consoleActor)
     // Wait a few seconds for it to start. This is what foxdriver recommends
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    // TODO(edward) I think we need a method to wait until the page has loaded, just like our chrome class has, so after we build, the actor(s) aren't taken up and the page is definitely loaded
+    // Attach the tab we are using to the client, so we can use things like`evaluateJS`
+    await TempFirefoxClient.request("attach", {}, tab.actor)
+    await iter.next()
+
+    // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
     // Return the client :)
     return new FirefoxClient(conn, iter, browserProcess, actor, tab)
@@ -277,10 +287,87 @@ export class FirefoxClient {
    * @param url - The full url, eg "https://google.com"
    */
   public async goTo(url: string): Promise<void> {
+    // TODO Wait untila packet comes through that looks for: { mimeType: text/plain, updateType: responseStart }  or if a packet matches { from:  actor who issues it, url: urll passed in
     await this.request("navigateTo", { url })
     // TODO(edward) I think we need a method to wait until the page has loaded, just like our chrome class has, so after we build, the actor(s) aren't taken up and the page is definitely loaded
     // ...
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
+  }
+
+  async *readPackets(): AsyncIterableIterator<object> {
+    const decoder = new TextDecoder();
+    const buffer = new Deno.Buffer();
+    let packetLength = null;
+    for await (let chunk of Deno.iter(this.conn)) {
+      console.log('msg  gotten:')
+      console.log(decoder.decode(chunk))
+      while (true) {
+        if (packetLength == null) {
+          const i = chunk.indexOf(58); // :
+          if (i == -1) {
+            Deno.writeAll(buffer, chunk);
+            break;
+          } else {
+            Deno.writeAll(buffer, chunk.subarray(0, i));
+            packetLength = parseInt(decoder.decode(buffer.bytes()));
+            buffer.reset();
+            chunk = chunk.subarray(i + 1);
+          }
+        }
+        if (buffer.length + chunk.length >= packetLength) {
+          const lengthFromChunk = packetLength - buffer.length;
+          Deno.writeAll(buffer, chunk.subarray(0, lengthFromChunk));
+          yield JSON.parse(decoder.decode(buffer.bytes()));
+          buffer.reset();
+          packetLength = null;
+          chunk = chunk.subarray(lengthFromChunk);
+          continue;
+        } else {
+          Deno.writeAll(buffer, chunk);
+          break;
+        }
+      }
+    }
+  }
+
+  private listen () {
+    (async () => {
+      for await (const chunk of this.iter) {
+        const decodedChunk = new TextDecoder().decode(chunk)
+        const incoming = new Uint8Array(this.incoming.length + chunk.length)
+        incoming.set(this.incoming)
+        incoming.set(chunk, this.incoming.length)
+        this.incoming = Buffer.concat([this.incoming, chunk])
+      }
+    })()
+  }
+
+  private async* iterator (): AsyncGenerator<any> {
+    let message = ""
+    let count = 0
+    for await (const chunk of this.iter) {
+      const decodedChunk = new TextDecoder().decode(chunk)
+      const colonIndex = decodedChunk.indexOf(":")
+      const [id, rawMessage] = [
+          decodedChunk.substring(colonIndex - 1),
+          decodedChunk.substring(colonIndex + 1)
+      ]
+      for (const byte of rawMessage) {
+        console.log('looking at byte:' + byte)
+        message += byte;
+
+        if (byte == '{') {
+          count++;
+        }
+
+        if (byte == '}') {
+          count--;
+          if (count == 0) {
+            yield JSON.parse(message);
+          }
+        }
+      }
+    }
   }
 
   public async click(selector: string): Promise<void> {
@@ -310,27 +397,26 @@ export class FirefoxClient {
    *
    * @returns TODO(edward): Adjust this when return type is understood
    */
-  public async evaluatePage(pageCommand: (() => unknown) | string): Promise<unknown> {
-    if (typeof pageCommand === "string") {
-      const message = await this.request("evaluateJS", {
-        text: pageCommand,
-      }, this.tab!.consoleActor);
-      // TODO(edward): Check what `message` is so we can return the proper data
-      return message
+  public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
+    const text = typeof pageCommand ===  "string" ? `(function () { ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
+    // Evaluating js requires two things:
+    // 1. sENDING the below type, getting a request id from themsg
+    // 2. waiting for the enxt message, which if it contains that id, that packet holds theresult of our evaluation
+    //  A few ways wecan do this is:
+    // 1. Make `request()`  wait until get a packet from the  actor
+    // 2. create a resolvables that  we  await forand some listen message will resolve it
+    // 3. Create a loop in this func to keep getting next paackets until we get our result
+    const { resultID } = await this.request("evaluateJSAsync", {
+      text,
+    }, this.tab!.consoleActor);
+    const iterator = this.readPackets()
+    const nextResult = await iterator.next()
+    const evalResult = nextResult.value
+    if ("resultID" in evalResult === false || ("resultID" in evalResult && evalResult.resultID !== resultID)) {
+      throw new Error("We got the wrong packet, maybe it's the next one")
     }
-
-    if (typeof pageCommand === "function") {
-      // TODO(edward) We might need to do something else to handle a function, likee how our chrome class does. If not, then we can just combin these two conditionals into a single block
-      const message = await this.request(
-          "evaluateJS",
-          {
-            text: pageCommand.toString()
-          },
-          this.tab!.consoleActor
-      );
-      // TODO(edward): Check what `message` is so we can return the proper data
-      return message
-    }
+    const output = evalResult.result
+    return output
   }
 
   /**
@@ -380,14 +466,42 @@ export class FirefoxClient {
     const result = await this.iter.next()
     const value = result.value
     const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
-    const sep = /[0-9]{1,3}:/g
+    const sep = /[0-9]{1,3}:{"/g
     const packets = decodedValue
-        .split(sep)
-        .filter(packet => packet !== "" && packet.length !== 1)
-    const jsonPackets = packets.map(packet => JSON.parse(packet))
+        .split(sep) // Split up the packets
+        .filter(packet => packet !== "" && packet.length !== 1)  // Filter out any empty ones
+        .map(packet => { // Re add the `{"` that we removed earlier (that we're using to split up the packets
+          return `{\"${packet}`
+        })
+    console.log(decodedValue)
+    const jsonPackets = packets.map((packet, i) => {
+      try {
+       return  JSON.parse(packet)
+      } catch (err) {
+        console.log('error when trying to parse:')
+        if (i === (packets.length - 1)) {
+          // llast packet didn't come through properly
+          return {}
+        }
+        console.log(packet)
+      }
+    })
+    const a: any = {}
+    jsonPackets.forEach(packet => {
+      if (a[packet.from]) {
+        a[packet.from]++
+      } else {
+        a[packet.from] =  1
+      }
+    })
+    console.log('Number of packets fromactors for this receiev:')
+    console.log(a)
     const jsonPacket = jsonPackets.filter(packet => {
       return UNSOLICITED_EVENTS.includes(packet.type) === false
     })[0]
+    console.log('Got packet, here is the current  actor in progress andpacket: ' + this.current_actor_in_progress)
+    console.log(jsonPacket)
+    console.log("\n\n")
     if (!jsonPacket)
       return await this.receiveMessage()
     return jsonPacket
@@ -408,21 +522,35 @@ export class FirefoxClient {
    */
   private async request (type: string, params = {}, actor?: string): Promise<any>
   {
+    actor = actor ? actor : this.actor
     // Construct data in required format to send
     const message = {
       type,
-      to: actor ? actor : this.actor,
+      to: actor,
       ...params
     }
     const str = JSON.stringify(message)
     const encodedMessage = `${(Buffer.from(str)).length}:${str}`
     // Send message
     await this.conn.write(new TextEncoder().encode(encodedMessage))
-    // Receive the response
-    const packet = await this.receiveMessage()
+    // Get related packet
+    let packet;
+    while (true) {
+      const iterator  = this.readPackets()
+      const n =  await iterator.next()
+      packet =  n.value
+      if (packet.from !== actor) {
+        continue
+      } else {
+        break
+      }
+    }
     // Check for errors
     if ("error" in packet) {
       throw new Error(`${packet.error}: ${packet.message}`)
+    }
+    if ("pageError" in packet) {
+      throw new Error(`${packet.type}: ${packet.errrorMessage}`)
     }
     // Return result
     return packet
@@ -450,12 +578,7 @@ console.log('buidling')
 const a = await FirefoxClient.build({
   defaultUrl: "https://drash.land"
 })
-//console.log('gotoing')
-//await a.goTo("https://drash.land")
-console.log('evaling')
-const b = await a.evaluatePage(`document.title`)
-console.log('b:')
-console.log(b)
+
 
 
 
