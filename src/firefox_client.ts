@@ -17,7 +17,7 @@ import {Buffer, deferred} from "../deps.ts"
 import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
 
 const UNSOLICITED_EVENTS = [
-  'tabNavigated', 'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
+  'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
   'propertyChange', 'newMutations', 'appOpen', 'appClose', 'appInstall', 'appUninstall',
   'frameUpdate', 'tabListChanged'
 ]
@@ -176,18 +176,21 @@ export class FirefoxClient {
 
   private incoming: Uint8Array = new Uint8Array()
 
+  private readonly dev_profile_dir_path: string
+
   /**
    * @param conn - The established connection object
    * @param iter - An iterator of `conn`
    * @param browserProcess - The running sub process for the browser
    * @param actor - The actor used to make requests eg the tab name we run actions on
    */
-  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string, tab: Tab | null = null) {
+  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string, tab: Tab | null = null, devProfileDirPath: string) {
     this.conn = conn
     this.iter = iter
     this.browser_process = browserProcess
     this.actor = actor
     this.tab = tab
+    this.dev_profile_dir_path = devProfileDirPath
   }
 
   /**
@@ -249,7 +252,7 @@ export class FirefoxClient {
       break
     }
     // Get actor (tab) that we use to interact with
-    const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root") // "root" required as the "to" when we send a request to get tabs
+    const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root", null, tmpDirName) // "root" required as the "to" when we send a request to get tabs
     const tab = await TempFirefoxClient.listTabs()
     const actor = tab.actor
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
@@ -257,7 +260,7 @@ export class FirefoxClient {
       listeners: [
           "PageError",
           "ConsoleAPI",
-          //"NetworkActivity",
+          "NetworkActivity", // to handle things like clicking buttons that go to different pages so we can check the page changed
           //"FileActivity"
       ]
     }, tab.consoleActor)
@@ -270,7 +273,7 @@ export class FirefoxClient {
     // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
     // Return the client :)
-    return new FirefoxClient(conn, iter, browserProcess, actor, tab)
+    return new FirefoxClient(conn, iter, browserProcess, actor, tab,tmpDirName)
   }
 
   public async assertSee(text: string): Promise<void> {
@@ -317,7 +320,8 @@ export class FirefoxClient {
         if (buffer.length + chunk.length >= packetLength) {
           const lengthFromChunk = packetLength - buffer.length;
           Deno.writeAll(buffer, chunk.subarray(0, lengthFromChunk));
-          yield JSON.parse(decoder.decode(buffer.bytes()));
+          const packet = JSON.parse(decoder.decode(buffer.bytes()))
+          yield packet;
           buffer.reset();
           packetLength = null;
           chunk = chunk.subarray(lengthFromChunk);
@@ -370,8 +374,44 @@ export class FirefoxClient {
     }
   }
 
+  private async waitForSpecificPacket (actor: string, params: Record<string, number | string>):Promise<any> {
+    const iterator = this.readPackets()
+    const n = await iterator.next()
+    const value = n.value
+    if (value.from !== actor) {
+      return await this.waitForSpecificPacket(actor, params)
+    }
+    if (!value.type) {
+      return await this.waitForSpecificPacket(actor, params)
+    }
+    const paramsKeys = Object.keys(params)
+    const paramsKeysLen =  paramsKeys.length
+    let matchedProps = 0
+    paramsKeys.forEach(key => {
+      if (value[key] &&  value[key] === params[key]) {
+        matchedProps++
+      }
+    })
+    if (matchedProps === paramsKeysLen) {
+      return value
+    }
+    return await this.waitForSpecificPacket(actor, params)
+  }
+
+  /**
+   * Click an element by  the sselector. This
+   * assumes that clicking will change the page
+   * you are on.
+   *
+   * @param selector - The element to click, eg `button#submit` or `a[href="/login"]`
+   */
   public async click(selector: string): Promise<void> {
-    throw new Error(`NOT IMPLEMENTED. See ChromeClient#click`)
+    const command = `document.querySelector('${selector}').click()`;
+    await this.evaluatePage(command)
+    await this.waitForSpecificPacket(this.actor, {
+      type:"tabNavigated",
+      "state": "stop"
+    })
   }
 
   /**
@@ -429,7 +469,7 @@ export class FirefoxClient {
     const nextResult = await iterator.next()
     const evalResult = nextResult.value
     if ("resultID" in evalResult === false || ("resultID" in evalResult && evalResult.resultID !== resultID)) {
-      throw new Error("We got the wrong packet, maybe it's the next one")
+      await this.done("We got the wrong packet, maybe it's the next one")
     }
     const output = evalResult.result
     return output
@@ -438,14 +478,18 @@ export class FirefoxClient {
   /**
    * Close all connections with the browser, and stop the sub process
    */
-  public async done(): Promise<void> {
+  public async done(errMsg?: string): Promise<void> {
     try {
       this.conn.close()
       this.browser_process.stderr!.close();
       this.browser_process.stdout!.close()
       this.browser_process.close();
+      await Deno.remove(this.dev_profile_dir_path, { recursive: true })
     } catch (err) {
       // ... do nothing
+    }
+    if (errMsg) {
+      throw new Error(errMsg)
     }
   }
 
@@ -555,18 +599,27 @@ export class FirefoxClient {
       const iterator  = this.readPackets()
       const n =  await iterator.next()
       packet =  n.value
+      // todo these conditionals could probs be moved to readpackets
+      // ignore packets that arent related to the actor that sent the message
       if (packet.from !== actor) {
         continue
-      } else {
-        break
       }
+      // Ignore unsolicated events
+      if (UNSOLICITED_EVENTS.includes(packet.from) === true) {
+        continue
+      }
+      // If page errors are warnings, ignore those
+      if (packet.pageError && packet.pageError.warning && packet.pageError.warning === true) {
+        continue
+      }
+      break
     }
     // Check for errors
     if ("error" in packet) {
-      throw new Error(`${packet.error}: ${packet.message}`)
+      await this.done(`${packet.error}: ${packet.message}`)
     }
     if ("pageError" in packet) {
-      throw new Error(`${packet.type}: ${packet.errrorMessage}`)
+      await this.done(`${packet.type}: ${packet.errrorMessage}`)
     }
     // Return result
     return packet
@@ -590,12 +643,14 @@ export class FirefoxClient {
   }
 }
 
-console.log('buidling')
-const a = await FirefoxClient.build({
-  defaultUrl: "https://chromestatus.com"
-})
-await a.type(`input[placeholder="Filter"]`, "hello")
-await a.getInputValue(`input[placeholder="Filter"]`)
+// console.log('buidling')
+// const a = await FirefoxClient.build({
+//   defaultUrl: "https://chromestatus.com"
+// })
+// console.log('clicking')
+// const b = await a.evaluatePage(`document.title`)
+// console.log('res:')
+// console.log(b)
 
 
 
