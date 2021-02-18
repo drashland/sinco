@@ -290,32 +290,27 @@ export class FirefoxClient {
    * @param url - The full url, eg "https://google.com"
    */
   public async goTo(url: string): Promise<void> {
-    // TODO Wait untila packet comes through that looks for: { mimeType: text/plain, updateType: responseStart }  or if a packet matches { from:  actor who issues it, url: urll passed in
     await this.request("navigateTo", { url })
-    // TODO(edward) I think we need a method to wait until the page has loaded, just like our chrome class has, so after we build, the actor(s) aren't taken up and the page is definitely loaded
-    // ...
+    await this.waitForSpecificPacket(this.actor, {
+      type: "tabNavigated",
+      state: "stop"
+    })
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
   }
 
+  // FIXME :: There a problem with this method, of coursee we get  many packets  in one message, but it sometimes seems that  the message  doesnt contain the packet we want, but it will still return on that iteration.. what  we need to do is check if it matches an expectation maybe? if not then continue to getting the next message
   async *readPackets(): AsyncIterableIterator<object> {
     const decoder = new TextDecoder();
     const buffer = new Deno.Buffer();
     let packetLength = null;
     for await (let chunk of Deno.iter(this.conn)) {
-      console.log('msg  gotten:')
-      console.log(decoder.decode(chunk))
       while (true) {
         if (packetLength == null) {
           const i = chunk.indexOf(58); // :
-          if (i == -1) {
-            Deno.writeAll(buffer, chunk);
-            break;
-          } else {
-            Deno.writeAll(buffer, chunk.subarray(0, i));
-            packetLength = parseInt(decoder.decode(buffer.bytes()));
-            buffer.reset();
-            chunk = chunk.subarray(i + 1);
-          }
+          Deno.writeAll(buffer, chunk.subarray(0, i));
+          packetLength = parseInt(decoder.decode(buffer.bytes()));
+          buffer.reset();
+          chunk = chunk.subarray(i + 1);
         }
         if (buffer.length + chunk.length >= packetLength) {
           const lengthFromChunk = packetLength - buffer.length;
@@ -592,6 +587,8 @@ export class FirefoxClient {
     const str = JSON.stringify(message)
     const encodedMessage = `${(Buffer.from(str)).length}:${str}`
     // Send message
+    console.log(`Sending a request, heres message:`)
+    console.log(message)
     await this.conn.write(new TextEncoder().encode(encodedMessage))
     // Get related packet
     let packet;
@@ -621,6 +618,8 @@ export class FirefoxClient {
     if ("pageError" in packet) {
       await this.done(`${packet.type}: ${packet.errrorMessage}`)
     }
+    console.log("Got packet for message:")
+    console.log(packet)
     // Return result
     return packet
   }
