@@ -378,8 +378,15 @@ export class FirefoxClient {
     throw new Error(`NOT IMPLEMENTED. See ChromeClient#getInputValue`)
   }
 
+  /**
+   * Set the value of `selector`
+   *
+   * @param selector - Used inside `.querySelector`
+   * @param value - The value to set the elements value to
+   */
   public async type(selector: string, value: string): Promise<void> {
-    throw new Error(`NOT IMPLEMENTED. See ChromeClient#type`)
+    const command = `document.querySelector('${selector}').value = "${value}"`;
+    await this.evaluatePage(command)
   }
 
   /**
@@ -398,7 +405,7 @@ export class FirefoxClient {
    * @returns TODO(edward): Adjust this when return type is understood
    */
   public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
-    const text = typeof pageCommand ===  "string" ? `(function () { ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
+    const text = typeof pageCommand ===  "string" ? `(function () { return ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
     // Evaluating js requires two things:
     // 1. sENDING the below type, getting a request id from themsg
     // 2. waiting for the enxt message, which if it contains that id, that packet holds theresult of our evaluation
@@ -576,8 +583,9 @@ export class FirefoxClient {
 
 console.log('buidling')
 const a = await FirefoxClient.build({
-  defaultUrl: "https://drash.land"
+  defaultUrl: "https://chromestatus.com"
 })
+await a.type(`input[placeholder="Filter"]`, "hello")
 
 
 
