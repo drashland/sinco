@@ -374,8 +374,17 @@ export class FirefoxClient {
     throw new Error(`NOT IMPLEMENTED. See ChromeClient#click`)
   }
 
-  public async getInputValue(selector: string): Promise<void> {
-    throw new Error(`NOT IMPLEMENTED. See ChromeClient#getInputValue`)
+  /**
+   * Get the value of an input element
+   *
+   * @param selector - The selector to use to get thee value from. Eg., `input[name="username"]`
+   *
+   * @returns The value for the input element
+   */
+  public async getInputValue(selector: string): Promise<string> {
+    const command = `document.querySelector('${selector}').value`;
+    const result = await  this.evaluatePage(command)
+    return result
   }
 
   /**
@@ -586,6 +595,7 @@ const a = await FirefoxClient.build({
   defaultUrl: "https://chromestatus.com"
 })
 await a.type(`input[placeholder="Filter"]`, "hello")
+await a.getInputValue(`input[placeholder="Filter"]`)
 
 
 
