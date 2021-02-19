@@ -82,6 +82,7 @@ async function waitUntilConnected(
       return true;
     } catch (error) {
       if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
+        console.log('Conn rfused')
         return false
       }
       throw new Error(`Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`);
@@ -368,7 +369,15 @@ export class FirefoxClient {
           .substring(i + 1) // strips the `123:` from start  of message
           .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
       console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
-      const packets = JSON.parse(decodedChunkAsValidJSONString) as any[]
+      let packets: any[] = []
+      // Should we fail to parse  the message,  we assume that it contains an invalid packet, eg 4 were sent and the 4th  wasn't fully sent
+      try {
+        packets = JSON.parse(decodedChunkAsValidJSONString)
+      } catch (err) {
+        const startOfLastPacketIndex = decodedChunkAsValidJSONString.lastIndexOf(",{")
+        const jsonStr = decodedChunkAsValidJSONString.substring(0, startOfLastPacketIndex)
+        packets = JSON.parse(jsonStr)
+      }
       console.log('all packets:')
       console.log(packets)
       const validPackets = packets.filter(packet => {
