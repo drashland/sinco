@@ -613,7 +613,7 @@ export class FirefoxClient {
   public async listTabs (): Promise<Tab> {
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
-    if (!listTabsResponse.tabs) {
+    if (!listTabsResponse.tabs.length) {
       // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     }
