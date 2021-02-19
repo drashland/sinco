@@ -485,6 +485,8 @@ export class FirefoxClient {
     const iterator = this.readPackets()
     const n = await iterator.next()
     const value = n.value
+    console.log('got the nnext packet, here it is:')
+    console.log(value)
     if (value.from !== actor) {
       return await this.waitForSpecificPacket(actor, params)
     }
@@ -565,6 +567,7 @@ export class FirefoxClient {
    * @returns TODO(edward): Adjust this when return type is understood
    */
   public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
+    console.log('At  top ofeval page func, requesting now...')
     const text = typeof pageCommand ===  "string" ? `(function () { return ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
     // Evaluating js requires two things:
     // 1. sENDING the below type, getting a request id from themsg
@@ -576,9 +579,12 @@ export class FirefoxClient {
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
+    console.log('just got the result id, now waiting for a specific packet from ' +  this.tab!.consoleActor + ' with  result id  of ' + resultID)
     const evalResult = await this.waitForSpecificPacket(this.tab!.consoleActor, {
       resultID
     })
+    console.log('got eval result, here it is:')
+    console.log(evalResult)
     const output = evalResult.result
     return output
   }
