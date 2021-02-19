@@ -238,6 +238,8 @@ export class FirefoxClient {
       "--headless", // todo :: only needs 1ddash for windows?
       buildOptions.defaultUrl
     ]
+    console.log('run args:')
+    console.log([firefoxPath, ...args])
     // Create the sub process to start the browser
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
