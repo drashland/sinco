@@ -244,7 +244,7 @@ export class FirefoxClient {
       stderr: "piped",
       stdout: "piped"
     })
-    await new Promise((resolve) => setTimeout(resolve, 3000)); // TODO(edward) Replace this by checking is the port is taken as it's a faster and better check. This si what foxdriver does
+    await new Promise((resolve) => setTimeout(resolve, 8000)); // TODO(edward) Replace this by checking is the port is taken as it's a faster and better check. This si what foxdriver does
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
