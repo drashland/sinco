@@ -11,5 +11,6 @@ services:
       - ../../../tests:/var/www/docker-test/tests
       - ../../../deps.ts:/var/www/docker-test/deps.ts
       - ../../../mod.ts:/var/www/docker-test/mod.ts
-    command: bash -c "pwd && ls && deno test -A tests/integration && deno test -A tests/unit"
+      - ../../../tsconfig.json:/var/www/docker-test/tsconfig.json
+    command: bash -c "tail -f /dev/null"
     working_dir: /var/www/docker-test
