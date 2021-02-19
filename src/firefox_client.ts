@@ -90,6 +90,7 @@ async function waitUntilConnected(
   const { hostname, port } = options
   const isConnected = await check(hostname, port)
   if (isConnected) {
+    await new Promise((resolve) => setTimeout(resolve,  2000))
     return
   }
   await new Promise((resolve) => setTimeout(resolve, 250))
