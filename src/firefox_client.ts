@@ -13,7 +13,7 @@
  *    /Applications/Firefox.app/Contents/MacOS/firefox --start-debugger-server 9293 --profile /tmp/firefox_dev_profile https://chromestatus.com
  */
 
-import {Buffer, deferred} from "../deps.ts"
+import {assertEquals, Buffer, deferred} from "../deps.ts"
 import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
 
 const UNSOLICITED_EVENTS = [
@@ -281,7 +281,12 @@ export class FirefoxClient {
   }
 
   public async assertUrlIs(url: string): Promise<void> {
-    throw new Error(`NOT IMPLEMENTED. See ChromeClient#assertUrlIs`)
+    const result = await this.evaluatePage(`window.location.href`)
+    // If we know the assertion will fail, close all connctions
+    if (result !== url) {
+      await this.done()
+    }
+    assertEquals(result, url)
   }
 
   /**
