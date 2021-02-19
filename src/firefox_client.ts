@@ -65,35 +65,35 @@ interface ListTabsResponse {
   tabs: Array<Tab>
 }
 
-async function check (hostname: string, port: number) {
-  try {
-    const listener = Deno.listen({
-      port,
-      hostname,
-    });
-    listener.close();
-    return false;
-  } catch (error) {
-    if (error instanceof Deno.errors.AddrInUse) {
-      return true;
-    }
-    throw error;
-  }
-}
 async function waitUntilConnected(
     options: {
       hostname: string,
       port: number
-    },
-    timout = 10000
+    }
 ): Promise<void> {
+  async function check (hostname: string, port: number) {
+    try {
+      const conn = await Deno.connect({
+        port,
+        hostname,
+      });
+      conn.close();
+      // This means we can connect so its ready
+      return true;
+    } catch (error) {
+      if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
+        return false
+      }
+      throw new Error(`Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`);
+    }
+  }
   const { hostname, port } = options
   const isConnected = await check(hostname, port)
   if (isConnected) {
     return
   }
   await new Promise((resolve) => setTimeout(resolve, 250))
-  return await waitUntilConnected(options, timout - 250)
+  return await waitUntilConnected(options)
 }
 
 async function simplifiedFirefoxExample () {
