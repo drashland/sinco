@@ -211,7 +211,7 @@ export class FirefoxClient {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
       if (Deno.build.os === "windows") {
-        buildOptions.hostname = "127.0.0.1"
+        buildOptions.hostname = "localhost"
       } else {
         buildOptions.hostname = "0.0.0.0"
       }
