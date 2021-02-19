@@ -13,7 +13,7 @@
  *    /Applications/Firefox.app/Contents/MacOS/firefox --start-debugger-server 9293 --profile /tmp/firefox_dev_profile https://chromestatus.com
  */
 
-import {assertEquals, Buffer, deferred} from "../deps.ts"
+import {assertEquals, deferred} from "../deps.ts"
 import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
 
 const UNSOLICITED_EVENTS = [
@@ -89,7 +89,8 @@ async function simplifiedFirefoxExample () {
       ...params
     }
     const str = JSON.stringify(message)
-    const encodedMessage = `${(Buffer.from(str)).length}:${str}`
+    const encoder = new TextEncoder()
+    const encodedMessage = `${(encoder.encode(str)).length}:${str}`
     // Send message
     await conn.write(new TextEncoder().encode(encodedMessage))
     // Receive the response
@@ -316,7 +317,7 @@ export class FirefoxClient {
   // FIXME :: There a problem with this method, of coursee we get  many packets  in one message, but it sometimes seems that  the message  doesnt contain the packet we want, but it will still return on that iteration.. what  we need to do is check if it matches an expectation maybe? if not then continue to getting the next message
   async *readPackets(): AsyncIterableIterator<object> {
     const decoder = new TextDecoder();
-    const buffer = new Deno.Buffer();
+    //const buffer = new Deno.Buffer();
     let packetLength = null;
     for await (const chunk of Deno.iter(this.conn)) {
       const decodedChunk = decoder.decode(chunk)
@@ -396,7 +397,7 @@ export class FirefoxClient {
         const incoming = new Uint8Array(this.incoming.length + chunk.length)
         incoming.set(this.incoming)
         incoming.set(chunk, this.incoming.length)
-        this.incoming = Buffer.concat([this.incoming, chunk])
+        //this.incoming = Buffer.concat([this.incoming, chunk])
       }
     })()
   }
@@ -655,7 +656,8 @@ export class FirefoxClient {
       ...params
     }
     const str = JSON.stringify(message)
-    const encodedMessage = `${(Buffer.from(str)).length}:${str}`
+    const encoder = new TextEncoder()
+    const encodedMessage = `${(encoder.encode(str)).length}:${str}`
     // Send message
     console.log(`Sending a request, heres message:`)
     console.log(message)
