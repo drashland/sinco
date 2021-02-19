@@ -711,7 +711,7 @@ export class FirefoxClient {
       case "linux":
         return "/usr/bin/firefox";
       case "windows":
-        return "C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe";
+        return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
     }
   }
 }
