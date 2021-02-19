@@ -210,7 +210,7 @@ export class FirefoxClient {
   public static async build (buildOptions: BuildOptions = {}):  Promise<FirefoxClient> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
-      buildOptions.hostname = "0.0.0.0"
+      buildOptions.hostname = "127.0.0.1"
     }
     if (!buildOptions.debuggerServerPort) {
       buildOptions.debuggerServerPort = 9293
@@ -227,6 +227,7 @@ export class FirefoxClient {
         'user_pref("devtools.debugger.remote-enabled", true);' +  "\n" +
         `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);` // Don't open that extra tab
     ))
+    console.log(`Dev profile path: ${devProfilePath}`)
     // Get the path to the users firefox binary
     const firefoxPath = this.getFirefoxPath()
     // Create the arguments we will use when spawning the headless browser
@@ -239,6 +240,8 @@ export class FirefoxClient {
       buildOptions.defaultUrl
     ]
     // Create the sub process to start the browser
+    console.log("Cmd:")
+    console.log([firefoxPath, ...args])
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
@@ -334,6 +337,12 @@ export class FirefoxClient {
           return false
         }
         if (packet.type === "pageError" && packet.pageError.warning == true) {
+          return false
+        }
+        if (packet.type === "pageError" && packet.pageError.error == true){ // TDODO Should we wish to provide an api method to get console logs, we're going to have to remove this and handle it another way, for example a user may want to get any errors in the console of their page - this is what is packet contains
+          return false
+        }
+        if (packet.type === "tabNavigated" && packet.state === "start") {
           return false
         }
         return true
@@ -709,7 +718,7 @@ export class FirefoxClient {
       case "linux":
         return "/usr/bin/firefox";
       case "windows":
-        return "C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
+        return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
     }
   }
 }
