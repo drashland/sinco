@@ -72,10 +72,10 @@ async function check (hostname: string, port: number) {
       hostname,
     });
     listener.close();
-    return true;
+    return false;
   } catch (error) {
     if (error instanceof Deno.errors.AddrInUse) {
-      return false;
+      return true;
     }
     throw error;
   }
