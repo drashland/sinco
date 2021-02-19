@@ -210,7 +210,11 @@ export class FirefoxClient {
   public static async build (buildOptions: BuildOptions = {}):  Promise<FirefoxClient> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
-      buildOptions.hostname = "127.0.0.1"
+      if (Deno.build.os === "windows") {
+        buildOptions.hostname = "127.0.0.1"
+      } else {
+        buildOptions.hostname = "0.0.0.0"
+      }
     }
     if (!buildOptions.debuggerServerPort) {
       buildOptions.debuggerServerPort = 9293
