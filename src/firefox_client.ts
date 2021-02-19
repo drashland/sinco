@@ -617,6 +617,12 @@ export class FirefoxClient {
       // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     }
+    if (!listTabsResponse.tabs.length) {
+      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
+    }
+    if (!listTabsResponse.tabs.length) {
+      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
+    }
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
