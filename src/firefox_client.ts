@@ -369,15 +369,23 @@ export class FirefoxClient {
           .substring(i + 1) // strips the `123:` from start  of message
           .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
       console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
-      let packets: any[] = []
-      // Should we fail to parse  the message,  we assume that it contains an invalid packet, eg 4 were sent and the 4th  wasn't fully sent
-      try {
-        packets = JSON.parse(decodedChunkAsValidJSONString)
-      } catch (err) {
-        const startOfLastPacketIndex = decodedChunkAsValidJSONString.lastIndexOf(",{")
-        const jsonStr = decodedChunkAsValidJSONString.substring(0, startOfLastPacketIndex)
-        packets = JSON.parse(jsonStr)
+
+      //
+      function tryParse(rawMessage: string): any[] {
+        try {
+          const json = JSON.parse(rawMessage)
+          return json
+        } catch (err) { // Not valid json, eg last packet issnt full, so we'll go through removing each char from the end of the string until we can parse it
+          // eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
+          const str = rawMessage
+              .slice(0, -2)
+              + "]" // add back
+          return tryParse(str)
+        }
       }
+      const packets = tryParse(decodedChunkAsValidJSONString)
+      //
+
       console.log('all packets:')
       console.log(packets)
       const validPackets = packets.filter(packet => {
