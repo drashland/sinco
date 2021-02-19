@@ -277,12 +277,18 @@ export class FirefoxClient {
   }
 
   public async assertSee(text: string): Promise<void> {
-    throw new Error(`NOT IMPLEMENTED. See ChromeClient#assertSee`)
+    const command = `document.body.innerText.indexOf('${text}') >= 0`
+    const result = await this.evaluatePage(command) as boolean
+    // If we know the assertion will fail, close all connections
+    if (result !== true) {
+      await this.done()
+    }
+    assertEquals(result, true)
   }
 
   public async assertUrlIs(url: string): Promise<void> {
-    const result = await this.evaluatePage(`window.location.href`)
-    // If we know the assertion will fail, close all connctions
+    const result = await this.evaluatePage(`window.location.href`) as string
+    // If we know the assertion will fail, close all connections
     if (result !== url) {
       await this.done()
     }
