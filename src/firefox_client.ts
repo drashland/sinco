@@ -176,6 +176,8 @@ export class FirefoxClient {
 
   private incoming: Uint8Array = new Uint8Array()
 
+  private incoming_message_queue: any[] = []
+
   private readonly dev_profile_dir_path: string
 
   /**
@@ -268,7 +270,7 @@ export class FirefoxClient {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
     await TempFirefoxClient.request("attach", {}, tab.actor)
-    await iter.next()
+    //await iter.next()
 
     // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
@@ -287,6 +289,7 @@ export class FirefoxClient {
   }
 
   public async assertUrlIs(url: string): Promise<void> {
+    // TODO I think in the build, we might need  to use tab nabigated to wait until state is stop, maybe we get  an  event for that? if so  we should do that cause i thinks  its interfring with our  clicking (old url  is  being  returned from here), which may be the cause of the tabnigaed
     const result = await this.evaluatePage(`window.location.href`) as string
     // If we know the assertion will fail, close all connections
     if (result !== url) {
@@ -302,6 +305,7 @@ export class FirefoxClient {
    */
   public async goTo(url: string): Promise<void> {
     await this.request("navigateTo", { url })
+    console.log("Going to wait until pagehas  loaded")
     await this.waitForSpecificPacket(this.actor, {
       type: "tabNavigated",
       state: "stop"
@@ -314,29 +318,74 @@ export class FirefoxClient {
     const decoder = new TextDecoder();
     const buffer = new Deno.Buffer();
     let packetLength = null;
-    for await (let chunk of Deno.iter(this.conn)) {
-      while (true) {
-        if (packetLength == null) {
-          const i = chunk.indexOf(58); // :
-          Deno.writeAll(buffer, chunk.subarray(0, i));
-          packetLength = parseInt(decoder.decode(buffer.bytes()));
-          buffer.reset();
-          chunk = chunk.subarray(i + 1);
+    for await (const chunk of Deno.iter(this.conn)) {
+      const decodedChunk = decoder.decode(chunk)
+      const i = decodedChunk.indexOf(":")
+      const decodedChunkAsValidJSONString = "[" + decodedChunk
+          .substring(i + 1) // strips the `123:` from start  of message
+          .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
+      console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
+      const packets = JSON.parse(decodedChunkAsValidJSONString) as any[]
+      console.log('all packets:')
+      console.log(packets)
+      const validPackets = packets.filter(packet => {
+        if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
+          return false
         }
-        if (buffer.length + chunk.length >= packetLength) {
-          const lengthFromChunk = packetLength - buffer.length;
-          Deno.writeAll(buffer, chunk.subarray(0, lengthFromChunk));
-          const packet = JSON.parse(decoder.decode(buffer.bytes()))
-          yield packet;
-          buffer.reset();
-          packetLength = null;
-          chunk = chunk.subarray(lengthFromChunk);
-          continue;
-        } else {
-          Deno.writeAll(buffer, chunk);
-          break;
+        if (packet.type === "pageError" && packet.pageError.warning == true) {
+          return false
         }
+        return true
+      })
+      if (validPackets.length === 0) {
+        continue
       }
+      // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
+      if (validPackets.length > 1) {
+        validPackets.forEach((packet, i) => {
+          if (i !== 0) {
+            console.log('Going to push the below packet to the queue:')
+            console.log(packet)
+            this.incoming_message_queue.push(packet)
+          }
+        })
+      }
+      console.log('packets from iterr:')
+      console.log(validPackets)
+      console.log(`Got packet:`)
+      const packet = validPackets[0]
+      console.log(packet)
+      yield packet
+
+      // while (true) {
+      //   if (packetLength == null) {
+      //     const i = chunk.indexOf(58); // :
+      //     Deno.writeAll(buffer, chunk.subarray(0, i));
+      //     packetLength = parseInt(decoder.decode(buffer.bytes()));
+      //     buffer.reset();
+      //     chunk = chunk.subarray(i + 1);
+      //   }
+      //   // FIXME:: It returns the first packet in the message, soemtimes the packet we need isnt first!!!
+      //   if (buffer.length + chunk.length >= packetLength) {
+      //     const lengthFromChunk = packetLength - buffer.length;
+      //     Deno.writeAll(buffer, chunk.subarray(0, lengthFromChunk));
+      //     console.log(`\n\nWe got the following chunk:`)
+      //     console.log(decoder.decode(chunk))
+      //     console.log('and were going to return:')
+      //     const packet = JSON.parse(decoder.decode(buffer.bytes()))
+      //     console.log(packet)
+      //     console.log(decoder.decode(chunk).replace(/}[0-9]{1,3}:{/g, "},{"))
+      //     console.log(`\n`)
+      //     yield packet;
+      //     buffer.reset();
+      //     packetLength = null;
+      //     chunk = chunk.subarray(lengthFromChunk);
+      //     continue;
+      //   } else {
+      //     Deno.writeAll(buffer, chunk);
+      //     break;
+      //   }
+      // }
     }
   }
 
@@ -381,6 +430,15 @@ export class FirefoxClient {
   }
 
   private async waitForSpecificPacket (actor: string, params: Record<string, number | string>):Promise<any> {
+    console.log("Called waiting for specifc packet")
+    if (this.incoming_message_queue.length) {
+      console.log('packets exist in queue, returning:')
+      const packet = this.incoming_message_queue[0]
+      if (packet.actor !== actor)
+      console.log(packet)
+      this.incoming_message_queue.shift()
+      return packet
+    }
     const iterator = this.readPackets()
     const n = await iterator.next()
     const value = n.value
@@ -414,9 +472,13 @@ export class FirefoxClient {
   public async click(selector: string): Promise<void> {
     const command = `document.querySelector('${selector}').click()`;
     await this.evaluatePage(command)
+  }
+
+  public async waitForPageChange (to: string): Promise<void> {
     await this.waitForSpecificPacket(this.actor, {
       type:"tabNavigated",
-      "state": "stop"
+      "state": "stop",
+      url: to
     })
   }
 
@@ -471,12 +533,9 @@ export class FirefoxClient {
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
-    const iterator = this.readPackets()
-    const nextResult = await iterator.next()
-    const evalResult = nextResult.value
-    if ("resultID" in evalResult === false || ("resultID" in evalResult && evalResult.resultID !== resultID)) {
-      await this.done("We got the wrong packet, maybe it's the next one")
-    }
+    const evalResult = await this.waitForSpecificPacket(this.tab!.consoleActor, {
+      resultID
+    })
     const output = evalResult.result
     return output
   }
