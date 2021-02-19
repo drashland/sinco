@@ -378,6 +378,9 @@ export class FirefoxClient {
         if (packet.type === "pageError" && packet.pageError.warning == true) {
           return false
         }
+        if (packet.type === "tabNavigated" && packet.state === "start") {
+          return false
+        }
         return true
       })
       if (validPackets.length === 0) {
