@@ -35,12 +35,6 @@ jobs:
       - name: Install Deno
         uses: denolib/setup-deno@v2
 
-      - run: |
-          ls 'C:\Program Files'
-          ls C:
-          ls 'C:\Program Files\Mozilla Firefox'
-        if: matrix.os == 'windows-latest'
-
       - name: Run Integration Tests
         run: |
           deno test -A tests/integration --config tsconfig.json
