@@ -65,6 +65,37 @@ interface ListTabsResponse {
   tabs: Array<Tab>
 }
 
+async function check (hostname: string, port: number) {
+  try {
+    const listener = Deno.listen({
+      port,
+      hostname,
+    });
+    listener.close();
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.AddrInUse) {
+      return false;
+    }
+    throw error;
+  }
+}
+async function waitUntilConnected(
+    options: {
+      hostname: string,
+      port: number
+    },
+    timout = 10000
+): Promise<void> {
+  const { hostname, port } = options
+  const isConnected = await check(hostname, port)
+  if (isConnected) {
+    return
+  }
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  return await waitUntilConnected(options, timout - 250)
+}
+
 async function simplifiedFirefoxExample () {
   async function connect(): Promise<Deno.Conn> {
     const conn = await Deno.connect({
@@ -250,7 +281,11 @@ export class FirefoxClient {
       stderr: "piped",
       stdout: "piped"
     })
-    await new Promise((resolve) => setTimeout(resolve, 5000)); // TODO(edward) Replace this by checking is the port is taken as it's a faster and better check. This si what foxdriver does
+    // Wait until the port is occupied
+    await waitUntilConnected({
+      hostname: buildOptions.hostname,
+      port: buildOptions.debuggerServerPort
+    })
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
