@@ -19,7 +19,7 @@ import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.
 const UNSOLICITED_EVENTS = [
   'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
   'propertyChange', 'newMutations', 'appOpen', 'appClose', 'appInstall', 'appUninstall',
-  'frameUpdate', 'tabListChanged'
+  'frameUpdate', 'tabListChanged','consoleAPICall'
 ]
 
 interface Message {
@@ -71,7 +71,9 @@ async function waitUntilConnected(
       port: number
     }
 ): Promise<void> {
-  async function check (hostname: string, port: number) {
+  let iterations = 0
+  let maxIterations = 1000000
+  async function tryConnect (hostname: string, port: number) {
     try {
       const conn = await Deno.connect({
         port,
@@ -82,6 +84,7 @@ async function waitUntilConnected(
       return true;
     } catch (error) {
       if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
+        iterations++
         console.log('Conn rfused')
         return false
       }
@@ -89,10 +92,13 @@ async function waitUntilConnected(
     }
   }
   const { hostname, port } = options
-  const isConnected = await check(hostname, port)
-  if (isConnected) {
+  const canConnect = await tryConnect(hostname, port)
+  if (canConnect) {
     await new Promise((resolve) => setTimeout(resolve,  2000))
     return
+  }
+  if (iterations === maxIterations) { // then there really is a problem and an error was thrown waaayyy too many times
+    throw new Error(`Connection refused for hostname=${hostname} port=${port}`)
   }
   await new Promise((resolve) => setTimeout(resolve, 250))
   return await waitUntilConnected(options)
@@ -392,8 +398,13 @@ export class FirefoxClient {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false
         }
-        if (packet.type === "pageError" && packet.pageError.warning == true) {
-          return false
+        if (packet.type === "pageError") {
+          if (packet.pageError.warning == true) {
+            return false
+          }
+          if (packet.pageError.error == true) { // TODO Should we provide a method to get everything in the console, we'll need to remove this because this is the kind of packet for the errors in the dev console
+            return false
+          }
         }
         if (packet.type === "tabNavigated" && packet.state === "start") {
           return false
