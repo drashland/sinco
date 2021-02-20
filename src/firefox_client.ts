@@ -658,18 +658,15 @@ export class FirefoxClient {
    * @returns The tab, holding the actor we use every other request
    */
   public async listTabs (): Promise<Tab> {
+    console.log('getting tabs')
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
-    if (!listTabsResponse.tabs.length) {
-      // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
+    let tabs = listTabsResponse.tabs
+    while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
+      tabs = listTabsResponse.tabs
     }
-    if (!listTabsResponse.tabs.length) {
-      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
-    }
-    if (!listTabsResponse.tabs.length) {
-      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
-    }
+    console.log('got tabs')
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
