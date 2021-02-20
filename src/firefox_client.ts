@@ -72,7 +72,7 @@ async function waitUntilConnected(
     }
 ): Promise<void> {
   let iterations = 0
-  let maxIterations = 1000000
+  let maxIterations = 100
   async function tryConnect (hostname: string, port: number) {
     try {
       const conn = await Deno.connect({
@@ -193,6 +193,15 @@ export interface BuildOptions {
   defaultUrl?: string // The default url the browser will open when ran
 }
 
+interface Configs {
+  conn: Deno.Conn,
+  iter: AsyncIterableIterator<Uint8Array>,
+  browser_process: Deno.Process,
+  actor: string,
+  tab: Tab | null,
+  devProfileDirPath: string,
+}
+
 /**
  * @example
  *
@@ -208,7 +217,7 @@ export class FirefoxClient {
 
   private readonly actor: string
 
-  private readonly tab: Tab | null = null
+  private readonly  tab: Tab | null = null
 
   private current_actor_in_progress:  string | null = null
 
@@ -226,13 +235,14 @@ export class FirefoxClient {
    * @param browserProcess - The running sub process for the browser
    * @param actor - The actor used to make requests eg the tab name we run actions on
    */
-  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string, tab: Tab | null = null, devProfileDirPath: string) {
-    this.conn = conn
-    this.iter = iter
-    this.browser_process = browserProcess
-    this.actor = actor
-    this.tab = tab
-    this.dev_profile_dir_path = devProfileDirPath
+  constructor(configs: Configs) {
+    this.conn = configs.conn
+    this.iter = configs.iter
+    this.browser_process = configs.browser_process
+    this.actor = configs.actor
+    this.tab = configs.tab ?? null
+    this.dev_profile_dir_path = configs.devProfileDirPath
+
   }
 
   /**
@@ -250,7 +260,7 @@ export class FirefoxClient {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
       if (Deno.build.os === "windows") {
-        buildOptions.hostname = "localhost"
+        buildOptions.hostname = "127.0.0.1"
       } else {
         buildOptions.hostname = "0.0.0.0"
       }
@@ -304,7 +314,7 @@ export class FirefoxClient {
       break
     }
     // Get actor (tab) that we use to interact with
-    const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root", null, tmpDirName) // "root" required as the "to" when we send a request to get tabs
+    const TempFirefoxClient = new FirefoxClient({conn, iter, browser_process: browserProcess ,actor: "root", tab: null, devProfileDirPath: tmpDirName}) // "root" required as the "to" when we send a request to get tabs
     const tab = await TempFirefoxClient.listTabs()
     const actor = tab.actor
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
@@ -321,11 +331,10 @@ export class FirefoxClient {
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
     await TempFirefoxClient.request("attach", {}, tab.actor)
     //await iter.next()
-
     // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
     // Return the client :)
-    return new FirefoxClient(conn, iter, browserProcess, actor, tab,tmpDirName)
+    return new FirefoxClient({conn, iter, browser_process: browserProcess, actor, tab, devProfileDirPath: tmpDirName})
   }
 
   public async assertSee(text: string): Promise<void> {
