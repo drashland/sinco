@@ -693,9 +693,21 @@ export class FirefoxClient {
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs
+    let i = 0
     while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
       tabs = listTabsResponse.tabs
+      i++
+      if (i > 10) {
+        break
+      }
+    }
+    if (i > 10) {
+      console.log("\n\n\n")
+      console.log("SOMETHING is seriously wrong here, se below")
+      for await (let line of readLines(this.browser_process.stdout as Deno.Reader)) {
+        console.log(line)
+      }
     }
     console.log('got tabs')
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
