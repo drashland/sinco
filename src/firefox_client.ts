@@ -19,7 +19,7 @@ import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.
 const UNSOLICITED_EVENTS = [
   'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
   'propertyChange', 'newMutations', 'appOpen', 'appClose', 'appInstall', 'appUninstall',
-  'frameUpdate', 'tabListChanged'
+  'frameUpdate', 'tabListChanged','consoleAPICall'
 ]
 
 interface Message {
@@ -63,6 +63,45 @@ interface Tab {
 
 interface ListTabsResponse {
   tabs: Array<Tab>
+}
+
+async function waitUntilConnected(
+    options: {
+      hostname: string,
+      port: number
+    }
+): Promise<void> {
+  let iterations = 0
+  let maxIterations = 100
+  async function tryConnect (hostname: string, port: number) {
+    try {
+      const conn = await Deno.connect({
+        port,
+        hostname,
+      });
+      conn.close();
+      // This means we can connect so its ready
+      return true;
+    } catch (error) {
+      if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
+        iterations++
+        console.log('Conn rfused')
+        return false
+      }
+      throw new Error(`Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`);
+    }
+  }
+  const { hostname, port } = options
+  const canConnect = await tryConnect(hostname, port)
+  if (canConnect) {
+    await new Promise((resolve) => setTimeout(resolve,  2000))
+    return
+  }
+  if (iterations === maxIterations) { // then there really is a problem and an error was thrown waaayyy too many times
+    throw new Error(`Connection refused for hostname=${hostname} port=${port}`)
+  }
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  return await waitUntilConnected(options)
 }
 
 async function simplifiedFirefoxExample () {
@@ -154,6 +193,15 @@ export interface BuildOptions {
   defaultUrl?: string // The default url the browser will open when ran
 }
 
+interface Configs {
+  conn: Deno.Conn,
+  iter: AsyncIterableIterator<Uint8Array>,
+  browser_process: Deno.Process,
+  actor: string,
+  tab: Tab | null,
+  devProfileDirPath: string,
+}
+
 /**
  * @example
  *
@@ -187,13 +235,14 @@ export class FirefoxClient {
    * @param browserProcess - The running sub process for the browser
    * @param actor - The actor used to make requests eg the tab name we run actions on
    */
-  constructor(conn: Deno.Conn, iter: AsyncIterableIterator<Uint8Array>, browserProcess: Deno.Process, actor: string, tab: Tab | null = null, devProfileDirPath: string) {
-    this.conn = conn
-    this.iter = iter
-    this.browser_process = browserProcess
-    this.actor = actor
-    this.tab = tab
-    this.dev_profile_dir_path = devProfileDirPath
+  constructor(configs: Configs) {
+    this.conn = configs.conn
+    this.iter = configs.iter
+    this.browser_process = configs.browser_process
+    this.actor = configs.actor
+    this.tab = configs.tab ?? null
+    this.dev_profile_dir_path = configs.devProfileDirPath
+
   }
 
   /**
@@ -210,7 +259,11 @@ export class FirefoxClient {
   public static async build (buildOptions: BuildOptions = {}):  Promise<FirefoxClient> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
-      buildOptions.hostname = "127.0.0.1"
+      if (Deno.build.os === "windows") {
+        buildOptions.hostname = "127.0.0.1"
+      } else {
+        buildOptions.hostname = "0.0.0.0"
+      }
     }
     if (!buildOptions.debuggerServerPort) {
       buildOptions.debuggerServerPort = 9293
@@ -239,6 +292,8 @@ export class FirefoxClient {
       "--headless", // todo :: only needs 1ddash for windows?
       buildOptions.defaultUrl
     ]
+    console.log('run args:')
+    console.log([firefoxPath, ...args])
     // Create the sub process to start the browser
     console.log("Cmd:")
     console.log([firefoxPath, ...args])
@@ -247,7 +302,11 @@ export class FirefoxClient {
       stderr: "piped",
       stdout: "piped"
     })
-    await new Promise((resolve) => setTimeout(resolve, 3000)); // TODO(edward) Replace this by checking is the port is taken as it's a faster and better check. This si what foxdriver does
+    // Wait until the port is occupied
+    await waitUntilConnected({
+      hostname: buildOptions.hostname,
+      port: buildOptions.debuggerServerPort
+    })
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
@@ -258,7 +317,7 @@ export class FirefoxClient {
       break
     }
     // Get actor (tab) that we use to interact with
-    const TempFirefoxClient = new FirefoxClient(conn, iter, browserProcess,"root", null, tmpDirName) // "root" required as the "to" when we send a request to get tabs
+    const TempFirefoxClient = new FirefoxClient({conn, iter, browser_process: browserProcess ,actor: "root", tab: null, devProfileDirPath: tmpDirName}) // "root" required as the "to" when we send a request to get tabs
     const tab = await TempFirefoxClient.listTabs()
     const actor = tab.actor
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
@@ -275,11 +334,10 @@ export class FirefoxClient {
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
     await TempFirefoxClient.request("attach", {}, tab.actor)
     //await iter.next()
-
     // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
     // Return the client :)
-    return new FirefoxClient(conn, iter, browserProcess, actor, tab,tmpDirName)
+    return new FirefoxClient({conn, iter, browser_process: browserProcess, actor, tab, devProfileDirPath: tmpDirName})
   }
 
   public async assertSee(text: string): Promise<void> {
@@ -329,18 +387,36 @@ export class FirefoxClient {
           .substring(i + 1) // strips the `123:` from start  of message
           .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
       console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
-      const packets = JSON.parse(decodedChunkAsValidJSONString) as any[]
+
+      //
+      function tryParse(rawMessage: string): any[] {
+        try {
+          const json = JSON.parse(rawMessage)
+          return json
+        } catch (err) { // Not valid json, eg last packet issnt full, so we'll go through removing each char from the end of the string until we can parse it
+          // eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
+          const str = rawMessage
+              .slice(0, -2)
+              + "]" // add back
+          return tryParse(str)
+        }
+      }
+      const packets = tryParse(decodedChunkAsValidJSONString)
+      //
+
       console.log('all packets:')
       console.log(packets)
       const validPackets = packets.filter(packet => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false
         }
-        if (packet.type === "pageError" && packet.pageError.warning == true) {
-          return false
-        }
-        if (packet.type === "pageError" && packet.pageError.error == true){ // TDODO Should we wish to provide an api method to get console logs, we're going to have to remove this and handle it another way, for example a user may want to get any errors in the console of their page - this is what is packet contains
-          return false
+        if (packet.type === "pageError") {
+          if (packet.pageError.warning == true) {
+            return false
+          }
+          if (packet.pageError.error == true) { // TODO Should we provide a method to get everything in the console, we'll need to remove this because this is the kind of packet for the errors in the dev console
+            return false
+          }
         }
         if (packet.type === "tabNavigated" && packet.state === "start") {
           return false
@@ -452,6 +528,8 @@ export class FirefoxClient {
     const iterator = this.readPackets()
     const n = await iterator.next()
     const value = n.value
+    console.log('got the nnext packet, here it is:')
+    console.log(value)
     if (value.from !== actor) {
       return await this.waitForSpecificPacket(actor, params)
     }
@@ -532,6 +610,7 @@ export class FirefoxClient {
    * @returns TODO(edward): Adjust this when return type is understood
    */
   public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
+    console.log('At  top ofeval page func, requesting now...')
     const text = typeof pageCommand ===  "string" ? `(function () { return ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
     // Evaluating js requires two things:
     // 1. sENDING the below type, getting a request id from themsg
@@ -543,9 +622,12 @@ export class FirefoxClient {
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
+    console.log('just got the result id, now waiting for a specific packet from ' +  this.tab!.consoleActor + ' with  result id  of ' + resultID)
     const evalResult = await this.waitForSpecificPacket(this.tab!.consoleActor, {
       resultID
     })
+    console.log('got eval result, here it is:')
+    console.log(evalResult)
     const output = evalResult.result
     return output
   }
@@ -579,12 +661,15 @@ export class FirefoxClient {
    * @returns The tab, holding the actor we use every other request
    */
   public async listTabs (): Promise<Tab> {
+    console.log('getting tabs')
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
-    if (!listTabsResponse.tabs) {
-      // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
+    let tabs = listTabsResponse.tabs
+    while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
+      tabs = listTabsResponse.tabs
     }
+    console.log('got tabs')
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
