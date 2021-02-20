@@ -1,12 +1,13 @@
 version: '3'
 
 services:
-  chrome:
-    container_name: chrome_driver
+  drivers:
+    container_name: drivers
     build:
       context: .
-      dockerfile: chrome.dockerfile
+      dockerfile: drivers.dockerfile
     volumes:
+      - /dev/shm:/dev/shm
       - ../../../src:/var/www/docker-test/src
       - ../../../tests:/var/www/docker-test/tests
       - ../../../deps.ts:/var/www/docker-test/deps.ts
