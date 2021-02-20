@@ -217,7 +217,7 @@ export class FirefoxClient {
 
   private readonly actor: string
 
-  private readonly  tab: Tab | null = null
+  private readonly tab: Tab | null = null
 
   private current_actor_in_progress:  string | null = null
 
@@ -280,6 +280,7 @@ export class FirefoxClient {
         'user_pref("devtools.debugger.remote-enabled", true);' +  "\n" +
         `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);` // Don't open that extra tab
     ))
+    console.log(`Dev profile path: ${devProfilePath}`)
     // Get the path to the users firefox binary
     const firefoxPath = this.getFirefoxPath()
     // Create the arguments we will use when spawning the headless browser
@@ -294,6 +295,8 @@ export class FirefoxClient {
     console.log('run args:')
     console.log([firefoxPath, ...args])
     // Create the sub process to start the browser
+    console.log("Cmd:")
+    console.log([firefoxPath, ...args])
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
