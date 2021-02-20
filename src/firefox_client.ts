@@ -661,6 +661,18 @@ export class FirefoxClient {
     } catch (err) {
       // ... do nothing
     }
+    if (Deno.build.os === "windows") {
+      // Oddly, running `p.close()` doesn't actually close the process on windows, and there can still be about 4-6 processes running after a single tests.
+      // As you can tell, many of these will take a too much many and the systme will fail. This is what we do here
+      // This means that it will also close the firefox client a user may be using
+      const p = Deno.run({
+        cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
+        stdout: "null",
+        stderr: "null"
+      })
+      await p.status()
+      p.close()
+    }
     if (errMsg) {
       throw new Error(errMsg)
     }
