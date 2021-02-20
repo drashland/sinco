@@ -202,6 +202,12 @@ interface Configs {
   devProfileDirPath: string,
 }
 
+export const defaultBuildOptions = {
+  hostname: Deno.build.os === "windows" ? "127.0.0.1" : "0.0.0.0",
+  debuggerServerPort: 9293,
+  defaultUrl: "https://developer.mozilla.org/"
+}
+
 /**
  * @example
  *
@@ -259,17 +265,13 @@ export class FirefoxClient {
   public static async build (buildOptions: BuildOptions = {}):  Promise<FirefoxClient> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
-      if (Deno.build.os === "windows") {
-        buildOptions.hostname = "127.0.0.1"
-      } else {
-        buildOptions.hostname = "0.0.0.0"
-      }
+      buildOptions.hostname = defaultBuildOptions.hostname
     }
     if (!buildOptions.debuggerServerPort) {
-      buildOptions.debuggerServerPort = 9293
+      buildOptions.debuggerServerPort = defaultBuildOptions.debuggerServerPort
     }
     if (!buildOptions.defaultUrl) {
-      buildOptions.defaultUrl = "https://developer.mozilla.org/"
+      buildOptions.defaultUrl = defaultBuildOptions.defaultUrl
     }
     // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
     const tmpDirName = await Deno.makeTempDir()
@@ -368,10 +370,13 @@ export class FirefoxClient {
   public async goTo(url: string): Promise<void> {
     await this.request("navigateTo", { url })
     console.log("Going to wait until pagehas  loaded")
-    await this.waitForSpecificPacket(this.actor, {
+    const result = await this.waitForSpecificPacket(this.actor, {
       type: "tabNavigated",
       state: "stop"
     })
+    if (result.title === "Server Not Found") {
+      await this.done(`net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`)
+    }
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
   }
 
@@ -583,7 +588,10 @@ export class FirefoxClient {
    */
   public async getInputValue(selector: string): Promise<string> {
     const command = `document.querySelector('${selector}').value`;
-    const result = await  this.evaluatePage(command)
+    const result = await this.evaluatePage(command)
+    if (typeof result === "object" && "type" in result) {
+      return result.type
+    }
     return result
   }
 
@@ -632,6 +640,10 @@ export class FirefoxClient {
     })
     console.log('got eval result, here it is:')
     console.log(evalResult)
+    if ("exception" in evalResult) {
+      const preview = evalResult.exception.preview
+      await this.done(`${preview.kind}: ${preview.message}`)
+    }
     const output = evalResult.result
     return output
   }

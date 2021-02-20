@@ -21,7 +21,7 @@ jobs:
         run: |
           cd tests/integration/docker_test
           docker-compose up -d
-          docker exec drivers deno test -A --config tsconfig.json tests/integration
+          docker exec drivers "deno test -A --config tsconfig.json tests/integration && deno test -A tests/unit"
 
   tests:
     strategy:

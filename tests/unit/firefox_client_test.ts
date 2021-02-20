@@ -1,37 +1,31 @@
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
-import {ChromeClient} from "../../mod.ts";
+import {FirefoxClient} from "../../mod.ts";
+import { defaultBuildOptions } from "../../src/firefox_client.ts";
 
-Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
+Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
-    Rhum.testCase("Will start chrome headless as a subprocess", async () => {
-      const Sinco = await ChromeClient.build();
-      const res = await fetch("http://localhost:9292/json/list");
-      const json = await res.json();
-      // Our ws client should be able to connect if the browser is running
-      const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
-      const promise = deferred();
-      client.onopen = function () {
-        client.close();
-      };
-      client.onclose = function () {
-        promise.resolve();
-      };
-      await promise;
-
+    Rhum.testCase("Will start firefox headless as a subprocess", async () => {
+      const Sinco = await FirefoxClient.build();
+      // If it hasn't, connecting will throw an error
+      const conn = await Deno.connect({
+        hostname: defaultBuildOptions.hostname,
+        port: defaultBuildOptions.debuggerServerPort
+      })
+      conn.close()
       await Sinco.done();
     });
   });
 
   Rhum.testSuite("assertUrlIs()", () => {
     Rhum.testCase("Works when an assertion is true", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com/features");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
       await Sinco.done();
     });
     Rhum.testCase("Will fail when an assertion fails", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       let originalErrMsg = "";
       try {
@@ -57,7 +51,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
 
   Rhum.testSuite("goto()", () => {
     Rhum.testCase("Successfully navigates when url is correct", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com/features/schedule");
       await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
       await Sinco.done();
@@ -65,7 +59,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "Throws an error when there was an error navving to the page",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         let msg = "";
         try {
           await Sinco.goTo(
@@ -87,7 +81,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "Assertion should work when text is present on page",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com/features");
         await Sinco.assertSee("Chrome Platform Status");
         await Sinco.done();
@@ -96,7 +90,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "Assertion should NOT work when text is NOT present on page",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         let errorMsg = "";
         try {
@@ -117,17 +111,17 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
 
   Rhum.testSuite("click()", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange();
+      await Sinco.waitForPageChange("https://chromestatus.com/features/schedule");
       await Sinco.assertSee("Release timeline");
       await Sinco.done();
     });
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -143,14 +137,14 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            "DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: \"document.querySelector('q;q').click()\"",
+            "DOMException: Document.querySelector: 'q;q' is not a valid selector",
         });
       },
     );
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -166,7 +160,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+            `Error: document.querySelector(...) is null`,
         });
       },
     );
@@ -174,7 +168,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
 
   Rhum.testSuite("evaluatePage()", () => {
     Rhum.testCase("It should evaluate function on current frame", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://drash.land");
       const pageTitle = await Sinco.evaluatePage(() => {
         // deno-lint-ignore no-undef
@@ -184,7 +178,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       Rhum.asserts.assertEquals(pageTitle, "Drash Land");
     });
     Rhum.testCase("It should evaluate string on current frame", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       const parentConstructor = await Sinco.evaluatePage(`1 + 2`);
       await Sinco.done();
@@ -196,7 +190,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "It should get the value for the given input element",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         await Sinco.type('input[placeholder="Filter"]', "hello world");
         const val = await Sinco.getInputValue('input[placeholder="Filter"]');
@@ -207,7 +201,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -223,14 +217,14 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value"`,
+            `DOMException: Document.querySelector: 'q;q' is not a valid selector`,
         });
       },
     );
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -246,14 +240,14 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
+            `Error: document.querySelector(...) is null`,
         });
       },
     );
     Rhum.testCase(
       "Should return undefined when element is not an input element",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const val = await Sinco.getInputValue('a[href="/features/schedule"]');
         await Sinco.done();
@@ -264,7 +258,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
 
   Rhum.testSuite("type()", () => {
     Rhum.testCase("It should set the value of the element", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.type('input[placeholder="Filter"]', "hello world");
       const val = await Sinco.getInputValue('input[placeholder="Filter"]');
@@ -274,7 +268,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "It should throw an error when there is a syntax error",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -290,14 +284,14 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `DOMException: Failed to execute 'querySelector' on 'Document': 'q;q' is not a valid selector.\n    at <anonymous>:1:10: "document.querySelector('q;q').value = "hello""`,
+            `DOMException: Document.querySelector: 'q;q' is not a valid selector`,
         });
       },
     );
     Rhum.testCase(
       "It should throw an error when no element exists for the selector",
       async () => {
-        const Sinco = await ChromeClient.build();
+        const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
         const error = {
           errored: false,
@@ -313,7 +307,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
+            `Error: document.querySelector(...) is null`,
         });
       },
     );
@@ -330,26 +324,26 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
 
   Rhum.testSuite("waitForPageChange()", () => {
     Rhum.testCase("Waits for a page to change before continuing", async () => {
-      const Sinco = await ChromeClient.build();
+      const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange();
+      await Sinco.waitForPageChange("https://chromestatus.com/features/schedule");
       await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
       await Sinco.done();
     });
   });
 
-  Rhum.testSuite("waitForAnchorChange()", () => {
-    Rhum.testCase("Waits for any anchor changes after an action", async () => {
-      const Sinco = await ChromeClient.build();
-      await Sinco.goTo("https://chromestatus.com");
-      await Sinco.type('input[placeholder="Filter"]', "Gday");
-      await Sinco.waitForAnchorChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
-      await Sinco.done();
-    });
-  });
+  // Rhum.testSuite("waitForAnchorChange()", () => {
+  //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
+  //     const Sinco = await FirefoxClient.build();
+  //     await Sinco.goTo("https://chromestatus.com");
+  //     await Sinco.type('input[placeholder="Filter"]', "Gday");
+  //     await Sinco.waitForAnchorChange();
+  //     await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
+  //     await Sinco.done();
+  //   });
+  // });
 });
 
 Rhum.run();
