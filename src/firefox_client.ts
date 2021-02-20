@@ -375,6 +375,10 @@ export class FirefoxClient {
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
   }
 
+  public async waitForAnchorChange(): Promise<void> {
+
+  }
+
   // FIXME :: There a problem with this method, of coursee we get  many packets  in one message, but it sometimes seems that  the message  doesnt contain the packet we want, but it will still return on that iteration.. what  we need to do is check if it matches an expectation maybe? if not then continue to getting the next message
   async *readPackets(): AsyncIterableIterator<object> {
     const decoder = new TextDecoder();
