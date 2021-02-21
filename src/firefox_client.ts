@@ -235,6 +235,8 @@ export class FirefoxClient {
 
   private readonly dev_profile_dir_path: string
 
+  private partial_message: string = ""
+
   /**
    * @param conn - The established connection object
    * @param iter - An iterator of `conn`
@@ -389,45 +391,36 @@ export class FirefoxClient {
     const decoder = new TextDecoder();
     //const buffer = new Deno.Buffer();
     let packetLength = null;
+    let partial = ""
     for await (const chunk of Deno.iter(this.conn)) {
       const decodedChunk = decoder.decode(chunk)
-      const i = decodedChunk.indexOf(":")
-      const decodedChunkAsValidJSONString = "[" + decodedChunk
-          .substring(i + 1) // strips the `123:` from start  of message
-          .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
-      console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
-
+      console.log("Chunk we will be parsing:")
+      console.log(decodedChunk)
       //
-      function tryParse(rawMessage: string, reverse?: boolean): any[] {
+      const rawPackets = decodedChunk.split(/[0-9]{1,4}:/) // split and get rid of the ids so each ittem should be parsable json
+      // Turn the packets into json, if it fails then it means a packet is partial, so we save it
+      const json = rawPackets.map(obj => {
         try {
-          const json = JSON.parse(rawMessage)
-          return json
-        } catch (err) { // Not valid json, eg last packet issnt full, so we'll go through removing each char from the end of the string until we can parse it
-          if (reverse) {
-            const str = "[" + rawMessage
-                .slice(2, rawMessage.length)
-            return tryParse(str, true)
-          } else { // possible  eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
-            const str = rawMessage
-                    .slice(0, -2)
-                + "]" // add back
-            return tryParse(str)
-          }
+          return JSON.parse(obj)
+        } catch (err) {
+          console.log('A packet in the message isnt full, saving it: ' + obj)
+          partial += obj
         }
-      }
-
-
-      let packets: any[] = []
-      if (decodedChunkAsValidJSONString.indexOf("{") !== 1) { // invalid packet at start, eg decoded str is `[123, {...},...]`
-        packets = tryParse(decodedChunkAsValidJSONString, true)
-      } else {
-        packets = tryParse(decodedChunkAsValidJSONString, false)
+      }).filter(obj => obj !== undefined)
+      // Then try check if partial is full, if it is then add it to the packets (at start, because remember this packet still originally came first
+      try {
+        const j = JSON.parse(partial)
+        console.log('we found the last aprt to a partial, adding it to the start of the arr: ' + partial)
+        partial = ""
+        json.unshift(j)
+      } catch (err) {
+        // still a partial, do nothing
       }
       //
 
       console.log('all packets:')
-      console.log(packets)
-      const validPackets = packets.filter(packet => {
+      console.log(json)
+      const validPackets = json.filter(packet => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false
         }
@@ -447,20 +440,16 @@ export class FirefoxClient {
       if (validPackets.length === 0) {
         continue
       }
-      // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
-      if (validPackets.length > 1) {
-        validPackets.forEach((packet, i) => {
-          if (i !== 0) {
-            console.log('Going to push the below packet to the queue:')
-            console.log(packet)
-            this.incoming_message_queue.push(packet)
-          }
-        })
-      }
       console.log('packets from iterr:')
       console.log(validPackets)
+      // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
+      const packet = validPackets.shift()
+        validPackets.forEach((packet, i) => {
+          console.log('Going to push the below packet to the queue:')
+          console.log(packet)
+          this.incoming_message_queue.push(packet)
+        })
       console.log(`Got packet:`)
-      const packet = validPackets[0]
       console.log(packet)
       yield packet
 
