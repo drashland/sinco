@@ -410,12 +410,12 @@ export class ChromeClient {
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
    */
-  public async waitForAnchorChange(): Promise<void> {
-    const notificationPromise = this
-      .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
-    await notificationPromise;
-    delete this.notification_resolvables["Page.navigatedWithinDocument"];
-  }
+  // public async waitForAnchorChange(): Promise<void> {
+  //   const notificationPromise = this
+  //     .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
+  //   await notificationPromise;
+  //   delete this.notification_resolvables["Page.navigatedWithinDocument"];
+  // }
 
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////

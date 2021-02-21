@@ -340,16 +340,16 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     });
   });
 
-  Rhum.testSuite("waitForAnchorChange()", () => {
-    Rhum.testCase("Waits for any anchor changes after an action", async () => {
-      const Sinco = await ChromeClient.build();
-      await Sinco.goTo("https://chromestatus.com");
-      await Sinco.type('input[placeholder="Filter"]', "Gday");
-      await Sinco.waitForAnchorChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
-      await Sinco.done();
-    });
-  });
+  // Rhum.testSuite("waitForAnchorChange()", () => {
+  //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
+  //     const Sinco = await ChromeClient.build();
+  //     await Sinco.goTo("https://chromestatus.com");
+  //     await Sinco.type('input[placeholder="Filter"]', "Gday");
+  //     await Sinco.waitForAnchorChange();
+  //     await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
+  //     await Sinco.done();
+  //   });
+  // });
 });
 
 Rhum.run();
