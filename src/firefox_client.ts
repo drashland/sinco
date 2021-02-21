@@ -102,7 +102,6 @@ export interface BuildOptions {
 
 interface Configs {
   conn: Deno.Conn;
-  iter: AsyncIterableIterator<Uint8Array>;
   // deno-lint-ignore camelcase
   browser_process: Deno.Process;
   actor: string;
@@ -123,44 +122,59 @@ export const defaultBuildOptions = {
  *     await Firefox.<api_method>
  */
 export class FirefoxClient {
+  /**
+   * The connection to our headless browser
+   */
   private readonly conn: Deno.Conn;
 
-  private readonly iter: AsyncIterableIterator<Uint8Array>;
-
+  /**
+   * The browser process that is running the headless browser
+   */
   private readonly browser_process: Deno.Process;
 
+  /**
+   * Our main actor for the tab
+   */
   private readonly actor: string;
 
+  /**
+   * The tab for our browser
+   */
   private readonly tab: Tab | null = null;
 
-  private incoming: Uint8Array = new Uint8Array();
-
+  /**
+   * Holds messages that we need, but was sent along another useful packet in a message,
+   * so store it here to be returned next time we request a packet
+   */
   // deno-lint-ignore no-explicit-any Holds packets, and as they can be anything we use any here
   private incoming_message_queue: Record<string, any>[] = [];
 
+  /**
+   * The path to the dev profile for firefox
+   */
   private readonly dev_profile_dir_path: string;
 
   /**
-   * @param conn - The established connection object
-   * @param iter - An iterator of `conn`
-   * @param browserProcess - The running sub process for the browser
-   * @param actor - The actor used to make requests eg the tab name we run actions on
+   * @param configs - Used to provide an API that can communicate with the headless browser
    */
   constructor(configs: Configs) {
     this.conn = configs.conn;
-    this.iter = configs.iter;
     this.browser_process = configs.browser_process;
     this.actor = configs.actor;
     this.tab = configs.tab ?? null;
     this.dev_profile_dir_path = configs.devProfileDirPath;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
   /**
    * Entry point for creating a headless firefox browser.
    * Creates a dev profile to be used by Firefox, creates the headless browser and sets up the connection to
    *
    * @param buildOptions - Any extra options you wish to provide to customise how the headless browser sub process is ran
-   *   - hostname: Defaults to 0.0.0.0
+   *   - hostname: Defaults to 0.0.0.0 for macos/linux, 127.0.0.1 for windows
    *   - port: Defaults to 9293
    *   - url: Defaults to https://developer.mozilla.org/
    *
@@ -223,14 +237,12 @@ export class FirefoxClient {
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
-    const iter = Deno.iter(conn);
     for await (const line of Deno.iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
       break;
     }
     // Get actor (tab) that we use to interact with
     const TempFirefoxClient = new FirefoxClient({
       conn,
-      iter,
       browser_process: browserProcess,
       actor: "root",
       tab: null,
@@ -254,7 +266,6 @@ export class FirefoxClient {
     // Return the client :)
     return new FirefoxClient({
       conn,
-      iter,
       browser_process: browserProcess,
       actor,
       tab,
@@ -262,6 +273,11 @@ export class FirefoxClient {
     });
   }
 
+  /**
+   * Assert that you see certain text on the page
+   *
+   * @param text - The text you expect to see
+   */
   public async assertSee(text: string): Promise<void> {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
     const result = await this.evaluatePage(command) as boolean;
@@ -272,6 +288,11 @@ export class FirefoxClient {
     assertEquals(result, true);
   }
 
+  /**
+   * Assert that the url for the page you are on matches `url`
+   *
+   * @param url - The url to assert it equals the url of the page
+   */
   public async assertUrlIs(url: string): Promise<void> {
     const result = await this.evaluatePage(`window.location.href`) as string;
     // If we know the assertion will fail, close all connections
@@ -304,8 +325,149 @@ export class FirefoxClient {
   public async waitForAnchorChange(): Promise<void> {
   }
 
+  /**
+   * Click an element by  the sselector. This
+   * assumes that clicking will change the page
+   * you are on.
+   *
+   * @param selector - The element to click, eg `button#submit` or `a[href="/login"]`
+   */
+  public async click(selector: string): Promise<void> {
+    const command = `document.querySelector('${selector}').click()`;
+    await this.evaluatePage(command);
+  }
+
+  /**
+   * Wait for the page to change to a different page. Used for when clicking a button and that
+   * button sends the user to another page
+   *
+   * @param to - The url to wait for
+   */
+  public async waitForPageChange(to: string): Promise<void> {
+    await this.waitForSpecificPacket(this.actor, {
+      type: "tabNavigated",
+      "state": "stop",
+      url: to,
+    });
+  }
+
+  /**
+   * Get the value of an input element
+   *
+   * @param selector - The selector to use to get thee value from. Eg., `input[name="username"]`
+   *
+   * @returns The value for the input element
+   */
+  public async getInputValue(selector: string): Promise<string> {
+    const command = `document.querySelector('${selector}').value`;
+    const result = await this.evaluatePage(command);
+    if (typeof result === "object" && "type" in result) {
+      return result.type;
+    }
+    return result;
+  }
+
+  /**
+   * Set the value of `selector`
+   *
+   * @param selector - Used inside `.querySelector`
+   * @param value - The value to set the elements value to
+   */
+  public async type(selector: string, value: string): Promise<void> {
+    const command = `document.querySelector('${selector}').value = "${value}"`;
+    await this.evaluatePage(command);
+  }
+
+  /**
+   * Evaluate a script for the current context of the page.
+   * In short: Run JavaScript just like you would in the console.
+   *
+   * Internal message: This method requires "PageError" and "ConsoleAPI" listeners to be enabled.
+   *
+   * @param pageCommand - The string or function to evaluate against.
+   *
+   * @example
+   *
+   *     const title = await Firefox.evaluatePage(`document.title`)
+   *     const children = await Firefox.evaluatePage(() => document.body.children)
+   *
+   * @returns The result of the evaluation, could be a string, or a boolean etc
+   */
+  public async evaluatePage(
+    pageCommand: (() => unknown) | string,
+    // deno-lint-ignore no-explicit-any It could be any value we get from the console
+  ): Promise<any> {
+    console.log("At  top ofeval page func, requesting now...");
+    const text = typeof pageCommand === "string"
+      ? `(function () { return ${pageCommand} }).apply(window, [])`
+      : `(${pageCommand}).apply(window, [])`;
+    const { resultID } = await this.request("evaluateJSAsync", {
+      text,
+    }, this.tab!.consoleActor);
+    console.log(
+      "just got the result id, now waiting for a specific packet from " +
+        this.tab!.consoleActor + " with  result id  of " + resultID,
+    );
+    const evalResult = await this.waitForSpecificPacket(
+      this.tab!.consoleActor,
+      {
+        resultID,
+      },
+    );
+    console.log("got eval result, here it is:");
+    console.log(evalResult);
+    if ("exception" in evalResult) {
+      const preview = evalResult.exception.preview;
+      await this.done(`${preview.kind}: ${preview.message}`);
+    }
+    const output = evalResult.result;
+    return output;
+  }
+
+  /**
+   * Close all connections with the browser, and stop the sub process.
+   *
+   * @param errMsg - If supplied, will still close everything (cleanup) and throw an error with that message
+   */
+  public async done(errMsg?: string): Promise<void> {
+    try {
+      this.conn.close();
+      this.browser_process.stderr!.close();
+      this.browser_process.stdout!.close();
+      this.browser_process.close();
+      await Deno.remove(this.dev_profile_dir_path, { recursive: true });
+    } catch (err) {
+      // ... do nothing
+    }
+    if (Deno.build.os === "windows") {
+      // Oddly, running `p.close()` doesn't actually close the process on windows, and there can still be about 4-6 processes running after a single tests.
+      // As you can tell, many of these will take a too much many and the systme will fail. This is what we do here
+      // This means that it will also close the firefox client a user may be using
+      const p = Deno.run({
+        cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
+        stdout: "null",
+        stderr: "null",
+      });
+      await p.status();
+      p.close();
+    }
+    if (errMsg) {
+      throw new Error(errMsg);
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Our async iterator to handle reading packets from the connection,
+   * and parsing them into a usable format
+   *
+   * @returns An async iterator to get the next packet from
+   */
   // deno-lint-ignore no-explicit-any Packets can be anything
-  async *readPackets(): AsyncIterableIterator<Record<string, any>> {
+  private async *readPackets(): AsyncIterableIterator<Record<string, any>> {
     const decoder = new TextDecoder();
     let partial = "";
     for await (const chunk of Deno.iter(this.conn)) {
@@ -389,6 +551,15 @@ export class FirefoxClient {
     }
   }
 
+  /**
+   * Waits to get a single packet from the connection that
+   * matches the actor and params
+   *
+   * @param actor - The actor that the packet should be from
+   * @param params - A object that the packet should match (or at least contains all keys and values for)
+   *
+   * @returns The packet
+   */
   private async waitForSpecificPacket(
     actor: string,
     params: Record<string, number | string>,
@@ -430,131 +601,6 @@ export class FirefoxClient {
   }
 
   /**
-   * Click an element by  the sselector. This
-   * assumes that clicking will change the page
-   * you are on.
-   *
-   * @param selector - The element to click, eg `button#submit` or `a[href="/login"]`
-   */
-  public async click(selector: string): Promise<void> {
-    const command = `document.querySelector('${selector}').click()`;
-    await this.evaluatePage(command);
-  }
-
-  public async waitForPageChange(to: string): Promise<void> {
-    await this.waitForSpecificPacket(this.actor, {
-      type: "tabNavigated",
-      "state": "stop",
-      url: to,
-    });
-  }
-
-  /**
-   * Get the value of an input element
-   *
-   * @param selector - The selector to use to get thee value from. Eg., `input[name="username"]`
-   *
-   * @returns The value for the input element
-   */
-  public async getInputValue(selector: string): Promise<string> {
-    const command = `document.querySelector('${selector}').value`;
-    const result = await this.evaluatePage(command);
-    if (typeof result === "object" && "type" in result) {
-      return result.type;
-    }
-    return result;
-  }
-
-  /**
-   * Set the value of `selector`
-   *
-   * @param selector - Used inside `.querySelector`
-   * @param value - The value to set the elements value to
-   */
-  public async type(selector: string, value: string): Promise<void> {
-    const command = `document.querySelector('${selector}').value = "${value}"`;
-    await this.evaluatePage(command);
-  }
-
-  /**
-   * Evaluate a script for the current context of the page.
-   * In short: Run JavaScript just like you would in the console.
-   *
-   * Internal message: This method requires "PageError" and "ConsoleAPI" listeners to be enabled.
-   *
-   * @param pageCommand - The string or function to evaluate against.
-   *
-   * @example
-   *
-   *     const title = await Firefox.evaluatePage(`document.title`)
-   *     const children = await Firefox.evaluatePage(() => document.body.children)
-   *
-   * @returns TODO(edward): Adjust this when return type is understood
-   */
-  public async evaluatePage(
-    pageCommand: (() => unknown) | string,
-    // deno-lint-ignore no-explicit-any It could be any value we get from the console
-  ): Promise<any> {
-    console.log("At  top ofeval page func, requesting now...");
-    const text = typeof pageCommand === "string"
-      ? `(function () { return ${pageCommand} }).apply(window, [])`
-      : `(${pageCommand}).apply(window, [])`;
-    const { resultID } = await this.request("evaluateJSAsync", {
-      text,
-    }, this.tab!.consoleActor);
-    console.log(
-      "just got the result id, now waiting for a specific packet from " +
-        this.tab!.consoleActor + " with  result id  of " + resultID,
-    );
-    const evalResult = await this.waitForSpecificPacket(
-      this.tab!.consoleActor,
-      {
-        resultID,
-      },
-    );
-    console.log("got eval result, here it is:");
-    console.log(evalResult);
-    if ("exception" in evalResult) {
-      const preview = evalResult.exception.preview;
-      await this.done(`${preview.kind}: ${preview.message}`);
-    }
-    const output = evalResult.result;
-    return output;
-  }
-
-  /**
-   * Close all connections with the browser, and stop the sub process
-   */
-  public async done(errMsg?: string): Promise<void> {
-    try {
-      this.conn.close();
-      this.browser_process.stderr!.close();
-      this.browser_process.stdout!.close();
-      this.browser_process.close();
-      await Deno.remove(this.dev_profile_dir_path, { recursive: true });
-    } catch (err) {
-      // ... do nothing
-    }
-    if (Deno.build.os === "windows") {
-      // Oddly, running `p.close()` doesn't actually close the process on windows, and there can still be about 4-6 processes running after a single tests.
-      // As you can tell, many of these will take a too much many and the systme will fail. This is what we do here
-      // This means that it will also close the firefox client a user may be using
-      const p = Deno.run({
-        cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
-        stdout: "null",
-        stderr: "null",
-      });
-      await p.status();
-      p.close();
-    }
-    if (errMsg) {
-      throw new Error(errMsg);
-    }
-  }
-
-  /**
-   * NOT FOR PUBLIC USE.
-   *
    * Get the tab object that opened up in the headless browser,
    * that we will use to evaluate against
    *
@@ -562,7 +608,7 @@ export class FirefoxClient {
    *
    * @returns The tab, holding the actor we use every other request
    */
-  public async listTabs(): Promise<Tab> {
+  private async listTabs(): Promise<Tab> {
     console.log("getting tabs");
     let listTabsResponse =
       (await this.request("listTabs", {}, "root")) as ListTabsResponse;
@@ -597,9 +643,7 @@ export class FirefoxClient {
    * @param actor - As opposed to using the actor for the tab, you can override it with an actor of your choice. This is mainly here so we can use "root" as the actor when listing tabs (see `listTabs`)
    *
    * @returns The response of the request.
-   * An object containing:
-   *   - id: Unsure what this corresponds to
-   *   - message: This is a parsed JSON response that was assigned to th id, thus the response from thee request
+   * An object containing the message: This is a parsed JSON response that was assigned to th id, thus the response from thee request
    */
   private async request(
     type: string,
