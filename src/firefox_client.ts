@@ -418,7 +418,7 @@ export class FirefoxClient {
 
 
       let packets: any[] = []
-      if (decodedChunkAsValidJSONString.indexOf("{") !== 1) { // invalid packet at start
+      if (decodedChunkAsValidJSONString.indexOf("{") !== 1) { // invalid packet at start, eg decoded str is `[123, {...},...]`
         packets = tryParse(decodedChunkAsValidJSONString, true)
       } else {
         packets = tryParse(decodedChunkAsValidJSONString, false)
