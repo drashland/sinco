@@ -235,6 +235,8 @@ export class FirefoxClient {
 
   private readonly dev_profile_dir_path: string
 
+  private partial_message: string = ""
+
   /**
    * @param conn - The established connection object
    * @param iter - An iterator of `conn`
@@ -389,33 +391,53 @@ export class FirefoxClient {
     const decoder = new TextDecoder();
     //const buffer = new Deno.Buffer();
     let packetLength = null;
+    let partial = ""
     for await (const chunk of Deno.iter(this.conn)) {
       const decodedChunk = decoder.decode(chunk)
-      const i = decodedChunk.indexOf(":")
-      const decodedChunkAsValidJSONString = "[" + decodedChunk
-          .substring(i + 1) // strips the `123:` from start  of message
-          .replace(/}[0-9]{1,4}:{/g, "},{") + "]" // strips thee rest, turning this in a somewhat valid json str
-      console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
-
+      console.log("Chunk we will be parsing:")
+      console.log(decodedChunk)
       //
-      function tryParse(rawMessage: string): any[] {
+      const rawPackets = decodedChunk
+          .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
+          .filter(packet => packet !== "")
+          .map((msg, i) => {
+            // We want to re add the {, but in the instance `message` is `d":4}125:{...}`, we should add it to the first packet because its the last aprt of a partial, so if we do, then we can't combine them together
+            if (i === 0) {
+              // We'll try parse it, if we cant then we know its a partial, so dont add the bracket
+              try {
+                JSON.parse("{" + msg)
+                return `{${msg}`
+              } catch (err) {
+                return msg
+              }
+            } else {
+              return "{" + msg
+            }
+          }) // add back the `{` that we removed above, so we can still easily parse it
+      // Turn the packets into json, if it fails then it means a packet is partial, so we save it
+     console.log(rawPackets)
+      const json = rawPackets.map(obj => {
         try {
-          const json = JSON.parse(rawMessage)
-          return json
-        } catch (err) { // Not valid json, eg last packet issnt full, so we'll go through removing each char from the end of the string until we can parse it
-          // eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
-          const str = rawMessage
-              .slice(0, -2)
-              + "]" // add back
-          return tryParse(str)
+          return JSON.parse(obj)
+        } catch (err) {
+          console.log('A packet in the message isnt full, saving it: ' + obj)
+          partial += obj
         }
+      }).filter(obj => obj !== undefined)
+      // Then try check if partial is full, if it is then add it to the packets (at start, because remember this packet still originally came first
+      try {
+        const j = JSON.parse(partial)
+        console.log('we found the last aprt to a partial, adding it to the start of the arr: ' + partial)
+        partial = ""
+        json.unshift(j)
+      } catch (err) {
+        // still a partial, do nothing
       }
-      const packets = tryParse(decodedChunkAsValidJSONString)
       //
 
       console.log('all packets:')
-      console.log(packets)
-      const validPackets = packets.filter(packet => {
+      console.log(json)
+      const validPackets = json.filter(packet => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false
         }
@@ -435,20 +457,16 @@ export class FirefoxClient {
       if (validPackets.length === 0) {
         continue
       }
-      // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
-      if (validPackets.length > 1) {
-        validPackets.forEach((packet, i) => {
-          if (i !== 0) {
-            console.log('Going to push the below packet to the queue:')
-            console.log(packet)
-            this.incoming_message_queue.push(packet)
-          }
-        })
-      }
       console.log('packets from iterr:')
       console.log(validPackets)
+      // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
+      const packet = validPackets.shift()
+        validPackets.forEach((packet, i) => {
+          console.log('Going to push the below packet to the queue:')
+          console.log(packet)
+          this.incoming_message_queue.push(packet)
+        })
       console.log(`Got packet:`)
-      const packet = validPackets[0]
       console.log(packet)
       yield packet
 
@@ -693,9 +711,21 @@ export class FirefoxClient {
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs
+    let i = 0
     while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
       tabs = listTabsResponse.tabs
+      i++
+      if (i > 10) {
+        break
+      }
+    }
+    if (i > 100) {
+      console.log("\n\n\n")
+      console.log("SOMETHING is seriously wrong here, se below")
+      for await (let line of readLines(this.browser_process.stdout as Deno.Reader)) {
+        console.log(line)
+      }
     }
     console.log('got tabs')
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
