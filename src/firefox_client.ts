@@ -397,8 +397,12 @@ export class FirefoxClient {
       console.log("Chunk we will be parsing:")
       console.log(decodedChunk)
       //
-      const rawPackets = decodedChunk.split(/[0-9]{1,4}:/) // split and get rid of the ids so each ittem should be parsable json
+      const rawPackets = decodedChunk
+          .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
+          .filter(packet => packet !== "")
+          .map(msg => "{" + msg) // add back the `{` that we removed above, so we can still easily parse it
       // Turn the packets into json, if it fails then it means a packet is partial, so we save it
+     console.log(rawPackets)
       const json = rawPackets.map(obj => {
         try {
           return JSON.parse(obj)
@@ -703,7 +707,7 @@ export class FirefoxClient {
         break
       }
     }
-    if (i > 10) {
+    if (i > 100) {
       console.log("\n\n\n")
       console.log("SOMETHING is seriously wrong here, se below")
       for await (let line of readLines(this.browser_process.stdout as Deno.Reader)) {
