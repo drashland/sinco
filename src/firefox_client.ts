@@ -398,19 +398,31 @@ export class FirefoxClient {
       console.log('Message we will be parsing: ' + decodedChunkAsValidJSONString)
 
       //
-      function tryParse(rawMessage: string): any[] {
+      function tryParse(rawMessage: string, reverse?: boolean): any[] {
         try {
           const json = JSON.parse(rawMessage)
           return json
         } catch (err) { // Not valid json, eg last packet issnt full, so we'll go through removing each char from the end of the string until we can parse it
-          // eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
-          const str = rawMessage
-              .slice(0, -2)
-              + "]" // add back
-          return tryParse(str)
+          if (reverse) {
+            const str = "[" + rawMessage
+                .slice(2, rawMessage.length)
+            return tryParse(str, true)
+          } else { // possible  eg `[{..},{"na]` --> `[{...},{"n` --> `[{...},{"n]`
+            const str = rawMessage
+                    .slice(0, -2)
+                + "]" // add back
+            return tryParse(str)
+          }
         }
       }
-      const packets = tryParse(decodedChunkAsValidJSONString)
+
+
+      let packets: any[] = []
+      if (decodedChunkAsValidJSONString.indexOf("{") !== 1) { // invalid packet at start
+        packets = tryParse(decodedChunkAsValidJSONString, true)
+      } else {
+        packets = tryParse(decodedChunkAsValidJSONString, false)
+      }
       //
 
       console.log('all packets:')
