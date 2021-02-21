@@ -1,6 +1,6 @@
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
-import {FirefoxClient} from "../../mod.ts";
+import { FirefoxClient } from "../../mod.ts";
 import { defaultBuildOptions } from "../../src/firefox_client.ts";
 
 Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
@@ -10,9 +10,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       // If it hasn't, connecting will throw an error
       const conn = await Deno.connect({
         hostname: defaultBuildOptions.hostname,
-        port: defaultBuildOptions.debuggerServerPort
-      })
-      conn.close()
+        port: defaultBuildOptions.debuggerServerPort,
+      });
+      conn.close();
       await Sinco.done();
     });
   });
@@ -114,7 +114,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange("https://chromestatus.com/features/schedule");
+      await Sinco.waitForPageChange(
+        "https://chromestatus.com/features/schedule",
+      );
       await Sinco.assertSee("Release timeline");
       await Sinco.done();
     });
@@ -159,8 +161,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg:
-            `Error: document.querySelector(...) is null`,
+          msg: `Error: document.querySelector(...) is null`,
         });
       },
     );
@@ -239,8 +240,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg:
-            `Error: document.querySelector(...) is null`,
+          msg: `Error: document.querySelector(...) is null`,
         });
       },
     );
@@ -306,8 +306,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.done();
         Rhum.asserts.assertEquals(error, {
           errored: true,
-          msg:
-            `Error: document.querySelector(...) is null`,
+          msg: `Error: document.querySelector(...) is null`,
         });
       },
     );
@@ -328,7 +327,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange("https://chromestatus.com/features/schedule");
+      await Sinco.waitForPageChange(
+        "https://chromestatus.com/features/schedule",
+      );
       await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
       await Sinco.done();
     });

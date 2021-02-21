@@ -1,4 +1,4 @@
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Clicking elements - Tutorial for this feature in the docs should work", async () => {
   const Sinco = await ChromeClient.build();
@@ -8,7 +8,6 @@ Deno.test("Chrome: Clicking elements - Tutorial for this feature in the docs sho
   await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
   await Sinco.done();
 });
-
 
 Deno.test("Firefox: Clicking elements - Tutorial for this feature in the docs should work", async () => {
   const Sinco = await FirefoxClient.build();

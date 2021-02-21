@@ -1,5 +1,5 @@
 import { assertEquals } from "../../deps.ts";
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Tutorial for Getting Started in the docs should work", async () => {
   // Setup

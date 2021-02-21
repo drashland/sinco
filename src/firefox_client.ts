@@ -13,67 +13,80 @@
  *    /Applications/Firefox.app/Contents/MacOS/firefox --start-debugger-server 9293 --profile /tmp/firefox_dev_profile https://chromestatus.com
  */
 
-import {assertEquals, deferred} from "../deps.ts"
-import { readStringDelim, readLines } from "https://deno.land/std@0.87.0/io/mod.ts";
+import { assertEquals, deferred } from "../deps.ts";
+import {
+  readLines,
+  readStringDelim,
+} from "https://deno.land/std@0.87.0/io/mod.ts";
 
 const UNSOLICITED_EVENTS = [
-  'styleApplied', 'propertyChange', 'networkEventUpdate', 'networkEvent',
-  'propertyChange', 'newMutations', 'appOpen', 'appClose', 'appInstall', 'appUninstall',
-  'frameUpdate', 'tabListChanged','consoleAPICall'
-]
+  "styleApplied",
+  "propertyChange",
+  "networkEventUpdate",
+  "networkEvent",
+  "propertyChange",
+  "newMutations",
+  "appOpen",
+  "appClose",
+  "appInstall",
+  "appUninstall",
+  "frameUpdate",
+  "tabListChanged",
+  "consoleAPICall",
+];
 
 interface Message {
-  type: string // seems to be the domain, eg navigateTo,
-  to:  string // actor name
-  [key: string]: string // extra data i believe such as `url`
+  type: string; // seems to be the domain, eg navigateTo,
+  to: string; // actor name
+  [key: string]: string; // extra data i believe such as `url`
 }
 
 interface Tab {
-  actor: string // eg "server1.conn18.tabDescriptor1",
-  browserContextID: number,
-  isZombieTab: boolean,
-  outerWindowId: number,
-  selected: true, // If this is the web page we are viewing
-  title: string // Title of the web page
+  actor: string; // eg "server1.conn18.tabDescriptor1",
+  browserContextID: number;
+  isZombieTab: boolean;
+  outerWindowId: number;
+  selected: true; // If this is the web page we are viewing
+  title: string; // Title of the web page
   traits: {
-    isBrowsingContext: true
-  },
-  url: string // eg "https://chromestatus.com/features"
-  consoleActor: string,
-  inspectorActor: string,
-  styleSheetsActor: string,
-  storageActor: string,
-  memoryActor: string,
-  framerateActor: string,
-  reflowActor: string,
-  cssPropertiesActor: string,
-  performanceActor: string,
-  animationsActor: string,
-  responsiveActor: string,
-  contentViewerActor: string,
-  webExtensionInspectedWindowActor: string,
-  accessibilityActor: string,
-  screenshotActor: string,
-  changesActor: string,
-  webSocketActor: string,
-  eventSourceActor: string,
-  manifestActor: string,
-  networkContentActor: string
+    isBrowsingContext: true;
+  };
+  url: string; // eg "https://chromestatus.com/features"
+  consoleActor: string;
+  inspectorActor: string;
+  styleSheetsActor: string;
+  storageActor: string;
+  memoryActor: string;
+  framerateActor: string;
+  reflowActor: string;
+  cssPropertiesActor: string;
+  performanceActor: string;
+  animationsActor: string;
+  responsiveActor: string;
+  contentViewerActor: string;
+  webExtensionInspectedWindowActor: string;
+  accessibilityActor: string;
+  screenshotActor: string;
+  changesActor: string;
+  webSocketActor: string;
+  eventSourceActor: string;
+  manifestActor: string;
+  networkContentActor: string;
 }
 
 interface ListTabsResponse {
-  tabs: Array<Tab>
+  tabs: Array<Tab>;
 }
 
 async function waitUntilConnected(
-    options: {
-      hostname: string,
-      port: number
-    }
+  options: {
+    hostname: string;
+    port: number;
+  },
 ): Promise<void> {
-  let iterations = 0
-  const maxIterations = 30
-  async function tryConnect (hostname: string, port: number) {
+  let iterations = 0;
+  const maxIterations = 30;
+  async function tryConnect(hostname: string, port: number) {
     try {
       const conn = await Deno.connect({
         port,
@@ -84,47 +97,49 @@ async function waitUntilConnected(
       return true;
     } catch (error) {
       if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
-        iterations++
-        console.log('Conn rfused')
-        return false
+        iterations++;
+        console.log("Conn rfused");
+        return false;
       }
-      throw new Error(`Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`);
+      throw new Error(
+        `Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`,
+      );
     }
   }
-  const { hostname, port } = options
-  const canConnect = await tryConnect(hostname, port)
+  const { hostname, port } = options;
+  const canConnect = await tryConnect(hostname, port);
   if (canConnect) {
-    await new Promise((resolve) => setTimeout(resolve,  2000))
-    return
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return;
   }
   if (iterations === maxIterations) { // then there really is a problem and an error was thrown waaayyy too many times
-    throw new Error(`Connection refused for hostname=${hostname} port=${port}`)
+    throw new Error(`Connection refused for hostname=${hostname} port=${port}`);
   }
-  await new Promise((resolve) => setTimeout(resolve, 250))
-  return await waitUntilConnected(options)
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  return await waitUntilConnected(options);
 }
 
 export interface BuildOptions {
-  hostname?: string, // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
-  debuggerServerPort?: number, // Port for the debug server to listen on, which our connection will connect to
-  defaultUrl?: string // The default url the browser will open when ran
+  hostname?: string; // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
+  debuggerServerPort?: number; // Port for the debug server to listen on, which our connection will connect to
+  defaultUrl?: string; // The default url the browser will open when ran
 }
 
 interface Configs {
-  conn: Deno.Conn,
-  iter: AsyncIterableIterator<Uint8Array>,
+  conn: Deno.Conn;
+  iter: AsyncIterableIterator<Uint8Array>;
   // deno-lint-ignore camelcase
-  browser_process: Deno.Process,
-  actor: string,
-  tab: Tab | null,
-  devProfileDirPath: string,
+  browser_process: Deno.Process;
+  actor: string;
+  tab: Tab | null;
+  devProfileDirPath: string;
 }
 
 export const defaultBuildOptions = {
   hostname: Deno.build.os === "windows" ? "127.0.0.1" : "0.0.0.0",
   debuggerServerPort: 9293,
-  defaultUrl: "https://developer.mozilla.org/"
-}
+  defaultUrl: "https://developer.mozilla.org/",
+};
 
 /**
  * @example
@@ -133,22 +148,22 @@ export const defaultBuildOptions = {
  *     await Firefox.<api_method>
  */
 export class FirefoxClient {
-  private readonly conn: Deno.Conn
+  private readonly conn: Deno.Conn;
 
-  private readonly iter: AsyncIterableIterator<Uint8Array>
+  private readonly iter: AsyncIterableIterator<Uint8Array>;
 
-  private readonly browser_process: Deno.Process
+  private readonly browser_process: Deno.Process;
 
-  private readonly actor: string
+  private readonly actor: string;
 
-  private readonly tab: Tab | null = null
+  private readonly tab: Tab | null = null;
 
-  private incoming: Uint8Array = new Uint8Array()
+  private incoming: Uint8Array = new Uint8Array();
 
   // deno-lint-ignore no-explicit-any Holds packets, and as they can be anything we use any here
-  private incoming_message_queue: Record<string, any>[] = []
+  private incoming_message_queue: Record<string, any>[] = [];
 
-  private readonly dev_profile_dir_path: string
+  private readonly dev_profile_dir_path: string;
 
   /**
    * @param conn - The established connection object
@@ -157,13 +172,12 @@ export class FirefoxClient {
    * @param actor - The actor used to make requests eg the tab name we run actions on
    */
   constructor(configs: Configs) {
-    this.conn = configs.conn
-    this.iter = configs.iter
-    this.browser_process = configs.browser_process
-    this.actor = configs.actor
-    this.tab = configs.tab ?? null
-    this.dev_profile_dir_path = configs.devProfileDirPath
-
+    this.conn = configs.conn;
+    this.iter = configs.iter;
+    this.browser_process = configs.browser_process;
+    this.actor = configs.actor;
+    this.tab = configs.tab ?? null;
+    this.dev_profile_dir_path = configs.devProfileDirPath;
   }
 
   /**
@@ -177,29 +191,34 @@ export class FirefoxClient {
    *
    * @returns An instance of FirefoxClient, that is now ready.
    */
-  public static async build (buildOptions: BuildOptions = {}):  Promise<FirefoxClient> {
+  public static async build(
+    buildOptions: BuildOptions = {},
+  ): Promise<FirefoxClient> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
-      buildOptions.hostname = defaultBuildOptions.hostname
+      buildOptions.hostname = defaultBuildOptions.hostname;
     }
     if (!buildOptions.debuggerServerPort) {
-      buildOptions.debuggerServerPort = defaultBuildOptions.debuggerServerPort
+      buildOptions.debuggerServerPort = defaultBuildOptions.debuggerServerPort;
     }
     if (!buildOptions.defaultUrl) {
-      buildOptions.defaultUrl = defaultBuildOptions.defaultUrl
+      buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
     }
     // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
-    const tmpDirName = await Deno.makeTempDir()
-    const devProfilePath = tmpDirName + "/prefs.js"
-    await Deno.writeFile(devProfilePath, new TextEncoder().encode(
+    const tmpDirName = await Deno.makeTempDir();
+    const devProfilePath = tmpDirName + "/prefs.js";
+    await Deno.writeFile(
+      devProfilePath,
+      new TextEncoder().encode(
         'user_pref("devtools.chrome.enabled", true);' + "\n" +
-        'user_pref("devtools.debugger.prompt-connection", false);' + "\n" +
-        'user_pref("devtools.debugger.remote-enabled", true);' +  "\n" +
-        `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);` // Don't open that extra tab
-    ))
-    console.log(`Dev profile path: ${devProfilePath}`)
+          'user_pref("devtools.debugger.prompt-connection", false);' + "\n" +
+          'user_pref("devtools.debugger.remote-enabled", true);' + "\n" +
+          `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);`, // Don't open that extra tab
+      ),
+    );
+    console.log(`Dev profile path: ${devProfilePath}`);
     // Get the path to the users firefox binary
-    const firefoxPath = this.getFirefoxPath()
+    const firefoxPath = this.getFirefoxPath();
     // Create the arguments we will use when spawning the headless browser
     const args = [
       "--start-debugger-server", // todo :: only needs 1ddash for windows?
@@ -207,74 +226,88 @@ export class FirefoxClient {
       "--profile", // todo :: only needs 1ddash for windows?
       tmpDirName,
       "--headless", // todo :: only needs 1ddash for windows?
-      buildOptions.defaultUrl
-    ]
-    console.log('run args:')
-    console.log([firefoxPath, ...args])
+      buildOptions.defaultUrl,
+    ];
+    console.log("run args:");
+    console.log([firefoxPath, ...args]);
     // Create the sub process to start the browser
-    console.log("Cmd:")
-    console.log([firefoxPath, ...args])
+    console.log("Cmd:");
+    console.log([firefoxPath, ...args]);
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
-      stdout: "piped"
-    })
+      stdout: "piped",
+    });
     // Wait until the port is occupied
     await waitUntilConnected({
       hostname: buildOptions.hostname,
-      port: buildOptions.debuggerServerPort
-    })
+      port: buildOptions.debuggerServerPort,
+    });
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
-      port: buildOptions.debuggerServerPort
-    })
-    const iter = Deno.iter(conn)
+      port: buildOptions.debuggerServerPort,
+    });
+    const iter = Deno.iter(conn);
     for await (const line of Deno.iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
-      break
+      break;
     }
     // Get actor (tab) that we use to interact with
-    const TempFirefoxClient = new FirefoxClient({conn, iter, browser_process: browserProcess ,actor: "root", tab: null, devProfileDirPath: tmpDirName}) // "root" required as the "to" when we send a request to get tabs
-    const tab = await TempFirefoxClient.listTabs()
-    const actor = tab.actor
+    const TempFirefoxClient = new FirefoxClient({
+      conn,
+      iter,
+      browser_process: browserProcess,
+      actor: "root",
+      tab: null,
+      devProfileDirPath: tmpDirName,
+    }); // "root" required as the "to" when we send a request to get tabs
+    const tab = await TempFirefoxClient.listTabs();
+    const actor = tab.actor;
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
     await TempFirefoxClient.request("startListeners", {
       listeners: [
-          "PageError",
-          "ConsoleAPI",
-          "NetworkActivity", // to handle things like clicking buttons that go to different pages so we can check the page changed
-          //"FileActivity"
-      ]
-    }, tab.consoleActor)
+        "PageError",
+        "ConsoleAPI",
+        "NetworkActivity", // to handle things like clicking buttons that go to different pages so we can check the page changed
+        //"FileActivity"
+      ],
+    }, tab.consoleActor);
     // Wait a few seconds for it to start. This is what foxdriver recommends
     await new Promise((resolve) => setTimeout(resolve, 3000));
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
-    await TempFirefoxClient.request("attach", {}, tab.actor)
+    await TempFirefoxClient.request("attach", {}, tab.actor);
     //await iter.next()
     // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
     // ...
     // Return the client :)
-    return new FirefoxClient({conn, iter, browser_process: browserProcess, actor, tab, devProfileDirPath: tmpDirName})
+    return new FirefoxClient({
+      conn,
+      iter,
+      browser_process: browserProcess,
+      actor,
+      tab,
+      devProfileDirPath: tmpDirName,
+    });
   }
 
   public async assertSee(text: string): Promise<void> {
-    const command = `document.body.innerText.indexOf('${text}') >= 0`
-    const result = await this.evaluatePage(command) as boolean
+    const command = `document.body.innerText.indexOf('${text}') >= 0`;
+    const result = await this.evaluatePage(command) as boolean;
     // If we know the assertion will fail, close all connections
     if (result !== true) {
-      await this.done()
+      await this.done();
     }
-    assertEquals(result, true)
+    assertEquals(result, true);
   }
 
   public async assertUrlIs(url: string): Promise<void> {
     // TODO I think in the build, we might need  to use tab nabigated to wait until state is stop, maybe we get  an  event for that? if so  we should do that cause i thinks  its interfring with our  clicking (old url  is  being  returned from here), which may be the cause of the tabnigaed
-    const result = await this.evaluatePage(`window.location.href`) as string
+    const result = await this.evaluatePage(`window.location.href`) as string;
     // If we know the assertion will fail, close all connections
     if (result !== url) {
-      await this.done()
+      await this.done();
     }
-    assertEquals(result, url)
+    assertEquals(result, url);
   }
 
   /**
@@ -283,103 +316,107 @@ export class FirefoxClient {
    * @param url - The full url, eg "https://google.com"
    */
   public async goTo(url: string): Promise<void> {
-    await this.request("navigateTo", { url })
-    console.log("Going to wait until pagehas  loaded")
+    await this.request("navigateTo", { url });
+    console.log("Going to wait until pagehas  loaded");
     const result = await this.waitForSpecificPacket(this.actor, {
       type: "tabNavigated",
-      state: "stop"
-    })
+      state: "stop",
+    });
     if (result.title === "Server Not Found") {
-      await this.done(`net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`)
+      await this.done(
+        `net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`,
+      );
     }
     // We don't return anything here, because the response data is nothing useful, for example we get the following: `{ id: 44, message: { from: "server1.conn0.child4/frameTarget1" } }`
   }
 
   public async waitForAnchorChange(): Promise<void> {
-
   }
 
   // deno-lint-ignore no-explicit-any Packets can be anything
   async *readPackets(): AsyncIterableIterator<Record<string, any>> {
     const decoder = new TextDecoder();
-    let partial = ""
+    let partial = "";
     for await (const chunk of Deno.iter(this.conn)) {
-      const decodedChunk = decoder.decode(chunk)
-      console.log("Chunk we will be parsing:")
-      console.log(decodedChunk)
+      const decodedChunk = decoder.decode(chunk);
+      console.log("Chunk we will be parsing:");
+      console.log(decodedChunk);
       //
       const rawPackets = decodedChunk
-          .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
-          .filter(packet => packet !== "")
-          .map((msg, i) => {
-            // We want to re add the {, but in the instance `message` is `d":4}125:{...}`, we should add it to the first packet because its the last aprt of a partial, so if we do, then we can't combine them together
-            if (i === 0) {
-              // We'll try parse it, if we cant then we know its a partial, so dont add the bracket
-              try {
-                JSON.parse("{" + msg)
-                return `{${msg}`
-              } catch (err) {
-                return msg
-              }
-            } else {
-              return "{" + msg
+        .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
+        .filter((packet) => packet !== "")
+        .map((msg, i) => {
+          // We want to re add the {, but in the instance `message` is `d":4}125:{...}`, we should add it to the first packet because its the last aprt of a partial, so if we do, then we can't combine them together
+          if (i === 0) {
+            // We'll try parse it, if we cant then we know its a partial, so dont add the bracket
+            try {
+              JSON.parse("{" + msg);
+              return `{${msg}`;
+            } catch (err) {
+              return msg;
             }
-          }) // add back the `{` that we removed above, so we can still easily parse it
+          } else {
+            return "{" + msg;
+          }
+        }); // add back the `{` that we removed above, so we can still easily parse it
       // Turn the packets into json, if it fails then it means a packet is partial, so we save it
-     console.log(rawPackets)
-      const json = rawPackets.map(obj => {
+      console.log(rawPackets);
+      const json = rawPackets.map((obj) => {
         try {
-          return JSON.parse(obj)
+          return JSON.parse(obj);
         } catch (err) {
-          console.log('A packet in the message isnt full, saving it: ' + obj)
-          partial += obj
+          console.log("A packet in the message isnt full, saving it: " + obj);
+          partial += obj;
         }
-      }).filter(obj => obj !== undefined)
+      }).filter((obj) => obj !== undefined);
       // Then try check if partial is full, if it is then add it to the packets (at start, because remember this packet still originally came first
       try {
-        const j = JSON.parse(partial)
-        console.log('we found the last aprt to a partial, adding it to the start of the arr: ' + partial)
-        partial = ""
-        json.unshift(j)
+        const j = JSON.parse(partial);
+        console.log(
+          "we found the last aprt to a partial, adding it to the start of the arr: " +
+            partial,
+        );
+        partial = "";
+        json.unshift(j);
       } catch (err) {
         // still a partial, do nothing
       }
       //
 
-      console.log('all packets:')
-      console.log(json)
-      const validPackets = json.filter(packet => {
+      console.log("all packets:");
+      console.log(json);
+      const validPackets = json.filter((packet) => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
-          return false
+          return false;
         }
         if (packet.type === "pageError") {
           if (packet.pageError.warning == true) {
-            return false
+            return false;
           }
           if (packet.pageError.error == true) { // TODO Should we provide a method to get everything in the console, we'll need to remove this because this is the kind of packet for the errors in the dev console
-            return false
+            return false;
           }
         }
         if (packet.type === "tabNavigated" && packet.state === "start") {
-          return false
+          return false;
         }
-        return true
-      })
+        return true;
+      });
       if (validPackets.length === 0) {
-        continue
+        continue;
       }
-      console.log('packets from iterr:')
-      console.log(validPackets)
+      console.log("packets from iterr:");
+      console.log(validPackets);
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
-      const packet = validPackets.shift()
-        validPackets.forEach((packet, i) => {
-          console.log('Going to push the below packet to the queue:')
-          console.log(packet)
-          this.incoming_message_queue.push(packet)
-        })
-      console.log(`Got packet:`)
-      console.log(packet)
-      yield packet
+      const packet = validPackets.shift();
+      validPackets.forEach((packet, i) => {
+        console.log("Going to push the below packet to the queue:");
+        console.log(packet);
+        this.incoming_message_queue.push(packet);
+      });
+      console.log(`Got packet:`);
+      console.log(packet);
+      yield packet;
 
       // while (true) {
       //   if (packetLength == null) {
@@ -413,52 +450,56 @@ export class FirefoxClient {
     }
   }
 
-  private listen () {
+  private listen() {
     (async () => {
       for await (const chunk of this.iter) {
-        const decodedChunk = new TextDecoder().decode(chunk)
-        const incoming = new Uint8Array(this.incoming.length + chunk.length)
-        incoming.set(this.incoming)
-        incoming.set(chunk, this.incoming.length)
+        const decodedChunk = new TextDecoder().decode(chunk);
+        const incoming = new Uint8Array(this.incoming.length + chunk.length);
+        incoming.set(this.incoming);
+        incoming.set(chunk, this.incoming.length);
         //this.incoming = Buffer.concat([this.incoming, chunk])
       }
-    })()
+    })();
   }
 
-  // deno-lint-ignore no-explicit-any Again, we are returning a packet and it could be anything
-  private async waitForSpecificPacket (actor: string, params: Record<string, number | string>):Promise<Record<string, any>> {
-    console.log("Called waiting for specifc packet")
+  private async waitForSpecificPacket(
+    actor: string,
+    params: Record<string, number | string>,
+    // deno-lint-ignore no-explicit-any Again, we are returning a packet and it could be anything
+  ): Promise<Record<string, any>> {
+    console.log("Called waiting for specifc packet");
     if (this.incoming_message_queue.length) {
-      console.log('packets exist in queue, returning:')
-      const packet = this.incoming_message_queue[0]
-      if (packet.actor !== actor)
-      console.log(packet)
-      this.incoming_message_queue.shift()
-      return packet
+      console.log("packets exist in queue, returning:");
+      const packet = this.incoming_message_queue[0];
+      if (packet.actor !== actor) {
+        console.log(packet);
+      }
+      this.incoming_message_queue.shift();
+      return packet;
     }
-    const iterator = this.readPackets()
-    const n = await iterator.next()
-    const value = n.value
-    console.log('got the nnext packet, here it is:')
-    console.log(value)
+    const iterator = this.readPackets();
+    const n = await iterator.next();
+    const value = n.value;
+    console.log("got the nnext packet, here it is:");
+    console.log(value);
     if (value.from !== actor) {
-      return await this.waitForSpecificPacket(actor, params)
+      return await this.waitForSpecificPacket(actor, params);
     }
     if (!value.type) {
-      return await this.waitForSpecificPacket(actor, params)
+      return await this.waitForSpecificPacket(actor, params);
     }
-    const paramsKeys = Object.keys(params)
-    const paramsKeysLen =  paramsKeys.length
-    let matchedProps = 0
-    paramsKeys.forEach(key => {
-      if (value[key] &&  value[key] === params[key]) {
-        matchedProps++
+    const paramsKeys = Object.keys(params);
+    const paramsKeysLen = paramsKeys.length;
+    let matchedProps = 0;
+    paramsKeys.forEach((key) => {
+      if (value[key] && value[key] === params[key]) {
+        matchedProps++;
       }
-    })
+    });
     if (matchedProps === paramsKeysLen) {
-      return value
+      return value;
     }
-    return await this.waitForSpecificPacket(actor, params)
+    return await this.waitForSpecificPacket(actor, params);
   }
 
   /**
@@ -470,15 +511,15 @@ export class FirefoxClient {
    */
   public async click(selector: string): Promise<void> {
     const command = `document.querySelector('${selector}').click()`;
-    await this.evaluatePage(command)
+    await this.evaluatePage(command);
   }
 
-  public async waitForPageChange (to: string): Promise<void> {
+  public async waitForPageChange(to: string): Promise<void> {
     await this.waitForSpecificPacket(this.actor, {
-      type:"tabNavigated",
+      type: "tabNavigated",
       "state": "stop",
-      url: to
-    })
+      url: to,
+    });
   }
 
   /**
@@ -490,11 +531,11 @@ export class FirefoxClient {
    */
   public async getInputValue(selector: string): Promise<string> {
     const command = `document.querySelector('${selector}').value`;
-    const result = await this.evaluatePage(command)
+    const result = await this.evaluatePage(command);
     if (typeof result === "object" && "type" in result) {
-      return result.type
+      return result.type;
     }
-    return result
+    return result;
   }
 
   /**
@@ -505,7 +546,7 @@ export class FirefoxClient {
    */
   public async type(selector: string, value: string): Promise<void> {
     const command = `document.querySelector('${selector}').value = "${value}"`;
-    await this.evaluatePage(command)
+    await this.evaluatePage(command);
   }
 
   /**
@@ -523,10 +564,14 @@ export class FirefoxClient {
    *
    * @returns TODO(edward): Adjust this when return type is understood
    */
-  // deno-lint-ignore no-explicit-any It could be any value we get from the console
-  public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
-    console.log('At  top ofeval page func, requesting now...')
-    const text = typeof pageCommand ===  "string" ? `(function () { return ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
+  public async evaluatePage(
+    pageCommand: (() => unknown) | string,
+    // deno-lint-ignore no-explicit-any It could be any value we get from the console
+  ): Promise<any> {
+    console.log("At  top ofeval page func, requesting now...");
+    const text = typeof pageCommand === "string"
+      ? `(function () { return ${pageCommand} }).apply(window, [])`
+      : `(${pageCommand}).apply(window, [])`;
     // Evaluating js requires two things:
     // 1. sENDING the below type, getting a request id from themsg
     // 2. waiting for the enxt message, which if it contains that id, that packet holds theresult of our evaluation
@@ -537,18 +582,24 @@ export class FirefoxClient {
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
-    console.log('just got the result id, now waiting for a specific packet from ' +  this.tab!.consoleActor + ' with  result id  of ' + resultID)
-    const evalResult = await this.waitForSpecificPacket(this.tab!.consoleActor, {
-      resultID
-    })
-    console.log('got eval result, here it is:')
-    console.log(evalResult)
+    console.log(
+      "just got the result id, now waiting for a specific packet from " +
+        this.tab!.consoleActor + " with  result id  of " + resultID,
+    );
+    const evalResult = await this.waitForSpecificPacket(
+      this.tab!.consoleActor,
+      {
+        resultID,
+      },
+    );
+    console.log("got eval result, here it is:");
+    console.log(evalResult);
     if ("exception" in evalResult) {
-      const preview = evalResult.exception.preview
-      await this.done(`${preview.kind}: ${preview.message}`)
+      const preview = evalResult.exception.preview;
+      await this.done(`${preview.kind}: ${preview.message}`);
     }
-    const output = evalResult.result
-    return output
+    const output = evalResult.result;
+    return output;
   }
 
   /**
@@ -556,11 +607,11 @@ export class FirefoxClient {
    */
   public async done(errMsg?: string): Promise<void> {
     try {
-      this.conn.close()
+      this.conn.close();
       this.browser_process.stderr!.close();
-      this.browser_process.stdout!.close()
+      this.browser_process.stdout!.close();
       this.browser_process.close();
-      await Deno.remove(this.dev_profile_dir_path, { recursive: true })
+      await Deno.remove(this.dev_profile_dir_path, { recursive: true });
     } catch (err) {
       // ... do nothing
     }
@@ -571,13 +622,13 @@ export class FirefoxClient {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
         stdout: "null",
-        stderr: "null"
-      })
-      await p.status()
-      p.close()
+        stderr: "null",
+      });
+      await p.status();
+      p.close();
     }
     if (errMsg) {
-      throw new Error(errMsg)
+      throw new Error(errMsg);
     }
   }
 
@@ -591,26 +642,30 @@ export class FirefoxClient {
    *
    * @returns The tab, holding the actor we use every other request
    */
-  public async listTabs (): Promise<Tab> {
-    console.log('getting tabs')
-    let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
+  public async listTabs(): Promise<Tab> {
+    console.log("getting tabs");
+    let listTabsResponse =
+      (await this.request("listTabs", {}, "root")) as ListTabsResponse;
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
-    let tabs = listTabsResponse.tabs
-    while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
-      listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
-      tabs = listTabsResponse.tabs
+    let tabs = listTabsResponse.tabs;
+    while (
+      tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")
+    ) {
+      listTabsResponse =
+        (await this.request("listTabs", {}, "root")) as ListTabsResponse;
+      tabs = listTabsResponse.tabs;
     }
-    console.log('got tabs')
-    let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
+    console.log("got tabs");
+    let tab = listTabsResponse.tabs.find((t) => t.selected === true) as Tab;
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
-      const tabActorRequest = await this.request("getTarget", {}, tab.actor)
+      const tabActorRequest = await this.request("getTarget", {}, tab.actor);
       tab = {
         ...tab,
-        ...tabActorRequest.frame
-      }
+        ...tabActorRequest.frame,
+      };
     }
-    return tab
+    return tab;
   }
 
   /**
@@ -626,55 +681,61 @@ export class FirefoxClient {
    *   - id: Unsure what this corresponds to
    *   - message: This is a parsed JSON response that was assigned to th id, thus the response from thee request
    */
-  // deno-lint-ignore no-explicit-any
-  private async request (type: string, params = {}, actor?: string): Promise<Record<string, any>>
-  {
-    actor = actor ? actor : this.actor
+  private async request(
+    type: string,
+    params = {},
+    actor?: string,
+    // deno-lint-ignore no-explicit-any
+  ): Promise<Record<string, any>> {
+    actor = actor ? actor : this.actor;
     // Construct data in required format to send
     const message = {
       type,
       to: actor,
-      ...params
-    }
-    const str = JSON.stringify(message)
-    const encoder = new TextEncoder()
-    const encodedMessage = `${(encoder.encode(str)).length}:${str}`
+      ...params,
+    };
+    const str = JSON.stringify(message);
+    const encoder = new TextEncoder();
+    const encodedMessage = `${(encoder.encode(str)).length}:${str}`;
     // Send message
-    console.log(`Sending a request, heres message:`)
-    console.log(message)
-    await this.conn.write(new TextEncoder().encode(encodedMessage))
+    console.log(`Sending a request, heres message:`);
+    console.log(message);
+    await this.conn.write(new TextEncoder().encode(encodedMessage));
     // Get related packet
     let packet;
     while (true) {
-      const iterator  = this.readPackets()
-      const n =  await iterator.next()
-      packet =  n.value
+      const iterator = this.readPackets();
+      const n = await iterator.next();
+      packet = n.value;
       // todo these conditionals could probs be moved to readpackets
       // ignore packets that arent related to the actor that sent the message
       if (packet.from !== actor) {
-        continue
+        continue;
       }
       // Ignore unsolicated events
       if (UNSOLICITED_EVENTS.includes(packet.from) === true) {
-        continue
+        continue;
       }
       // If page errors are warnings, ignore those
-      if (packet.pageError && packet.pageError.warning && packet.pageError.warning === true) {
-        continue
+      if (
+        packet.pageError && packet.pageError.warning &&
+        packet.pageError.warning === true
+      ) {
+        continue;
       }
-      break
+      break;
     }
     // Check for errors
     if ("error" in packet) {
-      await this.done(`${packet.error}: ${packet.message}`)
+      await this.done(`${packet.error}: ${packet.message}`);
     }
     if ("pageError" in packet) {
-      await this.done(`${packet.type}: ${packet.errrorMessage}`)
+      await this.done(`${packet.type}: ${packet.errrorMessage}`);
     }
-    console.log("Got packet for message:")
-    console.log(packet)
+    console.log("Got packet for message:");
+    console.log(packet);
     // Return result
-    return packet
+    return packet;
   }
 
   /**
@@ -683,7 +744,7 @@ export class FirefoxClient {
    *
    * @returns the path
    */
-  private static getFirefoxPath (): string {
+  private static getFirefoxPath(): string {
     switch (Deno.build.os) {
       case "darwin":
         return "/Applications/Firefox.app/Contents/MacOS/firefox";
@@ -703,8 +764,3 @@ export class FirefoxClient {
 // const b = await a.evaluatePage(`document.title`)
 // console.log('res:')
 // console.log(b)
-
-
-
-
-

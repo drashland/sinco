@@ -1,6 +1,6 @@
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
-import {ChromeClient} from "../../mod.ts";
+import { ChromeClient } from "../../mod.ts";
 
 Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   Rhum.testSuite("build()", () => {

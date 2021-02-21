@@ -1,5 +1,5 @@
 import { assertEquals } from "../../deps.ts";
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Manipulate Webpage", async () => {
   const Sinco = await ChromeClient.build();

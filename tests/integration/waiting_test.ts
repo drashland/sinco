@@ -1,4 +1,4 @@
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Waiting - Tutorial for this feature in the docs should work", async () => {
   const Sinco = await ChromeClient.build();

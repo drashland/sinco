@@ -1,5 +1,5 @@
 import { assertEquals } from "../../deps.ts";
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 /**
  * The reason for this test is because originally, when an assertion  method failed,
@@ -70,16 +70,16 @@ Deno.test("Firefox: Assertion methods cleanup when an assertion fails", async ()
   } catch (err) {
     gotError = true;
     errMsg = err.message
-        // deno-lint-ignore no-control-regex
-        .replace(/\x1b/g, "") // or \x1b\[90m
-        .replace(/\[1m/g, "")
-        .replace(/\[[0-9][0-9]m/g, "")
-        .replace(/\n/g, "");
+      // deno-lint-ignore no-control-regex
+      .replace(/\x1b/g, "") // or \x1b\[90m
+      .replace(/\[1m/g, "")
+      .replace(/\[[0-9][0-9]m/g, "")
+      .replace(/\n/g, "");
   }
   assertEquals(gotError, true);
   assertEquals(
-      errMsg,
-      "Values are not equal:    [Diff] Actual / Expected-   false+   true",
+    errMsg,
+    "Values are not equal:    [Diff] Actual / Expected-   false+   true",
   );
   // Now we should be able to run tests again without it hanging
   const Sinco2 = await FirefoxClient.build();

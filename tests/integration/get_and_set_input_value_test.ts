@@ -1,5 +1,5 @@
 import { assertEquals } from "../../deps.ts";
-import {ChromeClient, FirefoxClient} from "../../mod.ts";
+import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Get and set input value - Tutorial for this feature in the docs should work", async () => {
   const Sinco = await ChromeClient.build();

@@ -65,9 +65,9 @@ type DOMOutput = {
 const webSocketIsDonePromise = deferred();
 
 interface BuildOptions {
-  debuggerPort?: number // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
-  defaultUrl?: string // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
-  hostname?: string // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
+  debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
+  defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
+  hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
 }
 
 export class ChromeClient {
@@ -103,8 +103,8 @@ export class ChromeClient {
   private resolvables: { [key: number]: Deferred<unknown> } = {};
 
   constructor(socket: WebSocket, browserProcess: Deno.Process) {
-    this.socket = socket
-    this.browser_process = browserProcess
+    this.socket = socket;
+    this.browser_process = browserProcess;
     // Register error listener
     this.socket.onerror = function (e) {
       webSocketIsDonePromise.resolve();
@@ -128,19 +128,19 @@ export class ChromeClient {
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
-  public static async build (options: BuildOptions = {}) {
+  public static async build(options: BuildOptions = {}) {
     // Setup build options
     if (!options.debuggerPort) {
-      options.debuggerPort = 9292
+      options.debuggerPort = 9292;
     }
     if (!options.defaultUrl) {
-      options.defaultUrl = "https://chromestatus.com"
+      options.defaultUrl = "https://chromestatus.com";
     }
     if (!options.hostname) {
-      options.hostname = "localhost"
+      options.hostname = "localhost";
     }
     // Create the sub process
-    const chromePath = await this.getChromePath()
+    const chromePath = await this.getChromePath();
     const browserProcess = Deno.run({
       cmd: [
         chromePath,
@@ -154,14 +154,17 @@ export class ChromeClient {
     });
     // Wait until browser is ready
     for await (
-        const line of readLines(browserProcess.stderr)
-        ) {
+      const line of readLines(browserProcess.stderr)
+    ) {
       if (line.indexOf("DevTools listening on ws://") > -1) {
         break;
       }
     }
     // Connect our websocket
-    const debugUrl = await this.getWebSocketUrl(options.hostname, options.debuggerPort);
+    const debugUrl = await this.getWebSocketUrl(
+      options.hostname,
+      options.debuggerPort,
+    );
     const socket = new WebSocket(debugUrl);
     // Wait until its open
     const promise = deferred();
@@ -170,10 +173,10 @@ export class ChromeClient {
     };
     await promise;
     // Create tmp chrome client and enable page notifications, so we can wait for page events, such as when a page has loaded
-    const TempChromeClient = new ChromeClient(socket, browserProcess)
+    const TempChromeClient = new ChromeClient(socket, browserProcess);
     await TempChromeClient.sendWebSocketMessage("Page.enable");
     // Return the client :)
-    return new ChromeClient(socket, browserProcess)
+    return new ChromeClient(socket, browserProcess);
   }
 
   /**
@@ -428,7 +431,7 @@ export class ChromeClient {
    *
    * @returns The url to connect to
    */
-  private static async getWebSocketUrl (hostname: string, port: number)  {
+  private static async getWebSocketUrl(hostname: string, port: number) {
     let debugUrl = "";
     while (true) {
       try {
@@ -440,7 +443,7 @@ export class ChromeClient {
         // do nothing, loop again until the endpoint is ready
       }
     }
-    return debugUrl
+    return debugUrl;
   }
 
   /**
@@ -448,14 +451,14 @@ export class ChromeClient {
    *
    * @returns The path to chrome
    */
-  private static async getChromePath (): Promise<string> {
+  private static async getChromePath(): Promise<string> {
     const paths = {
       // deno-lint-ignore camelcase
       windows_chrome_exe:
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
       // deno-lint-ignore camelcase
       windows_chrome_exe_x86:
-          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
       darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       linux: "/usr/bin/google-chrome",
     };
@@ -474,13 +477,13 @@ export class ChromeClient {
           break;
         }
         throw new Error(
-            "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
         chromePath = paths.linux;
         break;
     }
-    return chromePath
+    return chromePath;
   }
 
   private handleSocketMessage(msg: MessageEvent) {
