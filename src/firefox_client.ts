@@ -259,7 +259,7 @@ export class FirefoxClient {
         //"FileActivity"
       ],
     }, tab.consoleActor);
-    // Wait a few seconds for it to start. This is what foxdriver recommends
+    // Wait a few seconds for it to start. This is what foxdriver recommends. TODO Maybe we dont need this, or maybe theres a faster way to check eg tab navigated event?
     await new Promise((resolve) => setTimeout(resolve, 3000));
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
     await TempFirefoxClient.request("attach", {}, tab.actor);
@@ -326,7 +326,7 @@ export class FirefoxClient {
   }
 
   /**
-   * Click an element by  the sselector. This
+   * Click an element by the selector. This
    * assumes that clicking will change the page
    * you are on.
    *
@@ -340,14 +340,11 @@ export class FirefoxClient {
   /**
    * Wait for the page to change to a different page. Used for when clicking a button and that
    * button sends the user to another page
-   *
-   * @param to - The url to wait for
    */
-  public async waitForPageChange(to: string): Promise<void> {
+  public async waitForPageChange(): Promise<void> {
     await this.waitForSpecificPacket(this.actor, {
       type: "tabNavigated",
       "state": "stop",
-      url: to,
     });
   }
 
