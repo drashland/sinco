@@ -1,23 +1,4 @@
-/**
- * Prerequisites
- *
- * 1. Create a test profile:
- *
- *    // /tmp/firefox_dev_profile/prefs.js
- *    user_pref("devtools.chrome.enabled", true);
- *    user_pref("devtools.debugger.prompt-connection", false);
- *    user_pref("devtools.debugger.remote-enabled", true);
- *
- * 2. Create headless browser:
- *
- *    /Applications/Firefox.app/Contents/MacOS/firefox --start-debugger-server 9293 --profile /tmp/firefox_dev_profile https://chromestatus.com
- */
-
-import { assertEquals, deferred } from "../deps.ts";
-import {
-  readLines,
-  readStringDelim,
-} from "https://deno.land/std@0.87.0/io/mod.ts";
+import { assertEquals } from "../deps.ts";
 
 const UNSOLICITED_EVENTS = [
   "styleApplied",
@@ -34,12 +15,6 @@ const UNSOLICITED_EVENTS = [
   "tabListChanged",
   "consoleAPICall",
 ];
-
-interface Message {
-  type: string; // seems to be the domain, eg navigateTo,
-  to: string; // actor name
-  [key: string]: string; // extra data i believe such as `url`
-}
 
 interface Tab {
   actor: string; // eg "server1.conn18.tabDescriptor1",
@@ -276,9 +251,6 @@ export class FirefoxClient {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     // Attach the tab we are using to the client, so we can use things like`evaluateJS`
     await TempFirefoxClient.request("attach", {}, tab.actor);
-    //await iter.next()
-    // TODO(edward) By this point, the page HAS loaded, but I still think our  `iter` picks up the network requests, and there's a massive queue waiting to be pulled
-    // ...
     // Return the client :)
     return new FirefoxClient({
       conn,
@@ -301,7 +273,6 @@ export class FirefoxClient {
   }
 
   public async assertUrlIs(url: string): Promise<void> {
-    // TODO I think in the build, we might need  to use tab nabigated to wait until state is stop, maybe we get  an  event for that? if so  we should do that cause i thinks  its interfring with our  clicking (old url  is  being  returned from here), which may be the cause of the tabnigaed
     const result = await this.evaluatePage(`window.location.href`) as string;
     // If we know the assertion will fail, close all connections
     if (result !== url) {
@@ -341,7 +312,6 @@ export class FirefoxClient {
       const decodedChunk = decoder.decode(chunk);
       console.log("Chunk we will be parsing:");
       console.log(decodedChunk);
-      //
       const rawPackets = decodedChunk
         .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
         .filter((packet) => packet !== "")
@@ -381,7 +351,6 @@ export class FirefoxClient {
       } catch (err) {
         // still a partial, do nothing
       }
-      //
 
       console.log("all packets:");
       console.log(json);
@@ -417,49 +386,7 @@ export class FirefoxClient {
       console.log(`Got packet:`);
       console.log(packet);
       yield packet;
-
-      // while (true) {
-      //   if (packetLength == null) {
-      //     const i = chunk.indexOf(58); // :
-      //     Deno.writeAll(buffer, chunk.subarray(0, i));
-      //     packetLength = parseInt(decoder.decode(buffer.bytes()));
-      //     buffer.reset();
-      //     chunk = chunk.subarray(i + 1);
-      //   }
-      //   // FIXME:: It returns the first packet in the message, soemtimes the packet we need isnt first!!!
-      //   if (buffer.length + chunk.length >= packetLength) {
-      //     const lengthFromChunk = packetLength - buffer.length;
-      //     Deno.writeAll(buffer, chunk.subarray(0, lengthFromChunk));
-      //     console.log(`\n\nWe got the following chunk:`)
-      //     console.log(decoder.decode(chunk))
-      //     console.log('and were going to return:')
-      //     const packet = JSON.parse(decoder.decode(buffer.bytes()))
-      //     console.log(packet)
-      //     console.log(decoder.decode(chunk).replace(/}[0-9]{1,3}:{/g, "},{"))
-      //     console.log(`\n`)
-      //     yield packet;
-      //     buffer.reset();
-      //     packetLength = null;
-      //     chunk = chunk.subarray(lengthFromChunk);
-      //     continue;
-      //   } else {
-      //     Deno.writeAll(buffer, chunk);
-      //     break;
-      //   }
-      // }
     }
-  }
-
-  private listen() {
-    (async () => {
-      for await (const chunk of this.iter) {
-        const decodedChunk = new TextDecoder().decode(chunk);
-        const incoming = new Uint8Array(this.incoming.length + chunk.length);
-        incoming.set(this.incoming);
-        incoming.set(chunk, this.incoming.length);
-        //this.incoming = Buffer.concat([this.incoming, chunk])
-      }
-    })();
   }
 
   private async waitForSpecificPacket(
@@ -572,13 +499,6 @@ export class FirefoxClient {
     const text = typeof pageCommand === "string"
       ? `(function () { return ${pageCommand} }).apply(window, [])`
       : `(${pageCommand}).apply(window, [])`;
-    // Evaluating js requires two things:
-    // 1. sENDING the below type, getting a request id from themsg
-    // 2. waiting for the enxt message, which if it contains that id, that packet holds theresult of our evaluation
-    //  A few ways wecan do this is:
-    // 1. Make `request()`  wait until get a packet from the  actor
-    // 2. create a resolvables that  we  await forand some listen message will resolve it
-    // 3. Create a loop in this func to keep getting next paackets until we get our result
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
@@ -712,17 +632,6 @@ export class FirefoxClient {
       if (packet.from !== actor) {
         continue;
       }
-      // Ignore unsolicated events
-      if (UNSOLICITED_EVENTS.includes(packet.from) === true) {
-        continue;
-      }
-      // If page errors are warnings, ignore those
-      if (
-        packet.pageError && packet.pageError.warning &&
-        packet.pageError.warning === true
-      ) {
-        continue;
-      }
       break;
     }
     // Check for errors
@@ -755,12 +664,3 @@ export class FirefoxClient {
     }
   }
 }
-
-// console.log('buidling')
-// const a = await FirefoxClient.build({
-//   defaultUrl: "https://chromestatus.com"
-// })
-// console.log('clicking')
-// const b = await a.evaluatePage(`document.title`)
-// console.log('res:')
-// console.log(b)
