@@ -400,7 +400,20 @@ export class FirefoxClient {
       const rawPackets = decodedChunk
           .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
           .filter(packet => packet !== "")
-          .map(msg => "{" + msg) // add back the `{` that we removed above, so we can still easily parse it
+          .map((msg, i) => {
+            // We want to re add the {, but in the instance `message` is `d":4}125:{...}`, we should add it to the first packet because its the last aprt of a partial, so if we do, then we can't combine them together
+            if (i === 0) {
+              // We'll try parse it, if we cant then we know its a partial, so dont add the bracket
+              try {
+                JSON.parse("{" + msg)
+                return `{${msg}`
+              } catch (err) {
+                return msg
+              }
+            } else {
+              return "{" + msg
+            }
+          }) // add back the `{` that we removed above, so we can still easily parse it
       // Turn the packets into json, if it fails then it means a packet is partial, so we save it
      console.log(rawPackets)
       const json = rawPackets.map(obj => {
