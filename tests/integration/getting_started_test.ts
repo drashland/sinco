@@ -31,7 +31,7 @@ Deno.test("Firefox: Tutorial for Getting Started in the docs should work", async
   const value = await Sinco.getInputValue('input[placeholder="Filter"]');
   assertEquals(value, "Hello");
   await Sinco.click('a[href="/features/schedule"]');
-  await Sinco.waitForPageChange("https://chromestatus.com/features/schedule");
+  await Sinco.waitForPageChange();
   await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
   await Sinco.assertSee("Release timeline");
 
