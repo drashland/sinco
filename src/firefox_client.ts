@@ -72,7 +72,7 @@ async function waitUntilConnected(
     }
 ): Promise<void> {
   let iterations = 0
-  let maxIterations = 100
+  const maxIterations = 30
   async function tryConnect (hostname: string, port: number) {
     try {
       const conn = await Deno.connect({
@@ -104,89 +104,6 @@ async function waitUntilConnected(
   return await waitUntilConnected(options)
 }
 
-async function simplifiedFirefoxExample () {
-  async function connect(): Promise<Deno.Conn> {
-    const conn = await Deno.connect({
-      hostname: "0.0.0.0",
-      port: 9293
-    })
-    return conn
-  }
-
-  const conn = await connect()
-  const iter = Deno.iter(conn)
-  await iter.next() // get 'welcome' message out the way
-
-  async function request(type: string, params = {}, name: string): Promise<{
-    id: number,
-    message: Record<string, any>
-  }> {
-    // Construct data in required format to send
-    const message: Message = {
-      type,
-      to: name,
-      ...params
-    }
-    const str = JSON.stringify(message)
-    const encoder = new TextEncoder()
-    const encodedMessage = `${(encoder.encode(str)).length}:${str}`
-    // Send message
-    await conn.write(new TextEncoder().encode(encodedMessage))
-    // Receive the response
-    const result = await iter.next()
-    const value = result.value
-    const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
-    const colonIndex = decodedValue.indexOf(":");
-    const id = Number(decodedValue.substr(0, colonIndex))
-    const jsonString = decodedValue.substr(colonIndex + 1)
-    const parsedJson = JSON.parse(jsonString)
-    return {
-      id,
-      message: parsedJson
-    }
-  }
-
-  // Majority of this code was taken from https://github.com/saucelabs/foxdriver/blob/1f75618f5f815b6d2022117187db1e2ac711c4db/lib/browser.js#L76. Thank you!
-  async function listTabs(): Promise<Array<Tab>> {
-    let listTabsResponse = (await request("listTabs", {}, "root")).message as ListTabsResponse
-    // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
-    if (!listTabsResponse.tabs) {
-      // Sometimes the browser is failing to retrieve the list of tabs, this is a retry
-      listTabsResponse = (await request("listTabs", {}, "root")).message as ListTabsResponse
-    }
-    /**
-     * For firefox > 75 consoleActor is not available within listTabs request
-     */
-    if (listTabsResponse.tabs.length && !listTabsResponse.tabs[0].consoleActor) {
-      const tabActorsRequests = listTabsResponse.tabs.map(({actor}) => {
-        return request("getTarget", {}, actor)
-      })
-      const tabActors = await Promise.all(tabActorsRequests)
-      const tabs = listTabsResponse.tabs.map((tab, index) => ({
-        ...tab,
-        ...(tabActors[index] ? tabActors[index].message.frame : null)
-      }))
-      listTabsResponse.tabs = tabs
-    }
-    //this.setActors(listTabsResponse)
-    // listTabsResponse const tabList = await Promise.all(listTabsResponse.tabs.map(async (tab) => {
-    //    if (this.cachedTabs.has(tab.actor)) {
-    //      return this.cachedTabs.get(tab.actor)
-    //    }
-    //    let newTab = new Tab(this.client, tab.actor, tab)
-    //    this.cachedTabs.set(tab.actor, newTab)
-    //    return newTab
-    //  }))
-    //  this._cleanCache(listTabsResponse.tabs.map(tab => tab.actor))
-    return listTabsResponse.tabs
-  }
-
-  const tabs = await listTabs()
-  console.log(tabs)
-  const  a = await request("navigateTo", {url: "https://chromestatus.com"}, tabs[1].actor)
-  console.log(a)
-}
-
 export interface BuildOptions {
   hostname?: string, // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
   debuggerServerPort?: number, // Port for the debug server to listen on, which our connection will connect to
@@ -196,6 +113,7 @@ export interface BuildOptions {
 interface Configs {
   conn: Deno.Conn,
   iter: AsyncIterableIterator<Uint8Array>,
+  // deno-lint-ignore camelcase
   browser_process: Deno.Process,
   actor: string,
   tab: Tab | null,
@@ -225,17 +143,12 @@ export class FirefoxClient {
 
   private readonly tab: Tab | null = null
 
-  private current_actor_in_progress:  string | null = null
-
-  private current_op: any | null = null
-
   private incoming: Uint8Array = new Uint8Array()
 
-  private incoming_message_queue: any[] = []
+  // deno-lint-ignore no-explicit-any Holds packets, and as they can be anything we use any here
+  private incoming_message_queue: Record<string, any>[] = []
 
   private readonly dev_profile_dir_path: string
-
-  private partial_message: string = ""
 
   /**
    * @param conn - The established connection object
@@ -386,11 +299,9 @@ export class FirefoxClient {
 
   }
 
-  // FIXME :: There a problem with this method, of coursee we get  many packets  in one message, but it sometimes seems that  the message  doesnt contain the packet we want, but it will still return on that iteration.. what  we need to do is check if it matches an expectation maybe? if not then continue to getting the next message
-  async *readPackets(): AsyncIterableIterator<object> {
+  // deno-lint-ignore no-explicit-any Packets can be anything
+  async *readPackets(): AsyncIterableIterator<Record<string, any>> {
     const decoder = new TextDecoder();
-    //const buffer = new Deno.Buffer();
-    let packetLength = null;
     let partial = ""
     for await (const chunk of Deno.iter(this.conn)) {
       const decodedChunk = decoder.decode(chunk)
@@ -514,35 +425,8 @@ export class FirefoxClient {
     })()
   }
 
-  private async* iterator (): AsyncGenerator<any> {
-    let message = ""
-    let count = 0
-    for await (const chunk of this.iter) {
-      const decodedChunk = new TextDecoder().decode(chunk)
-      const colonIndex = decodedChunk.indexOf(":")
-      const [id, rawMessage] = [
-          decodedChunk.substring(colonIndex - 1),
-          decodedChunk.substring(colonIndex + 1)
-      ]
-      for (const byte of rawMessage) {
-        console.log('looking at byte:' + byte)
-        message += byte;
-
-        if (byte == '{') {
-          count++;
-        }
-
-        if (byte == '}') {
-          count--;
-          if (count == 0) {
-            yield JSON.parse(message);
-          }
-        }
-      }
-    }
-  }
-
-  private async waitForSpecificPacket (actor: string, params: Record<string, number | string>):Promise<any> {
+  // deno-lint-ignore no-explicit-any Again, we are returning a packet and it could be anything
+  private async waitForSpecificPacket (actor: string, params: Record<string, number | string>):Promise<Record<string, any>> {
     console.log("Called waiting for specifc packet")
     if (this.incoming_message_queue.length) {
       console.log('packets exist in queue, returning:')
@@ -639,6 +523,7 @@ export class FirefoxClient {
    *
    * @returns TODO(edward): Adjust this when return type is understood
    */
+  // deno-lint-ignore no-explicit-any It could be any value we get from the console
   public async evaluatePage(pageCommand: (() => unknown) | string): Promise<any> {
     console.log('At  top ofeval page func, requesting now...')
     const text = typeof pageCommand ===  "string" ? `(function () { return ${pageCommand} }).apply(window, [])` : `(${pageCommand}).apply(window, [])`
@@ -711,21 +596,9 @@ export class FirefoxClient {
     let listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs
-    let i = 0
     while (tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")) {
       listTabsResponse = (await this.request("listTabs", {}, "root")) as ListTabsResponse
       tabs = listTabsResponse.tabs
-      i++
-      if (i > 10) {
-        break
-      }
-    }
-    if (i > 100) {
-      console.log("\n\n\n")
-      console.log("SOMETHING is seriously wrong here, se below")
-      for await (let line of readLines(this.browser_process.stdout as Deno.Reader)) {
-        console.log(line)
-      }
     }
     console.log('got tabs')
     let tab = listTabsResponse.tabs.find(t => t.selected === true) as Tab
@@ -738,51 +611,6 @@ export class FirefoxClient {
       }
     }
     return tab
-  }
-
-  private async receiveMessage (): Promise<any> {
-    const result = await this.iter.next()
-    const value = result.value
-    const decodedValue = new TextDecoder().decode(value) // eg `decodedValue` = `123: { ... }` or `92: { ... }`
-    const sep = /[0-9]{1,3}:{"/g
-    const packets = decodedValue
-        .split(sep) // Split up the packets
-        .filter(packet => packet !== "" && packet.length !== 1)  // Filter out any empty ones
-        .map(packet => { // Re add the `{"` that we removed earlier (that we're using to split up the packets
-          return `{\"${packet}`
-        })
-    console.log(decodedValue)
-    const jsonPackets = packets.map((packet, i) => {
-      try {
-       return  JSON.parse(packet)
-      } catch (err) {
-        console.log('error when trying to parse:')
-        if (i === (packets.length - 1)) {
-          // llast packet didn't come through properly
-          return {}
-        }
-        console.log(packet)
-      }
-    })
-    const a: any = {}
-    jsonPackets.forEach(packet => {
-      if (a[packet.from]) {
-        a[packet.from]++
-      } else {
-        a[packet.from] =  1
-      }
-    })
-    console.log('Number of packets fromactors for this receiev:')
-    console.log(a)
-    const jsonPacket = jsonPackets.filter(packet => {
-      return UNSOLICITED_EVENTS.includes(packet.type) === false
-    })[0]
-    console.log('Got packet, here is the current  actor in progress andpacket: ' + this.current_actor_in_progress)
-    console.log(jsonPacket)
-    console.log("\n\n")
-    if (!jsonPacket)
-      return await this.receiveMessage()
-    return jsonPacket
   }
 
   /**
@@ -798,7 +626,8 @@ export class FirefoxClient {
    *   - id: Unsure what this corresponds to
    *   - message: This is a parsed JSON response that was assigned to th id, thus the response from thee request
    */
-  private async request (type: string, params = {}, actor?: string): Promise<any>
+  // deno-lint-ignore no-explicit-any
+  private async request (type: string, params = {}, actor?: string): Promise<Record<string, any>>
   {
     actor = actor ? actor : this.actor
     // Construct data in required format to send
