@@ -114,9 +114,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange(
-        "https://chromestatus.com/features/schedule",
-      );
+      await Sinco.waitForPageChange();
       await Sinco.assertSee("Release timeline");
       await Sinco.done();
     });
@@ -327,9 +325,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
       await Sinco.click('a[href="/features/schedule"]');
-      await Sinco.waitForPageChange(
-        "https://chromestatus.com/features/schedule",
-      );
+      await Sinco.waitForPageChange();
       await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
       await Sinco.done();
     });
