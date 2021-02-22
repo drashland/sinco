@@ -116,7 +116,11 @@ export class ChromeClient {
       if (data.method === "Page.frameStartedLoading") {
         this.frame_id = data.params.frameId;
       }
-      this.handleSocketMessage(msg);
+      if (data.id && data.id === -1) {
+        this.socket!.close();
+      } else {
+        this.handleSocketMessage(msg);
+      }
     };
   }
 
@@ -355,12 +359,16 @@ export class ChromeClient {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
+    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
     if (this.socket.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
       const p = deferred();
       this.socket.onclose = function () {
         p.resolve();
       };
-      this.socket.close()
+      this.socket.send(JSON.stringify({
+        id: -1,
+        method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
+      }));
       // Then wait for the promise to be resolved when the WS client is done
       await p;
     }
