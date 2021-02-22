@@ -99,7 +99,6 @@ async function waitUntilConnected(
     } catch (error) {
       if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
         iterations++;
-        console.log("Conn rfused");
         return false;
       }
       throw new Error(
@@ -319,7 +318,6 @@ export class FirefoxClient {
    */
   public async goTo(url: string): Promise<void> {
     await this.request("navigateTo", { url });
-    console.log("Going to wait until pagehas  loaded");
     const result = await this.waitForSpecificPacket(this.tab!.actor, {
       type: "tabNavigated",
       state: "stop",
@@ -401,17 +399,12 @@ export class FirefoxClient {
     pageCommand: (() => unknown) | string,
     // deno-lint-ignore no-explicit-any It could be any value we get from the console
   ): Promise<any> {
-    console.log("At  top ofeval page func, requesting now...");
     const text = typeof pageCommand === "string"
       ? `(function () { return ${pageCommand} }).apply(window, [])`
       : `(${pageCommand}).apply(window, [])`;
     const { resultID } = await this.request("evaluateJSAsync", {
       text,
     }, this.tab!.consoleActor);
-    console.log(
-      "just got the result id, now waiting for a specific packet from " +
-        this.tab!.consoleActor + " with  result id  of " + resultID,
-    );
     const evalResult = await this.waitForSpecificPacket(
       this.tab!.consoleActor,
       {
@@ -473,8 +466,6 @@ export class FirefoxClient {
     let packet;
     for await (const chunk of Deno.iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
       const decodedChunk = decoder.decode(chunk);
-      console.log("Chunk we will be parsing:");
-      console.log(decodedChunk);
       const rawPackets = decodedChunk
         .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
         .filter((packet) => packet !== "")
@@ -497,19 +488,12 @@ export class FirefoxClient {
         try {
           return JSON.parse(packet);
         } catch (err) {
-          console.log(
-            "A packet in the message isnt full, saving it: " + packet,
-          );
           partial += packet;
         }
       }).filter((packet) => packet !== undefined);
       // Then try check if partial is full, if it is then add it to the packets (at start, because remember this packet still originally came first
       try {
         const j = JSON.parse(partial);
-        console.log(
-          "we found the last aprt to a partial, adding it to the start of the arr: " +
-            partial,
-        );
         partial = "";
         packets.unshift(j);
       } catch (err) {
@@ -534,14 +518,11 @@ export class FirefoxClient {
         return true;
       });
       if (validPackets.length === 0) {
-        console.log("continuing, no of those packets were valid");
         continue;
       }
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
       packet = validPackets.shift() as Packet;
       validPackets.forEach((packet, i) => {
-        console.log("Going to push the below packet to the queue:");
-        console.log(packet);
         this.incoming_message_queue.push(packet);
       });
       break;
@@ -562,16 +543,11 @@ export class FirefoxClient {
     actor: string,
     params: Record<string, number | string>,
   ): Promise<Packet> {
-    console.log("Called waiting for specifc packet");
     if (this.incoming_message_queue.length) {
-      console.log("packets exist in queue, returning:");
       const packet = this.incoming_message_queue.shift() as Packet;
-      console.log(packet);
       return packet;
     }
     const value = await this.readPackets();
-    console.log("got the nnext packet, here it is:");
-    console.log(value);
     if (value.from !== actor) {
       return await this.waitForSpecificPacket(actor, params);
     }
@@ -598,7 +574,6 @@ export class FirefoxClient {
    * @returns The tab, holding the actor we use every other request
    */
   private async listTabs(): Promise<Tab> {
-    console.log("getting tabs");
     let listTabsResponse = await this.request("listTabs", {}, "root");
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs;
@@ -608,7 +583,6 @@ export class FirefoxClient {
       listTabsResponse = await this.request("listTabs", {}, "root");
       tabs = listTabsResponse.tabs;
     }
-    console.log("got tabs");
     let tab = listTabsResponse.tabs.find((t: Tab) =>
       t.selected === true
     ) as Tab;
@@ -649,8 +623,6 @@ export class FirefoxClient {
     const str = JSON.stringify(message);
     const encodedMessage = `${(encoder.encode(str)).length}:${str}`;
     // Send message
-    console.log(`Sending a request, heres message:`);
-    console.log(message);
     await this.conn.write(encoder.encode(encodedMessage));
     // Get related packet
     const packet = await this.waitForSpecificPacket(actor, {
@@ -663,8 +635,6 @@ export class FirefoxClient {
     if ("pageError" in packet) {
       await this.done(`${packet.type}: ${packet.errrorMessage}`);
     }
-    console.log("Got packet for message:");
-    console.log(packet);
     // Return result
     return packet;
   }
