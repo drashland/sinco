@@ -15,6 +15,8 @@ const UNSOLICITED_EVENTS = [
   "tabListChanged",
   "consoleAPICall",
 ];
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
 
 interface Tab {
   actor: string; // eg "server1.conn18.tabDescriptor1",
@@ -53,6 +55,29 @@ interface ListTabsResponse {
   tabs: Array<Tab>;
 }
 
+interface Packet {
+  from: string,
+  type?: string // Not always present, but this is very rare. An example is the response when we send a evaluateJSAsync message,
+  [key: string]: any // Packets differ a lot, they can have a single extra prop that is an object and contains lots of child props with varying types, or it can contain many props.  See below:
+  // {
+  //   type: "networkEventUpdate",
+  //   updateType: "eventTimings",
+  //   totalTime: 0,
+  //   from: "server1.conn1.netEvent831"
+  // }
+  // OR
+  // {
+  //   type: "evaluationResult",
+  //       resultID: "1613947364381-1",
+  //     hasException: false,
+  //     input: "(function () { return window.location.href }).apply(window, [])",
+  //     result: "https://chromestatus.com/features/schedule",
+  //     startTime: 1613947364381,
+  //     timestamp: 1613947364394,
+  //     from: "server1.conn1.child3/consoleActor2"
+  // }
+}
+
 async function waitUntilConnected(
   options: {
     hostname: string;
@@ -77,7 +102,7 @@ async function waitUntilConnected(
         return false;
       }
       throw new Error(
-        `Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this`,
+        `Uncaught Exception: Please log an issue at https://github.com/drashland/sinco as to how you encountered this. ORIGINAL ERROR MESSAGE: ${error.message}`,
       );
     }
   }
@@ -104,7 +129,6 @@ interface Configs {
   conn: Deno.Conn;
   // deno-lint-ignore camelcase
   browser_process: Deno.Process;
-  actor: string;
   tab: Tab | null;
   devProfileDirPath: string;
 }
@@ -133,11 +157,6 @@ export class FirefoxClient {
   private readonly browser_process: Deno.Process;
 
   /**
-   * Our main actor for the tab
-   */
-  private readonly actor: string;
-
-  /**
    * The tab for our browser
    */
   private readonly tab: Tab | null = null;
@@ -147,7 +166,7 @@ export class FirefoxClient {
    * so store it here to be returned next time we request a packet
    */
   // deno-lint-ignore no-explicit-any Holds packets, and as they can be anything we use any here
-  private incoming_message_queue: Record<string, any>[] = [];
+  private incoming_message_queue: Packet[] = [];
 
   /**
    * The path to the dev profile for firefox
@@ -160,7 +179,6 @@ export class FirefoxClient {
   constructor(configs: Configs) {
     this.conn = configs.conn;
     this.browser_process = configs.browser_process;
-    this.actor = configs.actor;
     this.tab = configs.tab ?? null;
     this.dev_profile_dir_path = configs.devProfileDirPath;
   }
@@ -205,23 +223,18 @@ export class FirefoxClient {
           `user_pref('toolkit.telemetry.reportingpolicy.firstRun', false);`, // Don't open that extra tab
       ),
     );
-    console.log(`Dev profile path: ${devProfilePath}`);
     // Get the path to the users firefox binary
     const firefoxPath = this.getFirefoxPath();
     // Create the arguments we will use when spawning the headless browser
     const args = [
-      "--start-debugger-server", // todo :: only needs 1ddash for windows?
+      "--start-debugger-server",
       buildOptions.debuggerServerPort.toString(),
-      "--profile", // todo :: only needs 1ddash for windows?
+      "--profile",
       tmpDirName,
-      "--headless", // todo :: only needs 1ddash for windows?
+      "--headless",
       buildOptions.defaultUrl,
     ];
-    console.log("run args:");
-    console.log([firefoxPath, ...args]);
     // Create the sub process to start the browser
-    console.log("Cmd:");
-    console.log([firefoxPath, ...args]);
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
@@ -244,12 +257,10 @@ export class FirefoxClient {
     const TempFirefoxClient = new FirefoxClient({
       conn,
       browser_process: browserProcess,
-      actor: "root",
       tab: null,
       devProfileDirPath: tmpDirName,
-    }); // "root" required as the "to" when we send a request to get tabs
+    });
     const tab = await TempFirefoxClient.listTabs();
-    const actor = tab.actor;
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
     await TempFirefoxClient.request("startListeners", {
       listeners: [
@@ -259,15 +270,17 @@ export class FirefoxClient {
         //"FileActivity"
       ],
     }, tab.consoleActor);
-    // Wait a few seconds for it to start. This is what foxdriver recommends. TODO Maybe we dont need this, or maybe theres a faster way to check eg tab navigated event?
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    // Attach the tab we are using to the client, so we can use things like`evaluateJS`
+    // Attach the tab we are using to the client, so we can monitor things like tab changes
     await TempFirefoxClient.request("attach", {}, tab.actor);
+    // Wait a few seconds for the tab/page to properly open and load
+    // await TempFirefoxClient.waitForSpecificPacket(tab.actor, {
+    //   type: "tabNavigated",
+    //   state: "stop"
+    // })
     // Return the client :)
     return new FirefoxClient({
       conn,
       browser_process: browserProcess,
-      actor,
       tab,
       devProfileDirPath: tmpDirName,
     });
@@ -310,7 +323,7 @@ export class FirefoxClient {
   public async goTo(url: string): Promise<void> {
     await this.request("navigateTo", { url });
     console.log("Going to wait until pagehas  loaded");
-    const result = await this.waitForSpecificPacket(this.actor, {
+    const result = await this.waitForSpecificPacket(this.tab!.actor, {
       type: "tabNavigated",
       state: "stop",
     });
@@ -339,7 +352,7 @@ export class FirefoxClient {
    * button sends the user to another page
    */
   public async waitForPageChange(): Promise<void> {
-    await this.waitForSpecificPacket(this.actor, {
+    await this.waitForSpecificPacket(this.tab!.actor, {
       type: "tabNavigated",
       "state": "stop",
     });
@@ -408,8 +421,6 @@ export class FirefoxClient {
         resultID,
       },
     );
-    console.log("got eval result, here it is:");
-    console.log(evalResult);
     if ("exception" in evalResult) {
       const preview = evalResult.exception.preview;
       await this.done(`${preview.kind}: ${preview.message}`);
@@ -461,10 +472,9 @@ export class FirefoxClient {
    * @returns An async iterator to get the next packet from
    */
   // deno-lint-ignore no-explicit-any Packets can be anything
-  private async *readPackets(): AsyncIterableIterator<Record<string, any>> {
-    const decoder = new TextDecoder();
+  private async *readPackets(): AsyncIterableIterator<Packet> {
     let partial = "";
-    for await (const chunk of Deno.iter(this.conn)) {
+    for await (const chunk of Deno.iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
       const decodedChunk = decoder.decode(chunk);
       console.log("Chunk we will be parsing:");
       console.log(decodedChunk);
@@ -486,15 +496,14 @@ export class FirefoxClient {
           }
         }); // add back the `{` that we removed above, so we can still easily parse it
       // Turn the packets into json, if it fails then it means a packet is partial, so we save it
-      console.log(rawPackets);
-      const json = rawPackets.map((obj) => {
+      const packets = rawPackets.map((packet) => {
         try {
-          return JSON.parse(obj);
+          return JSON.parse(packet);
         } catch (err) {
-          console.log("A packet in the message isnt full, saving it: " + obj);
-          partial += obj;
+          console.log("A packet in the message isnt full, saving it: " + packet);
+          partial += packet;
         }
-      }).filter((obj) => obj !== undefined);
+      }).filter((packet) => packet !== undefined);
       // Then try check if partial is full, if it is then add it to the packets (at start, because remember this packet still originally came first
       try {
         const j = JSON.parse(partial);
@@ -503,14 +512,12 @@ export class FirefoxClient {
             partial,
         );
         partial = "";
-        json.unshift(j);
+        packets.unshift(j);
       } catch (err) {
         // still a partial, do nothing
       }
 
-      console.log("all packets:");
-      console.log(json);
-      const validPackets = json.filter((packet) => {
+      const validPackets = packets.filter((packet) => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false;
         }
@@ -528,19 +535,16 @@ export class FirefoxClient {
         return true;
       });
       if (validPackets.length === 0) {
+        console.log('continuing, no of those packets were valid')
         continue;
       }
-      console.log("packets from iterr:");
-      console.log(validPackets);
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
-      const packet = validPackets.shift();
+      const packet = validPackets.shift() as Packet;
       validPackets.forEach((packet, i) => {
         console.log("Going to push the below packet to the queue:");
         console.log(packet);
         this.incoming_message_queue.push(packet);
       });
-      console.log(`Got packet:`);
-      console.log(packet);
       yield packet;
     }
   }
@@ -558,15 +562,12 @@ export class FirefoxClient {
     actor: string,
     params: Record<string, number | string>,
     // deno-lint-ignore no-explicit-any Again, we are returning a packet and it could be anything
-  ): Promise<Record<string, any>> {
+  ): Promise<Packet> {
     console.log("Called waiting for specifc packet");
     if (this.incoming_message_queue.length) {
       console.log("packets exist in queue, returning:");
-      const packet = this.incoming_message_queue[0];
-      if (packet.actor !== actor) {
-        console.log(packet);
-      }
-      this.incoming_message_queue.shift();
+      const packet = this.incoming_message_queue.shift() as Packet;
+      console.log(packet);
       return packet;
     }
     const iterator = this.readPackets();
@@ -575,9 +576,6 @@ export class FirefoxClient {
     console.log("got the nnext packet, here it is:");
     console.log(value);
     if (value.from !== actor) {
-      return await this.waitForSpecificPacket(actor, params);
-    }
-    if (!value.type) {
       return await this.waitForSpecificPacket(actor, params);
     }
     const paramsKeys = Object.keys(params);
@@ -605,18 +603,18 @@ export class FirefoxClient {
   private async listTabs(): Promise<Tab> {
     console.log("getting tabs");
     let listTabsResponse =
-      (await this.request("listTabs", {}, "root")) as ListTabsResponse;
+      await this.request("listTabs", {}, "root");
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs;
     while (
       tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")
     ) {
       listTabsResponse =
-        (await this.request("listTabs", {}, "root")) as ListTabsResponse;
+        await this.request("listTabs", {}, "root");
       tabs = listTabsResponse.tabs;
     }
     console.log("got tabs");
-    let tab = listTabsResponse.tabs.find((t) => t.selected === true) as Tab;
+    let tab = listTabsResponse.tabs.find((t: Tab) => t.selected === true) as Tab;
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
       const tabActorRequest = await this.request("getTarget", {}, tab.actor);
@@ -644,8 +642,8 @@ export class FirefoxClient {
     params = {},
     actor?: string,
     // deno-lint-ignore no-explicit-any
-  ): Promise<Record<string, any>> {
-    actor = actor ? actor : this.actor;
+  ): Promise<Packet> {
+    actor = actor ? actor : this.tab!.actor;
     // Construct data in required format to send
     const message = {
       type,
@@ -653,25 +651,15 @@ export class FirefoxClient {
       ...params,
     };
     const str = JSON.stringify(message);
-    const encoder = new TextEncoder();
     const encodedMessage = `${(encoder.encode(str)).length}:${str}`;
     // Send message
     console.log(`Sending a request, heres message:`);
     console.log(message);
-    await this.conn.write(new TextEncoder().encode(encodedMessage));
+    await this.conn.write(encoder.encode(encodedMessage));
     // Get related packet
-    let packet;
-    while (true) {
-      const iterator = this.readPackets();
-      const n = await iterator.next();
-      packet = n.value;
-      // todo these conditionals could probs be moved to readpackets
-      // ignore packets that arent related to the actor that sent the message
-      if (packet.from !== actor) {
-        continue;
-      }
-      break;
-    }
+    const packet = await this.waitForSpecificPacket(actor, {
+      from: actor
+    })
     // Check for errors
     if ("error" in packet) {
       await this.done(`${packet.error}: ${packet.message}`);
