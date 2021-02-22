@@ -14,27 +14,33 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       conn.close();
       await Sinco.done();
     });
-    Rhum.testCase("Uses the port when passed in to the parameters", async () => {
-      const Sinco = await FirefoxClient.build({
-        debuggerServerPort: 9999
-      })
-      const conn = await Deno.connect({
-        hostname: defaultBuildOptions.hostname,
-        port: 9999,
-      });
-      conn.close();
-      await Sinco.done();
-    })
+    Rhum.testCase(
+      "Uses the port when passed in to the parameters",
+      async () => {
+        const Sinco = await FirefoxClient.build({
+          debuggerServerPort: 9999,
+        });
+        const conn = await Deno.connect({
+          hostname: defaultBuildOptions.hostname,
+          port: 9999,
+        });
+        conn.close();
+        await Sinco.done();
+      },
+    );
     Rhum.testCase("Uses the url when passed in to the parameters", async () => {
       const Sinco = await FirefoxClient.build({
-        defaultUrl: "https://drash.land"
-      })
-      await Sinco.assertUrlIs("https://drash.land/")
-      await Sinco.done()
-    })
-    Rhum.testCase("Uses the hostname when passed in to the parameters", async () => {
-      // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
-    })
+        defaultUrl: "https://drash.land",
+      });
+      await Sinco.assertUrlIs("https://drash.land/");
+      await Sinco.done();
+    });
+    Rhum.testCase(
+      "Uses the hostname when passed in to the parameters",
+      async () => {
+        // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
+      },
+    );
   });
 
   Rhum.testSuite("assertUrlIs()", () => {

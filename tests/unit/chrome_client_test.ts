@@ -20,34 +20,40 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       await promise;
       await Sinco.done();
     });
-    Rhum.testCase("Uses the port when passed in to the parameters", async () => {
-      const Sinco = await ChromeClient.build({
-        debuggerPort: 9999
-      })
-      const res = await fetch("http://localhost:9999/json/list");
-      const json = await res.json();
-      // Our ws client should be able to connect if the browser is running
-      const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
-      const promise = deferred();
-      client.onopen = function () {
-        client.close();
-      };
-      client.onclose = function () {
-        promise.resolve();
-      };
-      await promise;
-      await Sinco.done();
-    })
+    Rhum.testCase(
+      "Uses the port when passed in to the parameters",
+      async () => {
+        const Sinco = await ChromeClient.build({
+          debuggerPort: 9999,
+        });
+        const res = await fetch("http://localhost:9999/json/list");
+        const json = await res.json();
+        // Our ws client should be able to connect if the browser is running
+        const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+        const promise = deferred();
+        client.onopen = function () {
+          client.close();
+        };
+        client.onclose = function () {
+          promise.resolve();
+        };
+        await promise;
+        await Sinco.done();
+      },
+    );
     Rhum.testCase("Uses the url when passed in to the parameters", async () => {
       const Sinco = await ChromeClient.build({
-        defaultUrl: "https://drash.land"
-      })
-      await Sinco.assertUrlIs("https://drash.land/")
-      await Sinco.done()
-    })
-    Rhum.testCase("Uses the hostname when passed in to the parameters", async () => {
-      // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
-    })
+        defaultUrl: "https://drash.land",
+      });
+      await Sinco.assertUrlIs("https://drash.land/");
+      await Sinco.done();
+    });
+    Rhum.testCase(
+      "Uses the hostname when passed in to the parameters",
+      async () => {
+        // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
+      },
+    );
   });
 
   Rhum.testSuite("assertUrlIs()", () => {
