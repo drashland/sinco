@@ -1,4 +1,4 @@
-import { assertEquals } from "../deps.ts";
+import {assertEquals} from "../deps.ts";
 
 const UNSOLICITED_EVENTS = [
   "styleApplied",
@@ -261,6 +261,8 @@ export class FirefoxClient {
       devProfileDirPath: tmpDirName,
     });
     const tab = await TempFirefoxClient.listTabs();
+    // Attach the tab we are using to the client, so we can monitor things like tab changes
+    await TempFirefoxClient.request("attach", {}, tab.actor);
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
     await TempFirefoxClient.request("startListeners", {
       listeners: [
@@ -270,10 +272,8 @@ export class FirefoxClient {
         //"FileActivity"
       ],
     }, tab.consoleActor);
-    // Attach the tab we are using to the client, so we can monitor things like tab changes
-    await TempFirefoxClient.request("attach", {}, tab.actor);
     // Wait a few seconds for the tab/page to properly open and load
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 3000))
     // Return the client :)
     return new FirefoxClient({
       conn,
@@ -468,8 +468,9 @@ export class FirefoxClient {
    *
    * @returns An async iterator to get the next packet from
    */
-  private async *readPackets(): AsyncIterableIterator<Packet> {
+  private async readPackets(): Promise<Packet> {
     let partial = "";
+    let packet;
     for await (const chunk of Deno.iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
       const decodedChunk = decoder.decode(chunk);
       console.log("Chunk we will be parsing:");
@@ -537,14 +538,15 @@ export class FirefoxClient {
         continue;
       }
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
-      const packet = validPackets.shift() as Packet;
+      packet = validPackets.shift() as Packet;
       validPackets.forEach((packet, i) => {
         console.log("Going to push the below packet to the queue:");
         console.log(packet);
         this.incoming_message_queue.push(packet);
       });
-      yield packet;
+      break
     }
+    return packet as Packet
   }
 
   /**
@@ -567,9 +569,7 @@ export class FirefoxClient {
       console.log(packet);
       return packet;
     }
-    const iterator = this.readPackets();
-    const n = await iterator.next();
-    const value = n.value;
+    const value = await this.readPackets();
     console.log("got the nnext packet, here it is:");
     console.log(value);
     if (value.from !== actor) {
