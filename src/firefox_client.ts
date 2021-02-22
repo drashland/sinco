@@ -1,4 +1,4 @@
-import {assertEquals} from "../deps.ts";
+import { assertEquals } from "../deps.ts";
 
 const UNSOLICITED_EVENTS = [
   "styleApplied",
@@ -273,7 +273,7 @@ export class FirefoxClient {
       ],
     }, tab.consoleActor);
     // Wait a few seconds for the tab/page to properly open and load
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     // Return the client :)
     return new FirefoxClient({
       conn,
@@ -544,9 +544,9 @@ export class FirefoxClient {
         console.log(packet);
         this.incoming_message_queue.push(packet);
       });
-      break
+      break;
     }
-    return packet as Packet
+    return packet as Packet;
   }
 
   /**
