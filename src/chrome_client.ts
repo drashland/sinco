@@ -64,7 +64,7 @@ type DOMOutput = {
 
 const webSocketIsDonePromise = deferred();
 
-interface BuildOptions {
+export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
   defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
   hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
@@ -225,7 +225,7 @@ export class ChromeClient {
    *
    * @param urlToVisit - The page to go to
    */
-  public async goTo(urlToVisit: string) {
+  public async goTo(urlToVisit: string): Promise<void> {
     const notificationPromise = this
       .notification_resolvables["Page.loadEventFired"] = deferred();
     const res = await this.sendWebSocketMessage("Page.navigate", {
