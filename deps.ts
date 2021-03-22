@@ -1,4 +1,4 @@
-export { assertEquals } from "https://deno.land/std@0.88.0/testing/asserts.ts";
-export { readLines } from "https://deno.land/std@0.88.0/io/mod.ts";
-export { deferred } from "https://deno.land/std@0.88.0/async/deferred.ts";
-export type { Deferred } from "https://deno.land/std@0.88.0/async/deferred.ts";
+export { assertEquals } from "https://deno.land/std@0.91.0/testing/asserts.ts";
+export { readLines } from "https://deno.land/std@0.91.0/io/mod.ts";
+export { deferred } from "https://deno.land/std@0.91.0/async/deferred.ts";
+export type { Deferred } from "https://deno.land/std@0.91.0/async/deferred.ts";
