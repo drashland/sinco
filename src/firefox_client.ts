@@ -578,14 +578,12 @@ export class FirefoxClient {
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs;
     while (
-      tabs.length === 0 || (tabs.length > 0 && tabs[0].title === "New Tab")
+      tabs.length === 0 || (tabs.length > 0 && ["", "New Tab"].includes(tabs[0].title))
     ) {
       listTabsResponse = await this.request("listTabs", {}, "root");
       tabs = listTabsResponse.tabs;
     }
-    let tab = listTabsResponse.tabs.find((t: Tab) =>
-      t.selected === true
-    ) as Tab;
+    let tab = listTabsResponse.tabs[0] as Tab;
     // For firefox > 75 consoleActor is not available within listTabs request
     if (tab && !tab.consoleActor) {
       const tabActorRequest = await this.request("getTarget", {}, tab.actor);
