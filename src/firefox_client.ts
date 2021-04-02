@@ -322,6 +322,7 @@ export class FirefoxClient {
       type: "tabNavigated",
       state: "stop",
     });
+    console.log(result)
     if (result.title === "Server Not Found") {
       await this.done(
         `net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`,
