@@ -323,7 +323,7 @@ export class FirefoxClient {
       state: "stop",
     });
     // For internal reference: it seems like when there is an error eg the page doesnt exist, the title can vary. Late 2020, for a page that didnt exist, the title was "Server Not Found". Early 2021, it was changed to "Problem loading page". So if you ever get a failing test with this method, check the `result` - the title might be something new
-    const errorTitles = ["Server Not Found", "Problem loading page"]
+    const errorTitles = ["Server Not Found", "Problem loading page"];
     if (errorTitles.includes(result.title)) {
       await this.done(
         `net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`,
@@ -580,7 +580,8 @@ export class FirefoxClient {
     // NOTE: When browser isn't ran in headless, there is usually 2 tabs open, the first one being "Advanced Preferences" or "about" page, and the second one being the actual page we navigated to
     let tabs = listTabsResponse.tabs;
     while (
-      tabs.length === 0 || (tabs.length > 0 && ["", "New Tab"].includes(tabs[0].title))
+      tabs.length === 0 ||
+      (tabs.length > 0 && ["", "New Tab"].includes(tabs[0].title))
     ) {
       listTabsResponse = await this.request("listTabs", {}, "root");
       tabs = listTabsResponse.tabs;
