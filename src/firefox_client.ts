@@ -323,7 +323,9 @@ export class FirefoxClient {
       state: "stop",
     });
     console.log(result)
-    if (result.title === "Server Not Found") {
+    // For internal reference: it seems like when there is an error eg the page doesnt exist, the title can vary. Late 2020, for a page that didnt exist, the title was "Server Not Found". Early 2021, it was changed to "Problem loading page". So if you ever get a failing test with this method, check the `result` - the title might be something new
+    const errorTitles = ["Server Not Found", "Problem loading page"]
+    if (errorTitles.includes(result.title)) {
       await this.done(
         `net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "${url}"`,
       );
