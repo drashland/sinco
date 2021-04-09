@@ -1,5 +1,9 @@
 import { assertEquals } from "../deps.ts";
 
+// Talking as EB: There are many packets we receieve which do not mean anything to us, and to avoid bloating any logging or trying to handle events we would never use, we store them here.
+// This was originally taken from an npm modules called "foxr", but I have added on to it.
+// The ones added by me, were added because when debugging, i found us picking up those events and trying to do something with them, but we had no use, so we ended p discarding that event,
+// this bloated the debugging process.
 const UNSOLICITED_EVENTS = [
   "styleApplied",
   "propertyChange",
@@ -500,6 +504,9 @@ export class FirefoxClient {
         // still a partial, do nothing
       }
 
+      // 'valid packets' here are just packet types we care about. To understand more about the unsolicated event we ignore, please refer to the comment above that variable declaration
+      // On receiving packets from the connection that has those types, we simly ignore them. This means, that say we do get an unsolicated event, we kind of 'return early', by ignoring that packet early on, we can continue to search/wait for a packet we DO care about. What determines this, is if an event is something we use, such as an event for evaluating JS - that's something we need so we don't care about it.
+      // By ignoring those packets we dont need, it clears up the responses the get, otherwise if we tried to debug messages we get, those events are going to bloat up the logging.
       const validPackets = packets.filter((packet) => {
         if (UNSOLICITED_EVENTS.includes(packet.type) === true) {
           return false;
