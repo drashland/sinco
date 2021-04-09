@@ -64,16 +64,22 @@ type DOMOutput = {
 
 const webSocketIsDonePromise = deferred();
 
-export class HeadlessBrowser {
+export interface BuildOptions {
+  debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
+  defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
+  hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
+}
+
+export class ChromeClient {
   /**
    * The sub process that runs headless chrome
    */
-  private browser_process: Deno.Process | null = null;
+  private readonly browser_process: Deno.Process;
 
   /**
    * Our web socket connection to the remote debugging port
    */
-  private socket: WebSocket | null = null;
+  private readonly socket: WebSocket;
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
@@ -96,88 +102,14 @@ export class HeadlessBrowser {
    */
   private resolvables: { [key: number]: Deferred<unknown> } = {};
 
-  constructor() {
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Build the headless browser
-   */
-  public async build() {
-    const paths = {
-      // deno-lint-ignore camelcase
-      windows_chrome_exe:
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      // deno-lint-ignore camelcase
-      windows_chrome_exe_x86:
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      linux: "/usr/bin/google-chrome",
-    };
-    let chromePath = "";
-    switch (Deno.build.os) {
-      case "darwin":
-        chromePath = paths.darwin;
-        break;
-      case "windows":
-        if (await exists(paths.windows_chrome_exe)) {
-          chromePath = paths.windows_chrome_exe;
-          break;
-        }
-        if (await exists(paths.windows_chrome_exe_x86)) {
-          chromePath = paths.windows_chrome_exe_x86;
-          break;
-        }
-        throw new Error(
-          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
-        );
-      case "linux":
-        chromePath = paths.linux;
-        break;
-    }
-    this.browser_process = Deno.run({
-      cmd: [
-        chromePath,
-        "--headless",
-        "--remote-debugging-port=9292",
-        "--disable-gpu",
-        "--no-sandbox",
-        "https://chromestatus.com",
-      ],
-      stderr: "piped", // so stuff isn't displayed in the terminal for the user
-    });
-    // Wait until browser is ready
-    for await (
-      const line of readLines(this.browser_process.stderr as Deno.Reader)
-    ) {
-      if (line.indexOf("DevTools listening on ws://") > -1) {
-        break;
-      }
-    }
-    let debugUrl = "";
-    while (true) {
-      try {
-        const res = await fetch("http://localhost:9292/json/list");
-        const json = await res.json();
-        debugUrl = json[0]["webSocketDebuggerUrl"];
-        break;
-      } catch (err) {
-        // do nothing, loop again until the endpoint is ready
-      }
-    }
-    // Connect websocket
-    this.socket = new WebSocket(debugUrl);
-    const promise = deferred();
-    this.socket.onopen = function () {
-      promise.resolve();
-    };
-    await promise;
+  constructor(socket: WebSocket, browserProcess: Deno.Process) {
+    this.socket = socket;
+    this.browser_process = browserProcess;
+    // Register error listener
     this.socket.onerror = function (e) {
       webSocketIsDonePromise.resolve();
     };
+    // Register on message listenerr
     this.socket.onmessage = (msg) => {
       // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data);
@@ -190,9 +122,61 @@ export class HeadlessBrowser {
         this.handleSocketMessage(msg);
       }
     };
+  }
 
-    // Enable page notifications, so we can wait for page events, such as when a page has loaded
-    await this.sendWebSocketMessage("Page.enable");
+  //////////////////////////////////////////////////////////////////////////////
+  // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  public static async build(options: BuildOptions = {}) {
+    // Setup build options
+    if (!options.debuggerPort) {
+      options.debuggerPort = 9292;
+    }
+    if (!options.defaultUrl) {
+      options.defaultUrl = "https://chromestatus.com";
+    }
+    if (!options.hostname) {
+      options.hostname = "localhost";
+    }
+    // Create the sub process
+    const chromePath = await this.getChromePath();
+    const browserProcess = Deno.run({
+      cmd: [
+        chromePath,
+        "--headless",
+        "--remote-debugging-port=" + options.debuggerPort,
+        "--disable-gpu",
+        "--no-sandbox",
+        options.defaultUrl,
+      ],
+      stderr: "piped", // so stuff isn't displayed in the terminal for the user
+    });
+    // Wait until browser is ready
+    for await (
+      const line of readLines(browserProcess.stderr)
+    ) {
+      if (line.indexOf("DevTools listening on ws://") > -1) {
+        break;
+      }
+    }
+    // Connect our websocket
+    const debugUrl = await this.getWebSocketUrl(
+      options.hostname,
+      options.debuggerPort,
+    );
+    const socket = new WebSocket(debugUrl);
+    // Wait until its open
+    const promise = deferred();
+    socket.onopen = function () {
+      promise.resolve();
+    };
+    await promise;
+    // Create tmp chrome client and enable page notifications, so we can wait for page events, such as when a page has loaded
+    const TempChromeClient = new ChromeClient(socket, browserProcess);
+    await TempChromeClient.sendWebSocketMessage("Page.enable");
+    // Return the client :)
+    return new ChromeClient(socket, browserProcess);
   }
 
   /**
@@ -241,7 +225,7 @@ export class HeadlessBrowser {
    *
    * @param urlToVisit - The page to go to
    */
-  public async goTo(urlToVisit: string) {
+  public async goTo(urlToVisit: string): Promise<void> {
     const notificationPromise = this
       .notification_resolvables["Page.loadEventFired"] = deferred();
     const res = await this.sendWebSocketMessage("Page.navigate", {
@@ -375,13 +359,13 @@ export class HeadlessBrowser {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    if (this.socket!.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
-      // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
+    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
+    if (this.socket.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
       const p = deferred();
-      this.socket!.onclose = function () {
+      this.socket.onclose = function () {
         p.resolve();
       };
-      this.socket!.send(JSON.stringify({
+      this.socket.send(JSON.stringify({
         id: -1,
         method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
       }));
@@ -389,8 +373,8 @@ export class HeadlessBrowser {
       await p;
     }
     if (this.browser_process_closed === false) {
-      this.browser_process!.stderr!.close();
-      this.browser_process!.close();
+      this.browser_process.stderr!.close();
+      this.browser_process.close();
       this.browser_process_closed = true;
     }
   }
@@ -426,16 +410,81 @@ export class HeadlessBrowser {
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
    */
-  public async waitForAnchorChange(): Promise<void> {
-    const notificationPromise = this
-      .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
-    await notificationPromise;
-    delete this.notification_resolvables["Page.navigatedWithinDocument"];
-  }
+  // public async waitForAnchorChange(): Promise<void> {
+  //   const notificationPromise = this
+  //     .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
+  //   await notificationPromise;
+  //   delete this.notification_resolvables["Page.navigatedWithinDocument"];
+  // }
 
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the websocket url we use to create a ws client with.
+   * Requires the headless chrome process to be running, as
+   * this is what actually starts the remote debugging url
+   *
+   * @param hostname - The hostname to fetch from
+   * @param port -  The port for the hostname to fetch from
+   *
+   * @returns The url to connect to
+   */
+  private static async getWebSocketUrl(hostname: string, port: number) {
+    let debugUrl = "";
+    while (true) {
+      try {
+        const res = await fetch(`http://${hostname}:${port}/json/list`);
+        const json = await res.json();
+        debugUrl = json[0]["webSocketDebuggerUrl"];
+        break;
+      } catch (err) {
+        // do nothing, loop again until the endpoint is ready
+      }
+    }
+    return debugUrl;
+  }
+
+  /**
+   * Gets the full path to the chrome executable on the users filesystem
+   *
+   * @returns The path to chrome
+   */
+  private static async getChromePath(): Promise<string> {
+    const paths = {
+      // deno-lint-ignore camelcase
+      windows_chrome_exe:
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      // deno-lint-ignore camelcase
+      windows_chrome_exe_x86:
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      linux: "/usr/bin/google-chrome",
+    };
+    let chromePath = "";
+    switch (Deno.build.os) {
+      case "darwin":
+        chromePath = paths.darwin;
+        break;
+      case "windows":
+        if (await exists(paths.windows_chrome_exe)) {
+          chromePath = paths.windows_chrome_exe;
+          break;
+        }
+        if (await exists(paths.windows_chrome_exe_x86)) {
+          chromePath = paths.windows_chrome_exe_x86;
+          break;
+        }
+        throw new Error(
+          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+        );
+      case "linux":
+        chromePath = paths.linux;
+        break;
+    }
+    return chromePath;
+  }
 
   private handleSocketMessage(msg: MessageEvent) {
     const message: MessageResponse | NotificationResponse = JSON.parse(
@@ -461,6 +510,8 @@ export class HeadlessBrowser {
   }
 
   /**
+   * NOT FOR PUBLIC USE
+   *
    * Main method to handle sending messages/events to the websocket endpoint.
    *
    * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
@@ -483,7 +534,7 @@ export class HeadlessBrowser {
     };
     if (params) data.params = params;
     const messagePromise = this.resolvables[data.id] = deferred();
-    this.socket!.send(JSON.stringify(data));
+    this.socket.send(JSON.stringify(data));
     const result = await messagePromise;
     delete this.resolvables[data.id];
     return result;
@@ -501,7 +552,6 @@ export class HeadlessBrowser {
       const exceptionDetail = result.exceptionDetails;
       const errorMessage = exceptionDetail.exception.description;
       if (errorMessage.includes("SyntaxError")) { // a syntax error
-        console.log("syntax error");
         const message = errorMessage.replace("SyntaxError: ", "");
         throw new SyntaxError(message + ": `" + commandSent + "`");
       } else { // any others, unsure what they'd be

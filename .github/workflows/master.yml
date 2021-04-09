@@ -20,7 +20,9 @@ jobs:
       - name: Run Docker Tests
         run: |
           cd tests/integration/docker_test
-          docker-compose up
+          docker-compose up -d
+          docker exec drivers deno test -A --config tsconfig.json tests/integration
+          docker exec drivers deno test -A --config tsconfig.json tests/unit
 
   tests:
     strategy:
