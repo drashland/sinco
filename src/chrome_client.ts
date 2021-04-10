@@ -68,6 +68,7 @@ export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
   defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
   hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
+  binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
 }
 
 export class ChromeClient {
@@ -139,8 +140,12 @@ export class ChromeClient {
     if (!options.hostname) {
       options.hostname = "localhost";
     }
+
     // Create the sub process
-    const chromePath = await this.getChromePath();
+    const chromePath =
+      await ((options.binaryPath)
+        ? this.getChromePath(options.binaryPath)
+        : this.getChromePath());
     const browserProcess = Deno.run({
       cmd: [
         chromePath,
@@ -451,7 +456,7 @@ export class ChromeClient {
    *
    * @returns The path to chrome
    */
-  private static async getChromePath(): Promise<string> {
+  private static async getChromePath(userPath?: string): Promise<string> {
     const paths = {
       // deno-lint-ignore camelcase
       windows_chrome_exe:
@@ -465,7 +470,7 @@ export class ChromeClient {
     let chromePath = "";
     switch (Deno.build.os) {
       case "darwin":
-        chromePath = paths.darwin;
+        chromePath = userPath || paths.darwin;
         break;
       case "windows":
         if (await exists(paths.windows_chrome_exe)) {
@@ -476,11 +481,15 @@ export class ChromeClient {
           chromePath = paths.windows_chrome_exe_x86;
           break;
         }
+        if (userPath && await exists(userPath)) {
+          chromePath = userPath;
+          break;
+        }
         throw new Error(
           "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
         );
       case "linux":
-        chromePath = paths.linux;
+        chromePath = userPath || paths.linux;
         break;
     }
     return chromePath;

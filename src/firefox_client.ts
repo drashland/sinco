@@ -127,6 +127,7 @@ export interface BuildOptions {
   hostname?: string; // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
   debuggerServerPort?: number; // Port for the debug server to listen on, which our connection will connect to
   defaultUrl?: string; // The default url the browser will open when ran
+  binaryPath?: string; //The Full Path to the browser binary. If using an alternative Gecko based browser, this field is necessary.
 }
 
 interface Configs {
@@ -227,7 +228,7 @@ export class FirefoxClient {
       ),
     );
     // Get the path to the users firefox binary
-    const firefoxPath = this.getFirefoxPath();
+    const firefoxPath = buildOptions.binaryPath || this.getFirefoxPath();
     // Create the arguments we will use when spawning the headless browser
     const args = [
       "--start-debugger-server",
