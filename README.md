@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="200" src="https://drash.land/sinco/assets/img/sinco.svg" alt="Sinco logo">
+  <img height="200" src="logo.svg" alt="Sinco logo">
   <h1 align="center">Sinco</h1>
 </p>
 <p align="center">Browser Automation and Testing Tool for Deno.</p>
@@ -24,6 +24,7 @@
 ---
 
 ## Table of Contents
+
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
 - [Features](#features)
@@ -35,7 +36,8 @@
 
 ## Quick Start
 
-Get started [here](https://drash.land/sinco/#/#quickstart) to create a basic browser test.
+Get started [here](https://drash.land/sinco/#/#quickstart) to create a basic
+browser test.
 
 You can also install the CLI to run an interactive GUI application to run your tests from. See the documentation [here](https://drash.land/sinco/cli)
 
@@ -49,7 +51,10 @@ See the features [here](https://drash.land/sinco#features)
 
 ## Why Use Sinco?
 
-Sinco is a first of it's kind for Deno, allowing you, the developer, to test the UI and UX of your web apps. Sinco provides many utilities to do so, and doesn't require any npm modules or the `--unstable` flag, it is simply an API wrapper around headless chrome.
+Sinco is a first of it's kind for Deno, allowing you, the developer, to test the
+UI and UX of your web apps. Sinco provides many utilities to do so, and doesn't
+require any npm modules or the `--unstable` flag, it is simply an API wrapper
+around headless chrome.
 
 Sinco takes concepts from the following:
 
@@ -58,22 +63,27 @@ Sinco takes concepts from the following:
 
 ## Mirrors
 
-* [ ] https://nest.land/package/sinco
+- [ ] https://nest.land/package/sinco
 
 ## Articles
 
-*No articles have been created as of yet*
+_No articles have been created as of yet_
 
 ## Contributing
 
 Contributors are welcomed!
 
-Please read through our [contributing guidelines](https://github.com/drashland/.github/blob/master/CONTRIBUTING.md). Included are directions for opening issues, coding standards, and notes on development.
+Please read through our
+[contributing guidelines](https://github.com/drashland/.github/blob/master/CONTRIBUTING.md).
+Included are directions for opening issues, coding standards, and notes on
+development.
 
 ## License
 
-By contributing your code, you agree to license your contribution under the [MIT License](https://github.com/drashland/.github/blob/master/LICENSE).
+By contributing your code, you agree to license your contribution under the
+[MIT License](https://github.com/drashland/.github/blob/master/LICENSE).
 
 ## Acknowledgements
 
-- [@caspervonb](https://github.com/caspervonb) - A huge help in getting this project working by helping understand how we can interact with the browser
+- [@caspervonb](https://github.com/caspervonb) - A huge help in getting this
+  project working by helping understand how we can interact with the browser
