@@ -41,6 +41,33 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
       },
     );
+    Rhum.testCase(
+      "Uses the binaryPath when passed in to the parameters",
+      async () => {
+        function getFirefoxPath(): string {
+          switch (Deno.build.os) {
+            case "darwin":
+              return "/Applications/Firefox.app/Contents/MacOS/firefox";
+            case "linux":
+              return "/usr/bin/firefox";
+            case "windows":
+              return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
+          }
+        }
+
+        const Sinco = await FirefoxClient.build({
+          binaryPath: getFirefoxPath(),
+        });
+
+        // If it hasn't, connecting will throw an error
+        const conn = await Deno.connect({
+          hostname: defaultBuildOptions.hostname,
+          port: defaultBuildOptions.debuggerServerPort,
+        });
+        conn.close();
+        await Sinco.done();
+      },
+    );
   });
 
   Rhum.testSuite("assertUrlIs()", () => {
