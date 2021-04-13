@@ -71,6 +71,47 @@ export interface BuildOptions {
   binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
 }
 
+ /**
+   * Gets the full path to the chrome executable on the users filesystem
+   *
+   * @returns The path to chrome
+   */
+export async function getChromePath(): Promise<string> {
+  const paths = {
+    // deno-lint-ignore camelcase
+    windows_chrome_exe:
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    // deno-lint-ignore camelcase
+    windows_chrome_exe_x86:
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    linux: "/usr/bin/google-chrome",
+  };
+  let chromePath = "";
+  switch (Deno.build.os) {
+    case "darwin":
+      chromePath = paths.darwin;
+      break;
+    case "windows":
+      if (await exists(paths.windows_chrome_exe)) {
+        chromePath = paths.windows_chrome_exe;
+        break;
+      }
+      if (await exists(paths.windows_chrome_exe_x86)) {
+        chromePath = paths.windows_chrome_exe_x86;
+        break;
+      }
+
+      throw new Error(
+        "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+      );
+    case "linux":
+      chromePath = paths.linux;
+      break;
+  }
+  return chromePath;
+}
+
 export class ChromeClient {
   /**
    * The sub process that runs headless chrome
@@ -142,10 +183,7 @@ export class ChromeClient {
     }
 
     // Create the sub process
-    const chromePath =
-      await ((options.binaryPath)
-        ? this.getChromePath(options.binaryPath)
-        : this.getChromePath());
+    const chromePath = options.binaryPath || await getChromePath();
     const browserProcess = Deno.run({
       cmd: [
         chromePath,
@@ -449,50 +487,6 @@ export class ChromeClient {
       }
     }
     return debugUrl;
-  }
-
-  /**
-   * Gets the full path to the chrome executable on the users filesystem
-   *
-   * @returns The path to chrome
-   */
-  private static async getChromePath(userPath?: string): Promise<string> {
-    const paths = {
-      // deno-lint-ignore camelcase
-      windows_chrome_exe:
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      // deno-lint-ignore camelcase
-      windows_chrome_exe_x86:
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      darwin: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      linux: "/usr/bin/google-chrome",
-    };
-    let chromePath = "";
-    switch (Deno.build.os) {
-      case "darwin":
-        chromePath = userPath || paths.darwin;
-        break;
-      case "windows":
-        if (await exists(paths.windows_chrome_exe)) {
-          chromePath = paths.windows_chrome_exe;
-          break;
-        }
-        if (await exists(paths.windows_chrome_exe_x86)) {
-          chromePath = paths.windows_chrome_exe_x86;
-          break;
-        }
-        if (userPath && await exists(userPath)) {
-          chromePath = userPath;
-          break;
-        }
-        throw new Error(
-          "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
-        );
-      case "linux":
-        chromePath = userPath || paths.linux;
-        break;
-    }
-    return chromePath;
   }
 
   private handleSocketMessage(msg: MessageEvent) {

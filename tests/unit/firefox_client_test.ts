@@ -1,6 +1,9 @@
 import { Rhum } from "../deps.ts";
 import { FirefoxClient } from "../../mod.ts";
-import { defaultBuildOptions } from "../../src/firefox_client.ts";
+import {
+  defaultBuildOptions,
+  getFirefoxPath,
+} from "../../src/firefox_client.ts";
 
 Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
@@ -44,21 +47,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
     Rhum.testCase(
       "Uses the binaryPath when passed in to the parameters",
       async () => {
-        function getFirefoxPath(): string {
-          switch (Deno.build.os) {
-            case "darwin":
-              return "/Applications/Firefox.app/Contents/MacOS/firefox";
-            case "linux":
-              return "/usr/bin/firefox";
-            case "windows":
-              return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
-          }
-        }
-
         const Sinco = await FirefoxClient.build({
           binaryPath: getFirefoxPath(),
         });
-
         // If it hasn't, connecting will throw an error
         const conn = await Deno.connect({
           hostname: defaultBuildOptions.hostname,

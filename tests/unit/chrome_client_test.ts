@@ -1,7 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
 import { ChromeClient } from "../../mod.ts";
-import { exists } from "../../src/utility.ts";
+import { getChromePath } from "../../src/chrome_client.ts";
 
 Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
@@ -58,43 +58,6 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase(
       "Uses the binaryPath when passed in to the parameters",
       async () => {
-        async function getChromePath(): Promise<string> {
-          const paths = {
-            // deno-lint-ignore camelcase
-            windows_chrome_exe:
-              "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-            // deno-lint-ignore camelcase
-            windows_chrome_exe_x86:
-              "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-            darwin:
-              "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            linux: "/usr/bin/google-chrome",
-          };
-          let chromePath = "";
-          switch (Deno.build.os) {
-            case "darwin":
-              chromePath = paths.darwin;
-              break;
-            case "windows":
-              if (await exists(paths.windows_chrome_exe)) {
-                chromePath = paths.windows_chrome_exe;
-                break;
-              }
-              if (await exists(paths.windows_chrome_exe_x86)) {
-                chromePath = paths.windows_chrome_exe_x86;
-                break;
-              }
-
-              throw new Error(
-                "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
-              );
-            case "linux":
-              chromePath = paths.linux;
-              break;
-          }
-          return chromePath;
-        }
-
         const Sinco = await ChromeClient.build({
           binaryPath: await getChromePath(),
         });
