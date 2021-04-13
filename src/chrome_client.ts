@@ -71,7 +71,7 @@ export interface BuildOptions {
   binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
 }
 
- /**
+/**
    * Gets the full path to the chrome executable on the users filesystem
    *
    * @returns The path to chrome
