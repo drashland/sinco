@@ -1,4 +1,4 @@
-import { assertEquals } from "../deps.ts";
+import { assertEquals, iter } from "../deps.ts";
 
 // Talking as EB: There are many packets we receieve which do not mean anything to us, and to avoid bloating any logging or trying to handle events we would never use, we store them here.
 // This was originally taken from an npm modules called "foxr", but I have added on to it.
@@ -271,7 +271,7 @@ export class FirefoxClient {
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
-    for await (const line of Deno.iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
+    for await (const line of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
       break;
     }
     // Get actor (tab) that we use to interact with
@@ -455,7 +455,7 @@ export class FirefoxClient {
       this.browser_process.stdout!.close();
       this.browser_process.close();
       await Deno.remove(this.dev_profile_dir_path, { recursive: true });
-    } catch (err) {
+    } catch (_err) {
       // ... do nothing
     }
     if (Deno.build.os === "windows") {
@@ -488,7 +488,7 @@ export class FirefoxClient {
   private async readPackets(): Promise<Packet> {
     let partial = "";
     let packet;
-    for await (const chunk of Deno.iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
+    for await (const chunk of iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
       const decodedChunk = decoder.decode(chunk);
       const rawPackets = decodedChunk
         .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
@@ -500,7 +500,7 @@ export class FirefoxClient {
             try {
               JSON.parse("{" + msg);
               return `{${msg}`;
-            } catch (err) {
+            } catch (_err) {
               return msg;
             }
           } else {
@@ -511,7 +511,7 @@ export class FirefoxClient {
       const packets = rawPackets.map((packet) => {
         try {
           return JSON.parse(packet);
-        } catch (err) {
+        } catch (_err) {
           partial += packet;
         }
       }).filter((packet) => packet !== undefined);
@@ -520,7 +520,7 @@ export class FirefoxClient {
         const j = JSON.parse(partial);
         partial = "";
         packets.unshift(j);
-      } catch (err) {
+      } catch (_err) {
         // still a partial, do nothing
       }
 
@@ -549,7 +549,7 @@ export class FirefoxClient {
       }
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
       packet = validPackets.shift() as Packet;
-      validPackets.forEach((packet, i) => {
+      validPackets.forEach((packet) => {
         this.incoming_message_queue.push(packet);
       });
       break;

@@ -1,3 +1,5 @@
+import { iter as iterator } from "../deps.ts";
+
 /**
  * Prerequisites
  *
@@ -50,6 +52,7 @@ interface ListTabsResponse {
   tabs: Array<Tab>;
 }
 
+// deno-lint-ignore no-unused-vars
 async function simplifiedFirefoxExample() {
   async function connect(): Promise<Deno.Conn> {
     const conn = await Deno.connect({
@@ -60,7 +63,7 @@ async function simplifiedFirefoxExample() {
   }
 
   const conn = await connect();
-  const iter = Deno.iter(conn);
+  const iter = iterator(conn);
   await iter.next(); // get 'welcome' message out the way
 
   async function request(type: string, params = {}, name: string): Promise<{

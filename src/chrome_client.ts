@@ -148,7 +148,7 @@ export class ChromeClient {
     this.socket = socket;
     this.browser_process = browserProcess;
     // Register error listener
-    this.socket.onerror = function (e) {
+    this.socket.onerror = function () {
       webSocketIsDonePromise.resolve();
     };
     // Register on message listenerr
@@ -482,7 +482,7 @@ export class ChromeClient {
         const json = await res.json();
         debugUrl = json[0]["webSocketDebuggerUrl"];
         break;
-      } catch (err) {
+      } catch (_err) {
         // do nothing, loop again until the endpoint is ready
       }
     }
