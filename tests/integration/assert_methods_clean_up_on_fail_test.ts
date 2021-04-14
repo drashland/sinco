@@ -54,7 +54,7 @@ Deno.test("Chrome: Assertion methods cleanup when an assertion fails", async () 
   await Sinco2.assertUrlIs("https://chromestatus.com/features");
   try {
     await Sinco2.assertSee("Chrome Versions");
-  } catch (err) {
+  } catch (_err) {
     //
   }
 });
@@ -87,7 +87,7 @@ Deno.test("Firefox: Assertion methods cleanup when an assertion fails", async ()
   await Sinco2.assertUrlIs("https://chromestatus.com/features");
   try {
     await Sinco2.assertSee("Chrome Versions");
-  } catch (err) {
+  } catch (_err) {
     //
   }
 });
