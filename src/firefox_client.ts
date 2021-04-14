@@ -549,7 +549,7 @@ export class FirefoxClient {
       }
       // If valid packets is more than 1, it means we just need to queue the next ones after returning the first
       packet = validPackets.shift() as Packet;
-      validPackets.forEach(packet => {
+      validPackets.forEach((packet) => {
         this.incoming_message_queue.push(packet);
       });
       break;

@@ -1,4 +1,4 @@
-import { iter as iterator } from "../deps.ts"
+import { iter as iterator } from "../deps.ts";
 
 /**
  * Prerequisites
