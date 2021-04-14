@@ -1,6 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
 import { ChromeClient } from "../../mod.ts";
+import { getChromePath } from "../../src/chrome_client.ts";
 
 Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
@@ -52,6 +53,28 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       "Uses the hostname when passed in to the parameters",
       async () => {
         // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
+      },
+    );
+    Rhum.testCase(
+      "Uses the binaryPath when passed in to the parameters",
+      async () => {
+        const Sinco = await ChromeClient.build({
+          binaryPath: await getChromePath(),
+        });
+
+        const res = await fetch("http://localhost:9292/json/list");
+        const json = await res.json();
+        // Our ws client should be able to connect if the browser is running
+        const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+        const promise = deferred();
+        client.onopen = function () {
+          client.close();
+        };
+        client.onclose = function () {
+          promise.resolve();
+        };
+        await promise;
+        await Sinco.done();
       },
     );
   });

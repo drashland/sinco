@@ -1,6 +1,9 @@
 import { Rhum } from "../deps.ts";
 import { FirefoxClient } from "../../mod.ts";
-import { defaultBuildOptions } from "../../src/firefox_client.ts";
+import {
+  defaultBuildOptions,
+  getFirefoxPath,
+} from "../../src/firefox_client.ts";
 
 Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
@@ -39,6 +42,21 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       "Uses the hostname when passed in to the parameters",
       async () => {
         // Unable to test properly, as windows doesnt like 0.0.0.0 or localhost, so the only choice is 127.0.0.1 but this is already the default
+      },
+    );
+    Rhum.testCase(
+      "Uses the binaryPath when passed in to the parameters",
+      async () => {
+        const Sinco = await FirefoxClient.build({
+          binaryPath: getFirefoxPath(),
+        });
+        // If it hasn't, connecting will throw an error
+        const conn = await Deno.connect({
+          hostname: defaultBuildOptions.hostname,
+          port: defaultBuildOptions.debuggerServerPort,
+        });
+        conn.close();
+        await Sinco.done();
       },
     );
   });
