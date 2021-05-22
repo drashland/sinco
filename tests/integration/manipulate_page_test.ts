@@ -22,7 +22,7 @@ Deno.test("Chrome: Manipulate Webpage", async () => {
 
 Deno.test("Chrome: Evaluating a script - Tutorial for this feature in the documentation works", async () => {
   const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
+  await Sinco.goTo("https://drash.land");
   const pageTitle = await Sinco.evaluatePage(() => {
     // deno-lint-ignore no-undef
     return document.title;
@@ -42,10 +42,10 @@ Deno.test("Chrome: Evaluating a script - Tutorial for this feature in the docume
     return document.body.children.length;
   });
   await Sinco.done();
-  assertEquals(pageTitle, "Chrome Platform Status");
+  assertEquals(pageTitle, "Drash Land");
   assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 7);
-  assertEquals(newBodyLength, 8);
+  assertEquals(oldBodyLength, 14);
+  assertEquals(newBodyLength, 15);
 });
 
 Deno.test("Firefox: Manipulate Webpage", async () => {
@@ -69,7 +69,7 @@ Deno.test("Firefox: Manipulate Webpage", async () => {
 
 Deno.test("Firefox: Evaluating a script - Tutorial for this feature in the documentation works", async () => {
   const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com");
+  await Sinco.goTo("https://drash.land");
   const pageTitle = await Sinco.evaluatePage(() => {
     // deno-lint-ignore no-undef
     return document.title;
@@ -89,8 +89,8 @@ Deno.test("Firefox: Evaluating a script - Tutorial for this feature in the docum
     return document.body.children.length;
   });
   await Sinco.done();
-  assertEquals(pageTitle, "Chrome Platform Status");
+  assertEquals(pageTitle, "Drash Land");
   assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 7);
-  assertEquals(newBodyLength, 8);
+  assertEquals(oldBodyLength, 14);
+  assertEquals(newBodyLength, 15);
 });
