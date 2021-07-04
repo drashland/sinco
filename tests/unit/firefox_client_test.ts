@@ -83,12 +83,12 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
           line.indexOf("Values") < 0;
       });
       Rhum.asserts.assertEquals(
-        msgArr[0].indexOf('-   "https://chromestatus.com/features"') > -1,
-        true,
+        msgArr[0],
+        "\x1b[31m\x1b[1m-   https://\x1b[41m\x1b[37mchromestatus\x1b[31m\x1b[49m.com\x1b[41m\x1b[37m/\x1b[31m\x1b[49m\x1b[41m\x1b[37mfeatures\x1b[31m\x1b[49m",
       );
       Rhum.asserts.assertEquals(
-        msgArr[1].indexOf('+   "https://hella.com"') > -1,
-        true,
+        msgArr[1],
+        "\x1b[22m\x1b[39m\x1b[32m\x1b[1m+   https://\x1b[42m\x1b[37mhella\x1b[32m\x1b[49m.com",
       );
     });
   });

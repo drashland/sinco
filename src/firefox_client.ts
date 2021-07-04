@@ -271,7 +271,7 @@ export class FirefoxClient {
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
-    for await (const line of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
+    for await (const _line of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
       break;
     }
     // Get actor (tab) that we use to interact with
