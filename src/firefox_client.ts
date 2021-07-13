@@ -1,3 +1,15 @@
+// https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
+// FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
+/**
+ * $ <firefox binary> --profile <profile> --headless --remote-debugging-port 1448
+ * ```ts
+ * const res = await fetch("http://localhost:1448/json/list")
+ * const json = await res.json()
+ * consy url = json[json.length - 1]["webSocketDebuggerUrl"]
+ * const c = new WebSocket(url)
+ * ```
+ */
+
 import { assertEquals, iter } from "../deps.ts";
 
 // Talking as EB: There are many packets we receieve which do not mean anything to us, and to avoid bloating any logging or trying to handle events we would never use, we store them here.
