@@ -93,14 +93,17 @@ async function waitUntilConnected(
   const maxIterations = 30;
   async function tryConnect(hostname: string, port: number) {
     try {
+      console.log('gonna conn')
       const conn = await Deno.connect({
         port,
         hostname,
       });
+      console.log('can conn')
       conn.close();
       // This means we can connect so its ready
       return true;
     } catch (error) {
+      console.log('cant conn yet')
       if (error instanceof Deno.errors.ConnectionRefused) { // No listener yet
         iterations++;
         return false;
@@ -111,7 +114,9 @@ async function waitUntilConnected(
     }
   }
   const { hostname, port } = options;
+  console.log('calling try connect')
   const canConnect = await tryConnect(hostname, port);
+  console.log('can connect: ' + canConnect)
   if (canConnect) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return;
@@ -253,27 +258,35 @@ export class FirefoxClient {
       "--profile",
       tmpDirName,
       "--headless",
+      "--remote-debugging-port",
+      buildOptions.debuggerServerPort.toString(),
       buildOptions.defaultUrl,
     ];
+    console.log('starting subprocess:')
+    console.log([firefoxPath, ...args])
     // Create the sub process to start the browser
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
       stdout: "piped",
     });
+    console.log('ran sub process')
     // Wait until the port is occupied
     await waitUntilConnected({
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
+    console.log('can connect')
     // Connect
     const conn = await Deno.connect({
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
-    for await (const _line of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
-      break;
+    console.log('hello')
+    for await (const _chunk of iter(conn)) {
+      break
     }
+    console.log('bye')
     // Get actor (tab) that we use to interact with
     const TempFirefoxClient = new FirefoxClient({
       conn,
@@ -281,7 +294,9 @@ export class FirefoxClient {
       tab: null,
       devProfileDirPath: tmpDirName,
     });
+    console.log('hello again')
     const tab = await TempFirefoxClient.listTabs();
+    console.log('bye again')
     // Attach the tab we are using to the client, so we can monitor things like tab changes
     await TempFirefoxClient.request("attach", {}, tab.actor);
     // Start listeners for console. This is required if we wish to use things like `evaluateJS`
@@ -490,6 +505,7 @@ export class FirefoxClient {
     let packet;
     for await (const chunk of iter(this.conn)) { // NOTE: All packets seems to have an id associated to them, for their type, so evaluateJSAsync will always return `74:{...}` and the evaluation result will always have an id of 321
       const decodedChunk = decoder.decode(chunk);
+      console.log(decodedChunk)
       const rawPackets = decodedChunk
         .split(/[0-9]{1,4}:{/) // split and get rid of the ids so each item should be parsable json
         .filter((packet) => packet !== "")
