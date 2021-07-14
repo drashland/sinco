@@ -211,9 +211,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
 
   Rhum.testSuite("evaluatePage()", () => {
     Rhum.testCase("It should evaluate function on current frame", async () => {
-      console.log(1);
       const Sinco = await FirefoxClient.build();
-      console.log(2);
       await Sinco.goTo("https://drash.land");
       const pageTitle = await Sinco.evaluatePage(() => {
         // deno-lint-ignore no-undef
