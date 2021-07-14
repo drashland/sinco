@@ -1,3 +1,15 @@
+// https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
+// FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
+/**
+ * $ <firefox binary> --profile <profile> --headless --remote-debugging-port 1448
+ * ```ts
+ * const res = await fetch("http://localhost:1448/json/list")
+ * const json = await res.json()
+ * consy url = json[json.length - 1]["webSocketDebuggerUrl"]
+ * const c = new WebSocket(url)
+ * ```
+ */
+
 import { assertEquals, iter } from "../deps.ts";
 
 // Talking as EB: There are many packets we receieve which do not mean anything to us, and to avoid bloating any logging or trying to handle events we would never use, we store them here.
@@ -253,6 +265,8 @@ export class FirefoxClient {
       "--profile",
       tmpDirName,
       "--headless",
+      "--remote-debugging-port",
+      buildOptions.debuggerServerPort.toString(),
       buildOptions.defaultUrl,
     ];
     // Create the sub process to start the browser
@@ -271,7 +285,7 @@ export class FirefoxClient {
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerServerPort,
     });
-    for await (const _line of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`
+    for await (const _chunk of iter(conn)) { // get 'welcome' message out the way. Or use `await iter.next()`, because we dont need it and so our readPackets() doesnt pick it up
       break;
     }
     // Get actor (tab) that we use to interact with
