@@ -1,4 +1,4 @@
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { FirefoxClient } from "../../src/firefox_client.ts";
 
 const Sinco = await FirefoxClient.build();
 //await Sinco.goTo("https://chromestatus.com");

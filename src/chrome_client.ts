@@ -114,10 +114,6 @@ export async function getChromePath(): Promise<string> {
 }
 
 export class ChromeClient extends Client {
-  /**
-   * The sub process that runs headless chrome
-   */
-  private readonly browser_process: Deno.Process;
 
   /**
    * Our web socket connection to the remote debugging port
@@ -146,9 +142,8 @@ export class ChromeClient extends Client {
   private resolvables: { [key: number]: Deferred<unknown> } = {};
 
   constructor(socket: WebSocket, browserProcess: Deno.Process) {
-    super()
+    super(socket, browserProcess)
     this.socket = socket;
-    this.browser_process = browserProcess;
     // Register error listener
     this.socket.onerror = function () {
       webSocketIsDonePromise.resolve();
@@ -163,7 +158,7 @@ export class ChromeClient extends Client {
       if (data.id && data.id === -1) {
         this.socket!.close();
       } else {
-        this.handleSocketMessage(msg);
+        //this.handleSocketMessage(msg);
       }
     };
   }
@@ -206,6 +201,7 @@ export class ChromeClient extends Client {
       }
     }
     // Connect our websocket
+    // @ts-ignore
     const debugUrl = await this.getWebSocketUrl(
       options.hostname,
       options.debuggerPort,
@@ -219,324 +215,8 @@ export class ChromeClient extends Client {
     await promise;
     // Create tmp chrome client and enable page notifications, so we can wait for page events, such as when a page has loaded
     const TempChromeClient = new ChromeClient(socket, browserProcess);
-    await TempChromeClient.sendWebSocketMessage("Page.enable");
+    //await TempChromeClient.sendWebSocketMessage("Page.enable");
     // Return the client :)
     return new ChromeClient(socket, browserProcess);
-  }
-
-  /**
-   * Asserts a given url matches the current
-   *
-   * @param expectedUrl - The expected url, eg `https://google.com/hello`
-   */
-  public async assertUrlIs(expectedUrl: string): Promise<void> {
-    // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
-    const res = await this.sendWebSocketMessage("DOM.getDocument") as {
-      root: {
-        documentURL: string;
-      };
-    };
-    const actualUrl = res.root.documentURL;
-    if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
-      await this.done();
-    }
-    assertEquals(actualUrl, expectedUrl);
-  }
-
-  /**
-   * Check if the given text exists on the dom
-   *
-   * @param text - The text to check for
-   */
-  public async assertSee(text: string): Promise<void> {
-    const command = `document.body.innerText.indexOf('${text}') >= 0`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as { // Tried and tested
-      result: {
-        type: "boolean";
-        value: boolean;
-      };
-    };
-    const exists = res.result.value;
-    if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
-      await this.done();
-    }
-    assertEquals(exists, true);
-  }
-
-  /**
-   * Go to a specific page
-   *
-   * @param urlToVisit - The page to go to
-   */
-  public async goTo(urlToVisit: string): Promise<void> {
-    const notificationPromise = this
-      .notification_resolvables["Page.loadEventFired"] = deferred();
-    const res = await this.sendWebSocketMessage("Page.navigate", {
-      url: urlToVisit,
-    }) as {
-      frameId: string;
-      loaderId: string;
-      errorText?: string; // Only present when an error occurred, eg page doesn't exist
-    };
-    await notificationPromise;
-    if (res.errorText) {
-      //await this.done()
-      throw new Error(
-        `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
-      );
-    }
-  }
-
-  /**
-   * Clicks a button with the given selector
-   *
-   *     await this.click("#username");
-   *     await this.click('button[type="submit"]')
-   *
-   * @param selector - The tag name, id or class
-   */
-  public async click(selector: string): Promise<void> {
-    const command = `document.querySelector('${selector}').click()`;
-    const result = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      //  If all went ok and an elem was clicked
-      result: {
-        type: "undefined";
-      };
-    } | { // else a other error, eg no elem exists with the selector, or `selector` is `">>"`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-
-    // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
-    if ("exceptionDetails" in result) {
-      this.checkForErrorResult(result, command);
-    }
-  }
-
-  /**
-   * Invoke a function or string expression on the current frame.
-   *
-   * @param pageCommand - The function to be called.
-   */
-  public async evaluatePage(
-    pageCommand: (() => unknown) | string,
-  ): Promise<unknown> {
-    if (typeof pageCommand === "string") {
-      const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
-        expression: pageCommand,
-      });
-      return result.value;
-    }
-
-    if (typeof pageCommand === "function") {
-      const { executionContextId } = await this.sendWebSocketMessage(
-        "Page.createIsolatedWorld",
-        {
-          frameId: this.frame_id,
-        },
-      );
-
-      const { result } = await this.sendWebSocketMessage(
-        "Runtime.callFunctionOn",
-        {
-          functionDeclaration: pageCommand.toString(),
-          executionContextId: executionContextId,
-          returnByValue: true,
-          awaitPromise: true,
-          userGesture: true,
-        },
-      );
-      return result.value;
-    }
-  }
-
-  /**
-   * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
-   */
-  public async waitForPageChange(): Promise<void> {
-    const notificationPromise = this
-      .notification_resolvables["Page.loadEventFired"] = deferred();
-    await notificationPromise;
-    delete this.notification_resolvables["Page.loadEventFired"];
-  }
-
-  /**
-   * Gets the text for the given selector
-   * Must be an input element
-   *
-   * @param selector - eg input[type="submit"] or #submit
-   *
-   * @throws When:
-   *     - Error with the element (using selector)
-   *
-   * @returns The text inside the selector, eg could be "" or "Edward"
-   */
-  public async getInputValue(selector: string): Promise<string> {
-    const command = `document.querySelector('${selector}').value`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: {
-        type: "undefined" | "string";
-        value?: string;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-    const type = (res as DOMOutput).result.type;
-    if (type === "undefined") { // not an input elem
-      return "undefined";
-    }
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-    // Tried and tested, value and type are a string aand `res.result.value` definitely exists at this stage
-    const value = (res.result as { value: string }).value;
-    return value || "";
-  }
-
-  /**
-   * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
-   */
-  public async done(): Promise<void> {
-    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    if (this.socket.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
-      const p = deferred();
-      this.socket.onclose = function () {
-        p.resolve();
-      };
-      this.socket.send(JSON.stringify({
-        id: -1,
-        method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
-      }));
-      // Then wait for the promise to be resolved when the WS client is done
-      await p;
-    }
-    if (this.browser_process_closed === false) {
-      this.browser_process.stderr!.close();
-      this.browser_process.close();
-      this.browser_process_closed = true;
-    }
-  }
-
-  /**
-   * Type into an input element, by the given selector
-   *
-   *     <input name="city"/>
-   *
-   *     await this.type('input[name="city"]', "Stockholm")
-   *
-   * @param selector - The value for the name attribute of the input to type into
-   * @param value - The value to set the input to
-   */
-  public async type(selector: string, value: string): Promise<void> {
-    const command = `document.querySelector('${selector}').value = "${value}"`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    } | {
-      result: {
-        type: string;
-        value: string;
-      };
-    };
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-  }
-
-  /**
-   * Wait for anchor navigation. Usually used when typing into an input field
-   */
-  // public async waitForAnchorChange(): Promise<void> {
-  //   const notificationPromise = this
-  //     .notification_resolvables["Page.navigatedWithinDocument"] = deferred();
-  //   await notificationPromise;
-  //   delete this.notification_resolvables["Page.navigatedWithinDocument"];
-  // }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  private handleSocketMessage(msg: MessageEvent) {
-    const message: MessageResponse | NotificationResponse = JSON.parse(
-      msg.data,
-    );
-    if ("id" in message) { // message response
-      const resolvable = this.resolvables[message.id];
-      if (resolvable) {
-        if ("result" in message) { // success response
-          resolvable.resolve(message.result);
-        }
-        if ("error" in message) { // error response
-          resolvable.resolve(message.error);
-        }
-      }
-    }
-    if ("method" in message) { // Notification response
-      const resolvable = this.notification_resolvables[message.method];
-      if (resolvable) {
-        resolvable.resolve();
-      }
-    }
-  }
-
-  /**
-   * NOT FOR PUBLIC USE
-   *
-   * Main method to handle sending messages/events to the websocket endpoint.
-   *
-   * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
-   * @param params - Parameters required for the domain method
-   *
-   * @returns
-   */
-  private async sendWebSocketMessage(
-    method: string,
-    params?: { [key: string]: unknown },
-    // deno-lint-ignore no-explicit-any The return value could literally be anything
-  ): Promise<any> {
-    const data: {
-      id: number;
-      method: string;
-      params?: { [key: string]: unknown };
-    } = {
-      id: this.next_message_id++,
-      method: method,
-    };
-    if (params) data.params = params;
-    const messagePromise = this.resolvables[data.id] = deferred();
-    this.socket.send(JSON.stringify(data));
-    const result = await messagePromise;
-    delete this.resolvables[data.id];
-    return result;
-  }
-
-  /**
-   * Checks if the result is an error
-   *
-   * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
-   * @param commandSent - The command sent to trigger the result
-   */
-  private checkForErrorResult(result: DOMOutput, commandSent: string): void {
-    // Is an error
-    if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
-      const exceptionDetail = result.exceptionDetails;
-      const errorMessage = exceptionDetail.exception.description;
-      if (errorMessage.includes("SyntaxError")) { // a syntax error
-        const message = errorMessage.replace("SyntaxError: ", "");
-        throw new SyntaxError(message + ": `" + commandSent + "`");
-      } else { // any others, unsure what they'd be
-        throw new Error(`${errorMessage}: "${commandSent}"`);
-      }
-    }
   }
 }

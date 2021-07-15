@@ -10,68 +10,8 @@
  * ```
  */
 
-import { assertEquals, readLines, deferred } from "../deps.ts";
+import { readLines, deferred } from "../deps.ts";
 import { Client } from "./client.ts"
-
-// Talking as EB: There are many packets we receieve which do not mean anything to us, and to avoid bloating any logging or trying to handle events we would never use, we store them here.
-// This was originally taken from an npm modules called "foxr", but I have added on to it.
-// The ones added by me, were added because when debugging, i found us picking up those events and trying to do something with them, but we had no use, so we ended p discarding that event,
-// this bloated the debugging process.
-const UNSOLICITED_EVENTS = [
-  "styleApplied",
-  "propertyChange",
-  "networkEventUpdate",
-  "networkEvent",
-  "propertyChange",
-  "newMutations",
-  "appOpen",
-  "appClose",
-  "appInstall",
-  "appUninstall",
-  "frameUpdate",
-  "tabListChanged",
-  "consoleAPICall",
-];
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-interface Tab {
-  actor: string; // eg "server1.conn18.tabDescriptor1",
-  browserContextID: number;
-  isZombieTab: boolean;
-  outerWindowId: number;
-  selected: true; // If this is the web page we are viewing
-  title: string; // Title of the web page
-  traits: {
-    isBrowsingContext: true;
-  };
-  url: string; // eg "https://chromestatus.com/features"
-  consoleActor: string;
-  inspectorActor: string;
-  styleSheetsActor: string;
-  storageActor: string;
-  memoryActor: string;
-  framerateActor: string;
-  reflowActor: string;
-  cssPropertiesActor: string;
-  performanceActor: string;
-  animationsActor: string;
-  responsiveActor: string;
-  contentViewerActor: string;
-  webExtensionInspectedWindowActor: string;
-  accessibilityActor: string;
-  screenshotActor: string;
-  changesActor: string;
-  webSocketActor: string;
-  eventSourceActor: string;
-  manifestActor: string;
-  networkContentActor: string;
-  screenshotContentActor: string;
-}
-
-interface ListTabsResponse {
-  tabs: Array<Tab>;
-}
 
 interface Packet {
   from: string;
@@ -140,11 +80,6 @@ export class FirefoxClient extends Client {
   private readonly websocket: WebSocket;
 
   /**
-   * The browser process that is running the headless browser
-   */
-  private readonly browser_process: Deno.Process;
-
-  /**
    * Holds messages that we need, but was sent along another useful packet in a message,
    * so store it here to be returned next time we request a packet
    */
@@ -154,9 +89,8 @@ export class FirefoxClient extends Client {
    * @param configs - Used to provide an API that can communicate with the headless browser
    */
   constructor(websocket: WebSocket, browserProcess: Deno.Process) {
-    super()
+    super(websocket, browserProcess)
     this.websocket = websocket;
-    this.browser_process = browserProcess;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -187,11 +121,8 @@ export class FirefoxClient extends Client {
     if (!buildOptions.defaultUrl) {
       buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
     }
-    // Get the path to the users firefox binary
-    const firefoxPath = buildOptions.binaryPath || getFirefoxPath();
-    // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it                                                                                
+    // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
     const tmpDirName = await Deno.makeTempDir();
-    console.log(tmpDirName)                                                                                                                                                                   
     // Create the arguments we will use when spawning the headless browser
     const args = [
       "--start-debugger-server",
@@ -205,42 +136,37 @@ export class FirefoxClient extends Client {
       "about:blank"
     ];
     // Create the sub process to start the browser
-    console.log([firefoxPath, ...args].join(" "))
+    const firefoxPath = buildOptions.binaryPath || getFirefoxPath()
     const browserProcess = Deno.run({
       cmd: [firefoxPath, ...args],
       stderr: "piped",
       stdout: "piped",
     });
-    let wsUrl = ""
+    // Oddly, this is needed before the json/list endpoint is up.
+    // but the ws url providedd here isn't the one we need
     for await (const line of readLines(browserProcess.stderr)) {
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-      console.log(line)
       if (!match) {
         continue
       }
-      wsUrl = match![1]
       break
     }
-    console.log('got match :): ' + wsUrl)
-    const WSURL = await this.getWebSocketUrl(buildOptions.hostname, buildOptions.debuggerServerPort)
-    console.log('got ws url:' + wsUrl)
+    const WSURL = await Client.getWebSocketUrl(buildOptions.hostname, buildOptions.debuggerServerPort)
     let websocket = new WebSocket(WSURL)
     const promise = deferred()
     websocket.onopen = () => promise.resolve()
-    websocket.onerror = (e: any) => {
-      console.log(e.message)
-      websocket = new WebSocket(wsUrl)
-    }
     await promise
     websocket.onmessage = (e) => {
       console.log(e.data)
     }
-    // Get actor (tab) that we use to interact with
-    const TempFirefoxClient = new FirefoxClient(
-      websocket,
-      browserProcess,
-    );
-    console.log('gonna send data')
+    const TempFirefoxClient = new FirefoxClient(websocket, browserProcess);
+    //await TempFirefoxClient.sendWebSocketMessage("Page.enable");
+    // // Get actor (tab) that we use to interact with
+    // const TempFirefoxClient = new FirefoxClient(
+    //   websocket,
+    //   browserProcess,
+    // );
+    // console.log('gonna send data')
     const message = {
       method: "Target.getBrowserContexts"
     }
