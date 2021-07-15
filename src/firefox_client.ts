@@ -13,30 +13,6 @@
 import { readLines, deferred } from "../deps.ts";
 import { Client } from "./client.ts"
 
-interface Packet {
-  from: string;
-  type?: string; // Not always present, but this is very rare. An example is the response when we send a evaluateJSAsync message,
-  // deno-lint-ignore no-explicit-any Packets can contain various types
-  [key: string]: any; // Packets differ a lot, they can have a single extra prop that is an object and contains lots of child props with varying types, or it can contain many props.  See below:
-  // {
-  //   type: "networkEventUpdate",
-  //   updateType: "eventTimings",
-  //   totalTime: 0,
-  //   from: "server1.conn1.netEvent831"
-  // }
-  // OR
-  // {
-  //   type: "evaluationResult",
-  //       resultID: "1613947364381-1",
-  //     hasException: false,
-  //     input: "(function () { return window.location.href }).apply(window, [])",
-  //     result: "https://chromestatus.com/features/schedule",
-  //     startTime: 1613947364381,
-  //     timestamp: 1613947364394,
-  //     from: "server1.conn1.child3/consoleActor2"
-  // }
-}
-
 export interface BuildOptions {
   hostname?: string; // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
   debuggerServerPort?: number; // Port for the debug server to listen on, which our connection will connect to
@@ -51,11 +27,11 @@ export const defaultBuildOptions = {
 };
 
 /**
-   * Get full path to the firefox binary on the user'ss filesystem.
-   * Thanks to [caspervonb](https://github.com/caspervonb/deno-web/blob/master/browser.ts)
-   *
-   * @returns the path
-   */
+ * Get full path to the firefox binary on the user'ss filesystem.
+ * Thanks to [caspervonb](https://github.com/caspervonb/deno-web/blob/master/browser.ts)
+ *
+ * @returns the path
+ */
 export function getFirefoxPath(): string {
   switch (Deno.build.os) {
     case "darwin":
@@ -74,24 +50,6 @@ export function getFirefoxPath(): string {
  *     await Firefox.<api_method>
  */
 export class FirefoxClient extends Client {
-  /**
-   * The connection to our headless browser
-   */
-  private readonly websocket: WebSocket;
-
-  /**
-   * Holds messages that we need, but was sent along another useful packet in a message,
-   * so store it here to be returned next time we request a packet
-   */
-  private incoming_message_queue: Packet[] = [];
-
-  /**
-   * @param configs - Used to provide an API that can communicate with the headless browser
-   */
-  constructor(websocket: WebSocket, browserProcess: Deno.Process) {
-    super(websocket, browserProcess)
-    this.websocket = websocket;
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
@@ -127,9 +85,9 @@ export class FirefoxClient extends Client {
     const args = [
       "--start-debugger-server",
       buildOptions.debuggerServerPort.toString(),
-      "--headless",
       "--remote-debugging-port",
       buildOptions.debuggerServerPort.toString(),
+      "--headless",
       '-profile',tmpDirName,
       "-no-remote",
       "-foreground",
@@ -157,35 +115,7 @@ export class FirefoxClient extends Client {
     await promise
     const TempFirefoxClient = new FirefoxClient(websocket, browserProcess);
     await TempFirefoxClient.sendWebSocketMessage("Page.enable");
-    // // Get actor (tab) that we use to interact with
-    // const TempFirefoxClient = new FirefoxClient(
-    //   websocket,
-    //   browserProcess,
-    // );
-    // console.log('gonna send data')
-    // const message = {
-    //   method: "Target.getBrowserContexts"
-    // }
-    // websocket.send(JSON.stringify(Object.assign({}, message, {id: 2})));
-    // websocket.send(JSON.stringify({
-    //   method: "Page.enable", // or target.enable?
-    //   id: 3
-    // }))
-    // websocket.send(JSON.stringify({
-    //   method: "Page.navigate",
-    //   id: 4,
-    //   params: {
-    //     url: "https://drash.land"
-    //   }
-    // }))
-    // websocket.send(JSON.stringify({
-    //   method: "Runtime.evaluate",
-    //   params: {
-    //     expression: "window.location"
-    //   },
-    //   id: 5
-    // }))
-    // Return the client :)
+    await TempFirefoxClient.sendWebSocketMessage("Runtime.enable");
     return new Client(
       websocket,browserProcess,
     );
