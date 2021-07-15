@@ -87,18 +87,18 @@ export class Client {
       webSocketIsDonePromise.resolve();
     };
     // Register on message listenerr
-    // this.socket.onmessage = (msg) => {
-    //   // 2nd part of the dirty fix 1
-    //   const data = JSON.parse(msg.data);
-    //   if (data.method === "Page.frameStartedLoading") {
-    //     this.frame_id = data.params.frameId;
-    //   }
-    //   if (data.id && data.id === -1) {
-    //     this.socket!.close();
-    //   } else {
-    //     this.handleSocketMessage(msg);
-    //   }
-    // };
+    this.socket.onmessage = (msg) => {
+      // 2nd part of the dirty fix 1
+      const data = JSON.parse(msg.data);
+      if (data.method === "Page.frameStartedLoading") {
+        this.frame_id = data.params.frameId;
+      }
+      if (data.id && data.id === -1) {
+        this.socket!.close();
+      } else {
+        this.handleSocketMessage(msg);
+      }
+    };
   }
 
   /**
@@ -203,10 +203,11 @@ export class Client {
       pageCommand: (() => unknown) | string,
   ): Promise<unknown> {
     if (typeof pageCommand === "string") {
-      const { result } = await this.sendWebSocketMessage("Runtime.evaluate", {
+      const result = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
       });
-      return result.value;
+      console.log(result)
+      return result.result.value;
     }
 
     if (typeof pageCommand === "function") {
@@ -347,6 +348,7 @@ export class Client {
     const message: MessageResponse | NotificationResponse = JSON.parse(
         msg.data,
     );
+    console.log(message)
     if ("id" in message) { // message response
       const resolvable = this.resolvables[message.id];
       if (resolvable) {
@@ -431,7 +433,8 @@ export class Client {
     let debugUrl = "";
     while (true) {
       try {
-        const res = await fetch(`http://localhost:9293/json/list`);
+        console.log(hostname, port)
+        const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
         const index = json.length > 1 ? 1 : 0 // chrome will only hold 1 item, whereas firefox will result in 2 items in the array, the 2nd being the one we need
         console.log(json)

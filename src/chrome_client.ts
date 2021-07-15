@@ -15,55 +15,9 @@
 //     throw new Error("Unhandled result type: " + result["result"]["type"])
 // }
 
-import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import { deferred, readLines } from "../deps.ts";
 import { Client } from "./client.ts"
 import { exists } from "./utility.ts";
-
-interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
-  id: number;
-  result?: unknown; // Present on success
-  error?: unknown; // Present on error
-}
-
-interface NotificationResponse { // Not entirely sure when, but when we send the `Network.enable` method
-  method: string;
-  params: unknown;
-}
-
-type SuccessResult = {
-  value?: string | boolean; // only present if type is a string or boolean
-  type: string; // the type of result that the `value` will be, eg object or string or boolean, ,
-  className: string; // eg Location if command is `window.location`, only present when type is object
-  description: string; // eg Location if command is `window.location`, only present when type is object
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-};
-
-type UndefinedResult = { // not sure when this happens, but i believe it to be when the result of a command is undefined, for example if a command is `window.loction`
-  type: string; // undefined
-};
-
-type Exception = {
-  className: string; // eg SyntaxError
-  description: string; // eg SyntaxError: Uncaught identifier
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-  subtype: string; // eg error
-  type: string; // eg object
-};
-type ExceptionDetails = { // exists when an error
-  columnNumber: number;
-  exception: Exception;
-  exceptionId: number;
-  lineNumber: number;
-  scriptId: string; // eg "12"
-  text: string; // eg Uncaught
-};
-
-type DOMOutput = {
-  result: SuccessResult | Exception | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
-};
-
-const webSocketIsDonePromise = deferred();
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
@@ -115,59 +69,11 @@ export async function getChromePath(): Promise<string> {
 
 export class ChromeClient extends Client {
 
-  /**
-   * Our web socket connection to the remote debugging port
-   */
-  private readonly socket: WebSocket;
-
-  /**
-   * A counter that acts as the message id we use to send as part of the event data through the websocket
-   */
-  private next_message_id = 1;
-  private frame_id = null;
-
-  /**
-   * To keep hold of promises waiting for a notification from the websocket
-   */
-  private notification_resolvables: { [key: string]: Deferred<void> } = {};
-
-  /**
-   * Track if we've closed the sub process, so we dont try close it when it already has been
-   */
-  private browser_process_closed = false;
-
-  /**
-   * To keep hold of our promises waiting for messages from the websocket
-   */
-  private resolvables: { [key: number]: Deferred<unknown> } = {};
-
-  constructor(socket: WebSocket, browserProcess: Deno.Process) {
-    super(socket, browserProcess)
-    this.socket = socket;
-    // Register error listener
-    this.socket.onerror = function () {
-      webSocketIsDonePromise.resolve();
-    };
-    // Register on message listenerr
-    this.socket.onmessage = (msg) => {
-      // 2nd part of the dirty fix 1
-      const data = JSON.parse(msg.data);
-      if (data.method === "Page.frameStartedLoading") {
-        this.frame_id = data.params.frameId;
-      }
-      if (data.id && data.id === -1) {
-        this.socket!.close();
-      } else {
-        //this.handleSocketMessage(msg);
-      }
-    };
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
-  public static async build(options: BuildOptions = {}) {
+  public static async build(options: BuildOptions = {}): Promise<Client> {
     // Setup build options
     if (!options.debuggerPort) {
       options.debuggerPort = 9292;
@@ -214,9 +120,9 @@ export class ChromeClient extends Client {
     };
     await promise;
     // Create tmp chrome client and enable page notifications, so we can wait for page events, such as when a page has loaded
-    const TempChromeClient = new ChromeClient(socket, browserProcess);
-    //await TempChromeClient.sendWebSocketMessage("Page.enable");
+    const TempChromeClient = new Client(socket, browserProcess);
+    await TempChromeClient.sendWebSocketMessage("Page.enable");
     // Return the client :)
-    return new ChromeClient(socket, browserProcess);
+    return new Client(socket, browserProcess);
   }
 }

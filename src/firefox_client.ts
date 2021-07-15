@@ -45,7 +45,7 @@ export interface BuildOptions {
 }
 
 export const defaultBuildOptions = {
-  hostname: Deno.build.os === "windows" ? "127.0.0.1" : "0.0.0.0",
+  hostname: Deno.build.os === "windows" ? "127.0.0.1" : "localhost",
   debuggerServerPort: 9293,
   defaultUrl: "https://developer.mozilla.org/",
 };
@@ -110,7 +110,7 @@ export class FirefoxClient extends Client {
    */
   public static async build(
     buildOptions: BuildOptions = {},
-  ): Promise<FirefoxClient> {
+  ): Promise<Client> {
     // Setup the options to defaults if required
     if (!buildOptions.hostname) {
       buildOptions.hostname = defaultBuildOptions.hostname;
@@ -133,7 +133,6 @@ export class FirefoxClient extends Client {
       '-profile',tmpDirName,
       "-no-remote",
       "-foreground",
-      "about:blank"
     ];
     // Create the sub process to start the browser
     const firefoxPath = buildOptions.binaryPath || getFirefoxPath()
@@ -152,45 +151,42 @@ export class FirefoxClient extends Client {
       break
     }
     const WSURL = await Client.getWebSocketUrl(buildOptions.hostname, buildOptions.debuggerServerPort)
-    let websocket = new WebSocket(WSURL)
+    const websocket = new WebSocket(WSURL)
     const promise = deferred()
     websocket.onopen = () => promise.resolve()
     await promise
-    websocket.onmessage = (e) => {
-      console.log(e.data)
-    }
     const TempFirefoxClient = new FirefoxClient(websocket, browserProcess);
-    //await TempFirefoxClient.sendWebSocketMessage("Page.enable");
+    await TempFirefoxClient.sendWebSocketMessage("Page.enable");
     // // Get actor (tab) that we use to interact with
     // const TempFirefoxClient = new FirefoxClient(
     //   websocket,
     //   browserProcess,
     // );
     // console.log('gonna send data')
-    const message = {
-      method: "Target.getBrowserContexts"
-    }
-    websocket.send(JSON.stringify(Object.assign({}, message, {id: 2})));
-    websocket.send(JSON.stringify({
-      method: "Page.enable", // or target.enable?
-      id: 3
-    }))
-    websocket.send(JSON.stringify({
-      method: "Page.navigate",
-      id: 4,
-      params: {
-        url: "https://drash.land"
-      }
-    }))
-    websocket.send(JSON.stringify({
-      method: "Runtime.evaluate",
-      params: {
-        expression: "window.location"
-      },
-      id: 5
-    }))
+    // const message = {
+    //   method: "Target.getBrowserContexts"
+    // }
+    // websocket.send(JSON.stringify(Object.assign({}, message, {id: 2})));
+    // websocket.send(JSON.stringify({
+    //   method: "Page.enable", // or target.enable?
+    //   id: 3
+    // }))
+    // websocket.send(JSON.stringify({
+    //   method: "Page.navigate",
+    //   id: 4,
+    //   params: {
+    //     url: "https://drash.land"
+    //   }
+    // }))
+    // websocket.send(JSON.stringify({
+    //   method: "Runtime.evaluate",
+    //   params: {
+    //     expression: "window.location"
+    //   },
+    //   id: 5
+    // }))
     // Return the client :)
-    return new FirefoxClient(
+    return new Client(
       websocket,browserProcess,
     );
   }
