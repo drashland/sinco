@@ -16,6 +16,7 @@
 // }
 
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import { Client } from "./client.ts"
 import { exists } from "./utility.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
@@ -112,7 +113,7 @@ export async function getChromePath(): Promise<string> {
   return chromePath;
 }
 
-export class ChromeClient {
+export class ChromeClient extends Client {
   /**
    * The sub process that runs headless chrome
    */
@@ -145,6 +146,7 @@ export class ChromeClient {
   private resolvables: { [key: number]: Deferred<unknown> } = {};
 
   constructor(socket: WebSocket, browserProcess: Deno.Process) {
+    super()
     this.socket = socket;
     this.browser_process = browserProcess;
     // Register error listener
@@ -463,31 +465,6 @@ export class ChromeClient {
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Gets the websocket url we use to create a ws client with.
-   * Requires the headless chrome process to be running, as
-   * this is what actually starts the remote debugging url
-   *
-   * @param hostname - The hostname to fetch from
-   * @param port -  The port for the hostname to fetch from
-   *
-   * @returns The url to connect to
-   */
-  private static async getWebSocketUrl(hostname: string, port: number) {
-    let debugUrl = "";
-    while (true) {
-      try {
-        const res = await fetch(`http://${hostname}:${port}/json/list`);
-        const json = await res.json();
-        debugUrl = json[0]["webSocketDebuggerUrl"];
-        break;
-      } catch (_err) {
-        // do nothing, loop again until the endpoint is ready
-      }
-    }
-    return debugUrl;
-  }
 
   private handleSocketMessage(msg: MessageEvent) {
     const message: MessageResponse | NotificationResponse = JSON.parse(
