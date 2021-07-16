@@ -264,6 +264,7 @@ export class Client {
    * @returns The text inside the selector, eg could be "" or "Edward"
    */
   public async getInputValue(selector: string): Promise<string> {
+    console.log('inside getinputval fn, gonna call')
     const command = `document.querySelector('${selector}').value`;
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression: command,
@@ -276,6 +277,7 @@ export class Client {
       result: Exception;
       exceptionDetails: ExceptionDetails;
     };
+    console.log('got res from getinputval:', res)
     if ("exceptionDetails" in res) {
       this.checkForErrorResult(res, command);
     }
