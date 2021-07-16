@@ -1,10 +1,17 @@
-import {assertEquals, Deferred, deferred} from "../deps.ts";
+import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
 
 const webSocketIsDonePromise = deferred();
 
+export interface BuildOptions {
+  debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
+  defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
+  hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
+  binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
+}
+
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
-  result?: unknown; // Present on success
+  result?: Record<string, unknown>; // Present on success, OR for example if we  use goTo and the url doesnt exist (in firefox)
   error?: unknown; // Present on error
 }
 
@@ -47,7 +54,6 @@ type DOMOutput = {
 };
 
 export class Client {
-
   /**
    * The sub process that runs headless chrome
    */
@@ -62,12 +68,13 @@ export class Client {
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   private next_message_id = 1;
+
   private frame_id = null;
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
    */
-  private notification_resolvables: { [key: string]: Deferred<void> } = {};
+  private notification_resolvables: Map<string, Deferred<void>> = new Map();
 
   /**
    * Track if we've closed the sub process, so we dont try close it when it already has been
@@ -77,7 +84,7 @@ export class Client {
   /**
    * To keep hold of our promises waiting for messages from the websocket
    */
-  private resolvables: { [key: number]: Deferred<unknown> } = {};
+  private resolvables: Map<number, Deferred<unknown>> = new Map();
 
   constructor(socket: WebSocket, browserProcess: Deno.Process) {
     this.socket = socket;
@@ -86,17 +93,17 @@ export class Client {
     this.socket.onerror = function () {
       webSocketIsDonePromise.resolve();
     };
-    // Register on message listenerr
+    // Register on message listener
     this.socket.onmessage = (msg) => {
-      // 2nd part of the dirty fix 1
       const data = JSON.parse(msg.data);
       if (data.method === "Page.frameStartedLoading") {
         this.frame_id = data.params.frameId;
       }
+      // 2nd part of the dirty fix 1
       if (data.id && data.id === -1) {
         this.socket!.close();
       } else {
-        this.handleSocketMessage(msg);
+        this.handleSocketMessage(data);
       }
     };
   }
@@ -108,13 +115,9 @@ export class Client {
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
     // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
-    const res = await this.sendWebSocketMessage("DOM.getDocument") as {
-      root: {
-        documentURL: string;
-      };
-    };
-    const actualUrl = res.root.documentURL;
+    const actualUrl = await this.evaluatePage(`window.location.href`);
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
+      console.log("isnt expected :/");
       await this.done();
     }
     assertEquals(actualUrl, expectedUrl);
@@ -148,8 +151,9 @@ export class Client {
    * @param urlToVisit - The page to go to
    */
   public async goTo(urlToVisit: string): Promise<void> {
-    const notificationPromise = this
-        .notification_resolvables["Page.loadEventFired"] = deferred();
+    const method = "Page.loadEventFired";
+    this.notification_resolvables.set(method, deferred());
+    const notificationPromise = this.notification_resolvables.get(method);
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
     }) as {
@@ -161,7 +165,7 @@ export class Client {
     if (res.errorText) {
       //await this.done()
       throw new Error(
-          `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
+        `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
     }
   }
@@ -197,36 +201,36 @@ export class Client {
   /**
    * Invoke a function or string expression on the current frame.
    *
-   * @param pageCommand - The function to be called.
+   * @param pageCommand - The function to be called or the line of code to execute.
    */
   public async evaluatePage(
-      pageCommand: (() => unknown) | string,
+    pageCommand: (() => unknown) | string,
   ): Promise<unknown> {
     if (typeof pageCommand === "string") {
       const result = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
       });
-      console.log(result)
+      console.log(result);
       return result.result.value;
     }
 
     if (typeof pageCommand === "function") {
       const { executionContextId } = await this.sendWebSocketMessage(
-          "Page.createIsolatedWorld",
-          {
-            frameId: this.frame_id,
-          },
+        "Page.createIsolatedWorld",
+        {
+          frameId: this.frame_id,
+        },
       );
 
       const { result } = await this.sendWebSocketMessage(
-          "Runtime.callFunctionOn",
-          {
-            functionDeclaration: pageCommand.toString(),
-            executionContextId: executionContextId,
-            returnByValue: true,
-            awaitPromise: true,
-            userGesture: true,
-          },
+        "Runtime.callFunctionOn",
+        {
+          functionDeclaration: pageCommand.toString(),
+          executionContextId: executionContextId,
+          returnByValue: true,
+          awaitPromise: true,
+          userGesture: true,
+        },
       );
       return result.value;
     }
@@ -236,10 +240,11 @@ export class Client {
    * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
    */
   public async waitForPageChange(): Promise<void> {
-    const notificationPromise = this
-        .notification_resolvables["Page.loadEventFired"] = deferred();
+    const method = "Page.loadEventFired";
+    this.notification_resolvables.set(method, deferred());
+    const notificationPromise = this.notification_resolvables.get(method);
     await notificationPromise;
-    delete this.notification_resolvables["Page.loadEventFired"];
+    this.notification_resolvables.delete(method);
   }
 
   /**
@@ -266,14 +271,14 @@ export class Client {
       result: Exception;
       exceptionDetails: ExceptionDetails;
     };
+    if ("exceptionDetails" in res) {
+      this.checkForErrorResult(res, command);
+    }
     const type = (res as DOMOutput).result.type;
     if (type === "undefined") { // not an input elem
       return "undefined";
     }
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-    // Tried and tested, value and type are a string aand `res.result.value` definitely exists at this stage
+    // Tried and tested, value and type are a string and `res.result.value` definitely exists at this stage
     const value = (res.result as { value: string }).value;
     return value || "";
   }
@@ -297,6 +302,7 @@ export class Client {
     }
     if (this.browser_process_closed === false) {
       this.browser_process.stderr!.close();
+      this.browser_process.stdout!.close();
       this.browser_process.close();
       this.browser_process_closed = true;
     }
@@ -344,15 +350,18 @@ export class Client {
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
-  protected handleSocketMessage(msg: MessageEvent) {
-    const message: MessageResponse | NotificationResponse = JSON.parse(
-        msg.data,
-    );
-    console.log(message)
+  private handleSocketMessage(message: MessageResponse | NotificationResponse) {
+    console.log(message);
     if ("id" in message) { // message response
-      const resolvable = this.resolvables[message.id];
+      const resolvable = this.resolvables.get(message.id);
       if (resolvable) {
         if ("result" in message) { // success response
+          if ("errorText" in message.result!) {
+            const r = this.notification_resolvables.get("Page.loadEventFired");
+            if (r) {
+              r.resolve();
+            }
+          }
           resolvable.resolve(message.result);
         }
         if ("error" in message) { // error response
@@ -361,7 +370,7 @@ export class Client {
       }
     }
     if ("method" in message) { // Notification response
-      const resolvable = this.notification_resolvables[message.method];
+      const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {
         resolvable.resolve();
       }
@@ -369,8 +378,6 @@ export class Client {
   }
 
   /**
-   * NOT FOR PUBLIC USE
-   *
    * Main method to handle sending messages/events to the websocket endpoint.
    *
    * @param method - Any DOMAIN, see sidebar at https://chromedevtools.github.io/devtools-protocol/tot/, eg Runtime.evaluate, or DOM.getDocument
@@ -378,11 +385,10 @@ export class Client {
    *
    * @returns
    */
-  // TODO :: dont make public, grrr
-  public async sendWebSocketMessage(
-      method: string,
-      params?: { [key: string]: unknown },
-      // deno-lint-ignore no-explicit-any The return value could literally be anything
+  private async sendWebSocketMessage(
+    method: string,
+    params?: { [key: string]: unknown },
+    // deno-lint-ignore no-explicit-any The return value could literally be anything
   ): Promise<any> {
     const data: {
       id: number;
@@ -393,10 +399,11 @@ export class Client {
       method: method,
     };
     if (params) data.params = params;
-    const messagePromise = this.resolvables[data.id] = deferred();
+    this.resolvables.set(data.id, deferred());
+    const messagePromise = this.resolvables.get(data.id);
     this.socket.send(JSON.stringify(data));
     const result = await messagePromise;
-    delete this.resolvables[data.id];
+    this.resolvables.delete(data.id);
     return result;
   }
 
@@ -406,10 +413,13 @@ export class Client {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  protected checkForErrorResult(result: DOMOutput, commandSent: string): void {
+  private checkForErrorResult(result: DOMOutput, commandSent: string): void {
     // Is an error
     if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
       const exceptionDetail = result.exceptionDetails;
+      if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
+        throw new Error(exceptionDetail.text);
+      }
       const errorMessage = exceptionDetail.exception.description;
       if (errorMessage.includes("SyntaxError")) { // a syntax error
         const message = errorMessage.replace("SyntaxError: ", "");
@@ -419,7 +429,40 @@ export class Client {
       }
     }
   }
-	/**
+
+  protected static async create(buildArgs: string[], wsOptions: {
+    hostname: string;
+    port: number;
+  }): Promise<Client> {
+    const browserProcess = Deno.run({
+      cmd: buildArgs,
+      stderr: "piped",
+      stdout: "piped",
+    });
+    // Oddly, this is needed before the json/list endpoint is up.
+    // but the ws url provided here isn't the one we need
+    for await (const line of readLines(browserProcess.stderr)) {
+      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
+      if (!match) {
+        continue;
+      }
+      break;
+    }
+    const wsUrl = await Client.getWebSocketUrl(
+      wsOptions.hostname,
+      wsOptions.port,
+    );
+    const websocket = new WebSocket(wsUrl);
+    const promise = deferred();
+    websocket.onopen = () => promise.resolve();
+    await promise;
+    const TempClient = new Client(websocket, browserProcess);
+    await TempClient.sendWebSocketMessage("Page.enable");
+    await TempClient.sendWebSocketMessage("Runtime.enable");
+    return new Client(websocket, browserProcess);
+  }
+
+  /**
    * Gets the websocket url we use to create a ws client with.
    * Requires the headless chrome process to be running, as
    * this is what actually starts the remote debugging url
@@ -429,19 +472,19 @@ export class Client {
    *
    * @returns The url to connect to
    */
-  protected static async getWebSocketUrl(hostname: string, port: number) {
+  private static async getWebSocketUrl(hostname: string, port: number) {
     let debugUrl = "";
     while (true) {
       try {
-        console.log(hostname, port)
+        console.log(hostname, port);
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
-        const index = json.length > 1 ? 1 : 0 // chrome will only hold 1 item, whereas firefox will result in 2 items in the array, the 2nd being the one we need
-        console.log(json)
+        const index = json.length > 1 ? 0 : 0; // chrome will only hold 1 item, whereas firefox will result in 2 items in the array, the 2nd being the one we need
+        console.log(json);
         debugUrl = json[index]["webSocketDebuggerUrl"];
         break;
       } catch (_err) {
-      	console.log(_err.message)
+        console.log(_err.message);
         // do nothing, loop again until the endpoint is ready
       }
     }

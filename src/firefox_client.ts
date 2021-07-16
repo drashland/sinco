@@ -10,15 +10,7 @@
  * ```
  */
 
-import { readLines, deferred } from "../deps.ts";
-import { Client } from "./client.ts"
-
-export interface BuildOptions {
-  hostname?: string; // Hostname for our connection to connect to. Can be "0.0.0.0" or "your_container_name"
-  debuggerServerPort?: number; // Port for the debug server to listen on, which our connection will connect to
-  defaultUrl?: string; // The default url the browser will open when ran
-  binaryPath?: string; //The Full Path to the browser binary. If using an alternative Gecko based browser, this field is necessary.
-}
+import { BuildOptions, Client } from "./client.ts";
 
 export const defaultBuildOptions = {
   hostname: Deno.build.os === "windows" ? "127.0.0.1" : "localhost",
@@ -50,7 +42,6 @@ export function getFirefoxPath(): string {
  *     await Firefox.<api_method>
  */
 export class FirefoxClient extends Client {
-
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
@@ -73,8 +64,8 @@ export class FirefoxClient extends Client {
     if (!buildOptions.hostname) {
       buildOptions.hostname = defaultBuildOptions.hostname;
     }
-    if (!buildOptions.debuggerServerPort) {
-      buildOptions.debuggerServerPort = defaultBuildOptions.debuggerServerPort;
+    if (!buildOptions.debuggerPort) {
+      buildOptions.debuggerPort = defaultBuildOptions.debuggerServerPort;
     }
     if (!buildOptions.defaultUrl) {
       buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
@@ -83,41 +74,24 @@ export class FirefoxClient extends Client {
     const tmpDirName = await Deno.makeTempDir();
     // Create the arguments we will use when spawning the headless browser
     const args = [
+      buildOptions.binaryPath || getFirefoxPath(),
       "--start-debugger-server",
-      buildOptions.debuggerServerPort.toString(),
+      buildOptions.debuggerPort.toString(),
       "--remote-debugging-port",
-      buildOptions.debuggerServerPort.toString(),
+      buildOptions.debuggerPort.toString(),
       "--headless",
-      '-profile',tmpDirName,
-      "-no-remote",
-      "-foreground",
+      "-profile",
+      tmpDirName,
+      "-no-remote", // is this needed?
+      "-foreground", // is this needed?
     ];
-    // Create the sub process to start the browser
-    const firefoxPath = buildOptions.binaryPath || getFirefoxPath()
-    const browserProcess = Deno.run({
-      cmd: [firefoxPath, ...args],
-      stderr: "piped",
-      stdout: "piped",
-    });
-    // Oddly, this is needed before the json/list endpoint is up.
-    // but the ws url providedd here isn't the one we need
-    for await (const line of readLines(browserProcess.stderr)) {
-      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-      if (!match) {
-        continue
-      }
-      break
+    if (buildOptions.defaultUrl) {
+      args.push(buildOptions.defaultUrl);
     }
-    const WSURL = await Client.getWebSocketUrl(buildOptions.hostname, buildOptions.debuggerServerPort)
-    const websocket = new WebSocket(WSURL)
-    const promise = deferred()
-    websocket.onopen = () => promise.resolve()
-    await promise
-    const TempFirefoxClient = new FirefoxClient(websocket, browserProcess);
-    await TempFirefoxClient.sendWebSocketMessage("Page.enable");
-    await TempFirefoxClient.sendWebSocketMessage("Runtime.enable");
-    return new Client(
-      websocket,browserProcess,
-    );
+    // Create the sub process to start the browser
+    return await Client.create(args, {
+      hostname: buildOptions.hostname,
+      port: buildOptions.debuggerPort,
+    });
   }
 }
