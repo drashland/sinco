@@ -251,14 +251,10 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       "It should get the value for the given input element",
       async () => {
         const Sinco = await FirefoxClient.build();
-        console.log('go toing')
         await Sinco.goTo("https://chromestatus.com");
-        console.log('typing')
         await Sinco.type('input[placeholder="Filter"]', "hello world");
-        console.log('getting')
         const val = await Sinco.getInputValue('input[placeholder="Filter"]');
         await Sinco.done();
-        console.log('asserting', val)
         Rhum.asserts.assertEquals(val, "hello world");
       },
     );
