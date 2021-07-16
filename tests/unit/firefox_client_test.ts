@@ -1,7 +1,6 @@
 import { Rhum } from "../deps.ts";
 import { FirefoxClient } from "../../mod.ts";
 import {
-  defaultBuildOptions,
   getFirefoxPath,
 } from "../../src/firefox_client.ts";
 import { deferred } from "../../deps.ts";
