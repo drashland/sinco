@@ -1,8 +1,6 @@
 import { Rhum } from "../deps.ts";
 import { FirefoxClient } from "../../mod.ts";
-import {
-  getFirefoxPath,
-} from "../../src/firefox_client.ts";
+import { getFirefoxPath } from "../../src/firefox_client.ts";
 import { deferred } from "../../deps.ts";
 
 Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
