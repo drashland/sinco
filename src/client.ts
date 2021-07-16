@@ -305,7 +305,7 @@ export class Client {
       this.browser_process_closed = true;
     }
     // Because if using firefox and windows, the close on the browser subprocess doesn't actually close the processes
-    if (Object.getPrototypeOf(this.constructor).name === "FirefoxClient" && Deno.buid.os === "windows") {
+    if (Object.getPrototypeOf(this.constructor).name === "FirefoxClient" && Deno.build.os === "windows") {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
         stdout: "null",
