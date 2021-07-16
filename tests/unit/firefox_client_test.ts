@@ -10,12 +10,18 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   Rhum.testSuite("build()", () => {
     Rhum.testCase("Will start firefox headless as a subprocess", async () => {
       const Sinco = await FirefoxClient.build();
-      // If it hasn't, connecting will throw an error
-      const conn = await Deno.connect({
-        hostname: defaultBuildOptions.hostname,
-        port: defaultBuildOptions.debuggerServerPort,
-      });
-      conn.close();
+      const res = await fetch("http://127.0.0.1:9293/json/list");
+      const json = await res.json();
+      // Our ws client should be able to connect if the browser is running
+      const client = new WebSocket(json[1]["webSocketDebuggerUrl"]);
+      const promise = deferred();
+      client.onopen = function () {
+        client.close();
+      };
+      client.onclose = function () {
+        promise.resolve();
+      };
+      await promise;
       await Sinco.done();
     });
     Rhum.testCase(
@@ -24,11 +30,18 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         const Sinco = await FirefoxClient.build({
           debuggerPort: 9999,
         });
-        const conn = await Deno.connect({
-          hostname: defaultBuildOptions.hostname,
-          port: 9999,
-        });
-        conn.close();
+        const res = await fetch("http://localhost:9999/json/list");
+        const json = await res.json();
+        // Our ws client should be able to connect if the browser is running
+        const client = new WebSocket(json[1]["webSocketDebuggerUrl"]);
+        const promise = deferred();
+        client.onopen = function () {
+          client.close();
+        };
+        client.onclose = function () {
+          promise.resolve();
+        };
+        await promise;
         await Sinco.done();
       },
     );
