@@ -86,7 +86,14 @@ export class Client {
    */
   private resolvables: Map<number, Deferred<unknown>> = new Map();
 
-  constructor(socket: WebSocket, browserProcess: Deno.Process) {
+  private browser: "firefox" | "chrome";
+
+  constructor(
+    socket: WebSocket,
+    browserProcess: Deno.Process,
+    browser: "firefox" | "chrome",
+  ) {
+    this.browser = browser;
     this.socket = socket;
     this.browser_process = browserProcess;
     // Register error listener
@@ -304,15 +311,14 @@ export class Client {
       this.browser_process.close();
       this.browser_process_closed = true;
     }
-    // Because if using firefox and windows, the close on the browser subprocess doesn't actually close the processes
-    if (Object.getPrototypeOf(this.constructor).name === "FirefoxClient" && Deno.build.os === "windows") {
+    if (this.browser === "firefox") {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
         stdout: "null",
-        stderr: "null"
-      })
-      await p.status()
-      p.close()
+        stderr: "null",
+      });
+      await p.status();
+      p.close();
     }
   }
 
@@ -440,7 +446,7 @@ export class Client {
   protected static async create(buildArgs: string[], wsOptions: {
     hostname: string;
     port: number;
-  }): Promise<Client> {
+  }, browser: "firefox" | "chrome"): Promise<Client> {
     const browserProcess = Deno.run({
       cmd: buildArgs,
       stderr: "piped",
@@ -450,8 +456,9 @@ export class Client {
     // but the ws url provided here isn't the one we need
     for await (const line of readLines(browserProcess.stderr)) {
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-      if (!match)
+      if (!match) {
         continue;
+      }
       break;
     }
     const wsUrl = await Client.getWebSocketUrl(
@@ -462,10 +469,10 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
-    const TempClient = new Client(websocket, browserProcess);
+    const TempClient = new Client(websocket, browserProcess, browser);
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
-    return new Client(websocket, browserProcess);
+    return new Client(websocket, browserProcess, browser);
   }
 
   /**
@@ -478,7 +485,10 @@ export class Client {
    *
    * @returns The url to connect to
    */
-  private static async getWebSocketUrl(hostname: string, port: number): Promise<string> {
+  private static async getWebSocketUrl(
+    hostname: string,
+    port: number,
+  ): Promise<string> {
     let debugUrl = "";
     while (debugUrl === "") {
       try {

@@ -8,7 +8,7 @@ import { existsSync } from "./utility.ts";
    *
    * @returns The path to chrome
    */
-export async function getChromePath(): Promise<string> {
+export function getChromePath(): string {
   const paths = {
     // deno-lint-ignore camelcase
     windows_chrome_exe:
@@ -63,7 +63,7 @@ export class ChromeClient extends Client {
 
     // Create the sub process
     const args = [
-      options.binaryPath || await getChromePath(),
+      options.binaryPath || getChromePath(),
       "--headless",
       "--remote-debugging-port=" + options.debuggerPort,
       "--disable-gpu",
@@ -73,6 +73,6 @@ export class ChromeClient extends Client {
     return await Client.create(args, {
       hostname: options.hostname,
       port: options.debuggerPort,
-    });
+    }, "chrome");
   }
 }

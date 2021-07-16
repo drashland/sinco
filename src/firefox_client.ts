@@ -90,6 +90,6 @@ export class FirefoxClient extends Client {
     return await Client.create(args, {
       hostname: buildOptions.hostname,
       port: buildOptions.debuggerPort,
-    });
+    }, "firefox");
   }
 }
