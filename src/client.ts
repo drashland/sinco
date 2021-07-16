@@ -480,7 +480,7 @@ export class Client {
    */
   private static async getWebSocketUrl(hostname: string, port: number): Promise<string> {
     let debugUrl = "";
-    while (debugUrl !== "") {
+    while (debugUrl === "") {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
