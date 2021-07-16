@@ -311,7 +311,7 @@ export class Client {
       this.browser_process.close();
       this.browser_process_closed = true;
     }
-    if (this.browser === "firefox") {
+    if (this.browser === "firefox" && Deno.build.os === "windows") {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
         stdout: "null",
