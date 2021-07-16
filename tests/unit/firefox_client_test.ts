@@ -36,9 +36,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       const Sinco = await FirefoxClient.build({
         defaultUrl: "https://drash.land",
       });
-      console.log("gtting url from test");
       await Sinco.assertUrlIs("https://drash.land/");
-      console.log("after url");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -50,7 +48,6 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
     Rhum.testCase(
       "Uses the binaryPath when passed in to the parameters",
       async () => {
-        console.log("hi :)");
         const Sinco = await FirefoxClient.build({
           binaryPath: getFirefoxPath(),
         });
@@ -66,7 +63,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
           promise.resolve();
         };
         await promise;
-        console.log();
+        console.log(); // TODO(edward): Oddly, for firefox, it hangs without this console.log, in the future, try address this
         await Sinco.done();
       },
     );

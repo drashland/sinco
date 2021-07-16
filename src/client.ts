@@ -117,7 +117,6 @@ export class Client {
     // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
     const actualUrl = await this.evaluatePage(`window.location.href`);
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
-      console.log("isnt expected :/");
       await this.done();
     }
     assertEquals(actualUrl, expectedUrl);
@@ -210,7 +209,6 @@ export class Client {
       const result = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
       });
-      console.log(result);
       return result.result.value;
     }
 
@@ -306,6 +304,16 @@ export class Client {
       this.browser_process.close();
       this.browser_process_closed = true;
     }
+    // Because if using firefox and windows, the close on the browser subprocess doesn't actually close the processes
+    if (Object.getPrototypeOf(this.constructor).name === "FirefoxClient" && Deno.buid.os === "windows") {
+      const p = Deno.run({
+        cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
+        stdout: "null",
+        stderr: "null"
+      })
+      await p.status()
+      p.close()
+    }
   }
 
   /**
@@ -351,7 +359,6 @@ export class Client {
   //////////////////////////////////////////////////////////////////////////////
 
   private handleSocketMessage(message: MessageResponse | NotificationResponse) {
-    console.log(message);
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
       if (resolvable) {
@@ -443,9 +450,8 @@ export class Client {
     // but the ws url provided here isn't the one we need
     for await (const line of readLines(browserProcess.stderr)) {
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-      if (!match) {
+      if (!match)
         continue;
-      }
       break;
     }
     const wsUrl = await Client.getWebSocketUrl(
@@ -472,19 +478,14 @@ export class Client {
    *
    * @returns The url to connect to
    */
-  private static async getWebSocketUrl(hostname: string, port: number) {
+  private static async getWebSocketUrl(hostname: string, port: number): Promise<string> {
     let debugUrl = "";
-    while (true) {
+    while (debugUrl !== "") {
       try {
-        console.log(hostname, port);
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
-        const index = json.length > 1 ? 0 : 0; // chrome will only hold 1 item, whereas firefox will result in 2 items in the array, the 2nd being the one we need
-        console.log(json);
-        debugUrl = json[index]["webSocketDebuggerUrl"];
-        break;
+        debugUrl = json[0]["webSocketDebuggerUrl"];
       } catch (_err) {
-        console.log(_err.message);
         // do nothing, loop again until the endpoint is ready
       }
     }

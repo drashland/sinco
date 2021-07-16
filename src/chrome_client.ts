@@ -1,7 +1,7 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
 
 import { BuildOptions, Client } from "./client.ts";
-import { exists } from "./utility.ts";
+import { existsSync } from "./utility.ts";
 
 /**
    * Gets the full path to the chrome executable on the users filesystem
@@ -25,11 +25,11 @@ export async function getChromePath(): Promise<string> {
       chromePath = paths.darwin;
       break;
     case "windows":
-      if (await exists(paths.windows_chrome_exe)) {
+      if (existsSync(paths.windows_chrome_exe)) {
         chromePath = paths.windows_chrome_exe;
         break;
       }
-      if (await exists(paths.windows_chrome_exe_x86)) {
+      if (existsSync(paths.windows_chrome_exe_x86)) {
         chromePath = paths.windows_chrome_exe_x86;
         break;
       }

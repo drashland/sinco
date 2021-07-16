@@ -82,8 +82,6 @@ export class FirefoxClient extends Client {
       "--headless",
       "-profile",
       tmpDirName,
-      "-no-remote", // is this needed?
-      "-foreground", // is this needed?
     ];
     if (buildOptions.defaultUrl) {
       args.push(buildOptions.defaultUrl);
