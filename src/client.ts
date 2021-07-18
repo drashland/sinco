@@ -1,8 +1,6 @@
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 
-const webSocketIsDonePromise = deferred();
-
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
   defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
@@ -106,22 +104,13 @@ export class Client {
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
-    // Register error listener
-    this.socket.onerror = function () {
-      webSocketIsDonePromise.resolve();
-    };
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       if (data.method === "Page.frameStartedLoading") {
         this.frame_id = data.params.frameId;
       }
-      // 2nd part of the dirty fix 1
-      if (data.id && data.id === -1) {
-        this.socket!.close();
-      } else {
-        this.handleSocketMessage(data);
-      }
+      this.handleSocketMessage(data);
     };
   }
 
@@ -302,24 +291,17 @@ export class Client {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    // [Dirty fix 1] Dirty hack... There is a bug with WS API that causes async ops. I (ed) have found that closing the conn inside the message handler fixes it, which is why we are trigger a message here, so the `onmessage` handler can close the connection
-    if (this.socket.readyState !== 3) { // Conditional here, as this method cna be called by the assertion methods, so if an assertion method has failed, and the user calls `.done()`, we wont try close an already close websocket
-      const p = deferred();
-      this.socket.onclose = function () {
-        p.resolve();
-      };
-      this.socket.send(JSON.stringify({
-        id: -1,
-        method: "DOM.getDocument", // Can be anything really, we just wanna trigger an event
-      }));
-      // Then wait for the promise to be resolved when the WS client is done
-      await p;
-    }
+    // Say a user calls an assertion method, and then calls done(), we make sure that if
+    // the subprocess is already closed, dont try close it again
     if (this.browser_process_closed === false) {
+      // cloing subprocess will also close the ws endpoint
+      const p = deferred();
+      this.socket.onclose = () => p.resolve();
       this.browser_process.stderr!.close();
       this.browser_process.stdout!.close();
       this.browser_process.close();
       this.browser_process_closed = true;
+      await p;
     }
     if (this.browser === "firefox" && Deno.build.os === "windows") {
       const p = Deno.run({
@@ -332,7 +314,7 @@ export class Client {
     }
     if (this.firefox_profile_path) {
       // On windows, this block is annoying. We either get a perm denied or
-      // reosurce is in use error (classic windows). So what we're doing here is
+      // resource is in use error (classic windows). So what we're doing here is
       // even if one of those errors are thrown, keep trying because what i've (ed)
       // found is, it seems to need a couple seconds to realise that the dir
       // isnt being used anymore. The loop shouldn't be needed for macos/unix though, so
