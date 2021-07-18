@@ -288,17 +288,18 @@ export class Client {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
-    const clientIsClosed = deferred();
-    this.socket.onclose = () => clientIsClosed.resolve();
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
-    if (this.browser_process_closed === false) {
-      // cloing subprocess will also close the ws endpoint
-      this.browser_process.stderr!.close();
-      this.browser_process.stdout!.close();
-      this.browser_process.close();
-      this.browser_process_closed = true;
+    if (this.browser_process_closed === true) {
+      return;
     }
+    const clientIsClosed = deferred();
+    this.socket.onclose = () => clientIsClosed.resolve();
+    // cloing subprocess will also close the ws endpoint
+    this.browser_process.stderr!.close();
+    this.browser_process.stdout!.close();
+    this.browser_process.close();
+    this.browser_process_closed = true;
     if (this.browser === "firefox" && Deno.build.os === "windows") {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
