@@ -71,7 +71,7 @@ export class FirefoxClient extends Client {
       buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
     }
     // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
-    const tmpDirName = await Deno.makeTempDir();
+    const tmpDirName = Deno.makeTempDirSync();
     // Create the arguments we will use when spawning the headless browser
     const args = [
       buildOptions.binaryPath || getFirefoxPath(),
