@@ -146,7 +146,7 @@ export class Client {
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
       await this.done();
     }
-    assertEquals(res, true);
+    assertEquals(exists, true);
   }
 
   /**
