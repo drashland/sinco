@@ -134,8 +134,16 @@ export class Client {
    */
   public async assertSee(text: string): Promise<void> {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
-    const res = await this.evaluatePage(command);
-    if (res !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command,
+    }) as { // Tried and tested
+      result: {
+        type: "boolean";
+        value: boolean;
+      };
+    };
+    const exists = res.result.value;
+    if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
       await this.done();
     }
     assertEquals(res, true);
@@ -159,7 +167,7 @@ export class Client {
     };
     await notificationPromise;
     if (res.errorText) {
-      await this.done();
+      //await this.done();
       throw new Error(
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
