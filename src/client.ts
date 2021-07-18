@@ -329,7 +329,7 @@ export class Client {
       await p.status();
       p.close();
       if (this.firefox_profile_path) {
-        Deno.removeSync(this.firefox_profile_path);
+        Deno.removeSync(this.firefox_profile_path, { recursive: true });
       }
     }
   }
