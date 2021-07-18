@@ -74,7 +74,6 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
           promise.resolve();
         };
         await promise;
-        console.log(); // TODO(edward): Oddly, for firefox, it hangs without this console.log, in the future, try address this
         await Sinco.done();
       },
     );
