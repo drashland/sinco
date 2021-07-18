@@ -88,14 +88,23 @@ export class Client {
 
   private browser: "firefox" | "chrome";
 
+  /**
+   * Only if the browser is firefox, is this present.
+   * This is the path to the directory that firefox uses
+   * to write a profile
+   */
+  private firefox_profile_path: string | null = null;
+
   constructor(
     socket: WebSocket,
     browserProcess: Deno.Process,
     browser: "firefox" | "chrome",
+    firefoxProfilePath?: string,
   ) {
     this.browser = browser;
     this.socket = socket;
     this.browser_process = browserProcess;
+    this.firefox_profile_path = firefoxProfilePath;
     // Register error listener
     this.socket.onerror = function () {
       webSocketIsDonePromise.resolve();
@@ -319,6 +328,7 @@ export class Client {
       });
       await p.status();
       p.close();
+      Deno.reamoveSync(this.firefox_profile_path);
     }
   }
 

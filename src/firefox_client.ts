@@ -70,6 +70,8 @@ export class FirefoxClient extends Client {
     if (!buildOptions.defaultUrl) {
       buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
     }
+    // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
+    const tmpDirName = await Deno.makeTempDir();
     // Create the arguments we will use when spawning the headless browser
     const args = [
       buildOptions.binaryPath || getFirefoxPath(),
@@ -78,14 +80,21 @@ export class FirefoxClient extends Client {
       "--remote-debugging-port",
       buildOptions.debuggerPort.toString(),
       "--headless",
+      "-profile",
+      tmpDirName,
     ];
     if (buildOptions.defaultUrl) {
       args.push(buildOptions.defaultUrl);
     }
     // Create the sub process to start the browser
-    return await Client.create(args, {
-      hostname: buildOptions.hostname,
-      port: buildOptions.debuggerPort,
-    }, "firefox");
+    return await Client.create(
+      args,
+      {
+        hostname: buildOptions.hostname,
+        port: buildOptions.debuggerPort,
+      },
+      "firefox",
+      tmpDirName,
+    );
   }
 }
