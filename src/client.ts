@@ -120,7 +120,6 @@ export class Client {
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
   public async assertUrlIs(expectedUrl: string): Promise<void> {
-    // There's a whole bunch of other data it responds with, but we only care about documentURL. This data is always present on the response
     const actualUrl = await this.evaluatePage(`window.location.href`);
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
       await this.done();
@@ -135,19 +134,11 @@ export class Client {
    */
   public async assertSee(text: string): Promise<void> {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as { // Tried and tested
-      result: {
-        type: "boolean";
-        value: boolean;
-      };
-    };
-    const exists = res.result.value;
-    if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
+    const res = await this.evaluatePage(command);
+    if (res !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanup
       await this.done();
     }
-    assertEquals(exists, true);
+    assertEquals(res, true);
   }
 
   /**
@@ -168,7 +159,7 @@ export class Client {
     };
     await notificationPromise;
     if (res.errorText) {
-      //await this.done()
+      await this.done();
       throw new Error(
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
@@ -196,8 +187,6 @@ export class Client {
       result: Exception;
       exceptionDetails: ExceptionDetails;
     };
-
-    // If there's an error, resolve the notification as the page was never changed so we'll never get the response, so to stop hanging, resolve it :)
     if ("exceptionDetails" in result) {
       this.checkForErrorResult(result, command);
     }
@@ -291,17 +280,16 @@ export class Client {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
   public async done(): Promise<void> {
+    const clientIsClosed = deferred();
+    this.socket.onclose = () => clientIsClosed.resolve();
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.browser_process_closed === false) {
       // cloing subprocess will also close the ws endpoint
-      const p = deferred();
-      this.socket.onclose = () => p.resolve();
       this.browser_process.stderr!.close();
       this.browser_process.stdout!.close();
       this.browser_process.close();
       this.browser_process_closed = true;
-      await p;
     }
     if (this.browser === "firefox" && Deno.build.os === "windows") {
       const p = Deno.run({
@@ -312,6 +300,7 @@ export class Client {
       await p.status();
       p.close();
     }
+    await clientIsClosed; // done AFTER the above conditional because the process is still running, so the client is never closed
     if (this.firefox_profile_path) {
       // On windows, this block is annoying. We either get a perm denied or
       // resource is in use error (classic windows). So what we're doing here is
