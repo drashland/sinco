@@ -93,7 +93,7 @@ export class Client {
    * This is the path to the directory that firefox uses
    * to write a profile
    */
-  private firefox_profile_path: string | null = null;
+  private firefox_profile_path: string | undefined = undefined;
 
   constructor(
     socket: WebSocket,
@@ -328,7 +328,9 @@ export class Client {
       });
       await p.status();
       p.close();
-      Deno.reamoveSync(this.firefox_profile_path);
+      if (this.firefox_profile_path) {
+        Deno.removeSync(this.firefox_profile_path);
+      }
     }
   }
 
@@ -453,10 +455,15 @@ export class Client {
     }
   }
 
-  protected static async create(buildArgs: string[], wsOptions: {
-    hostname: string;
-    port: number;
-  }, browser: "firefox" | "chrome"): Promise<Client> {
+  protected static async create(
+    buildArgs: string[],
+    wsOptions: {
+      hostname: string;
+      port: number;
+    },
+    browser: "firefox" | "chrome",
+    firefoxProfilePath?: string,
+  ): Promise<Client> {
     const browserProcess = Deno.run({
       cmd: buildArgs,
       stderr: "piped",
@@ -482,7 +489,7 @@ export class Client {
     const TempClient = new Client(websocket, browserProcess, browser);
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
-    return new Client(websocket, browserProcess, browser);
+    return new Client(websocket, browserProcess, browser, firefoxProfilePath);
   }
 
   /**

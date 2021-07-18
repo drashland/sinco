@@ -1,6 +1,7 @@
 import { Rhum } from "../deps.ts";
 import { FirefoxClient } from "../../mod.ts";
 import { getFirefoxPath } from "../../src/firefox_client.ts";
+import { existsSync } from "../../src/utility.ts";
 import { deferred } from "../../deps.ts";
 
 Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
@@ -75,6 +76,18 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await promise;
         console.log(); // TODO(edward): Oddly, for firefox, it hangs without this console.log, in the future, try address this
         await Sinco.done();
+      },
+    );
+    Rhum.testCase(
+      "Should create and delete a temp path for the firefox profile",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        const prop = Reflect.get(Sinco, "firefox_profile_path");
+        const existsOnCreate = existsSync(prop);
+        await Sinco.done();
+        const existsOnDestroy = existsSync(prop);
+        Rhum.asserts.assertEquals(existsOnCreate, true);
+        Rhum.asserts.assertEquals(existsOnDestroy, false);
       },
     );
   });
