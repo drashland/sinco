@@ -83,12 +83,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         const prop = Reflect.get(Sinco, "firefox_profile_path");
-        console.log(prop)
         const existsOnCreate = existsSync(prop);
-        console.log(existsOnCreate)
         await Sinco.done();
         const existsOnDestroy = existsSync(prop);
-        console.log(existsOnDestroy)
         Rhum.asserts.assertEquals(existsOnCreate, true);
         Rhum.asserts.assertEquals(existsOnDestroy, false);
       },

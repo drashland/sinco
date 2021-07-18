@@ -1,4 +1,5 @@
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import { existsSync } from "./utility.ts";
 
 const webSocketIsDonePromise = deferred();
 
@@ -329,7 +330,18 @@ export class Client {
       await p.status();
       p.close();
       if (this.firefox_profile_path) {
-        Deno.removeSync(this.firefox_profile_path, { recursive: true });
+        // On windows, this block is annoying. We either get a perm denied or
+        // reosurce is in use error (classic windows). So what we're doing here is
+        // even if one of those errors are thrown, keep trying because what i've (ed)
+        // found is, it seems to need a couple seconds to realise that the dir
+        // isnt being used anymore
+        while (existsSync(this.firefox_profile_path)) {
+          try {
+            Deno.removeSync(this.firefox_profile_path, { recursive: true });
+          } catch (_e) {
+            // Just try removing again
+          }
+        }
       }
     }
   }
