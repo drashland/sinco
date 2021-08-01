@@ -1,4 +1,5 @@
 // https://peter.sh/experiments/chromium-command-line-switches/
+// https://chromedevtools.github.io/devtools-protocol/tot/Network/
 
 import { BuildOptions, Client } from "./client.ts";
 import { existsSync } from "./utility.ts";
