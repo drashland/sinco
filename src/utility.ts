@@ -1,3 +1,7 @@
+declare global{
+  var timeStamp: string,
+  interface Window {timeStamp}
+}
 export const existsSync = (filename: string): boolean => {
   try {
     Deno.statSync(filename);

@@ -94,6 +94,16 @@ export class Client {
    */
   private firefox_profile_path: string | undefined = undefined;
 
+  /**
+   * The file format in which the client will save the screenshot.
+   */
+  private screenshot_Format: "jpeg"|"png"|"webp";
+  
+  /**
+   * The image quality of screenshots (JPEG only)
+   */
+  private screenshot_quality: number;
+
   constructor(
     socket: WebSocket,
     browserProcess: Deno.Process,
@@ -104,6 +114,8 @@ export class Client {
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
+    this.screenshot_Format = "jpeg";
+    this.screenshot_quality = 80;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
@@ -353,6 +365,10 @@ export class Client {
     if ("exceptionDetails" in res) {
       this.checkForErrorResult(res, command);
     }
+  }
+
+  public async function takeScreenshot(params?:{fileName?:string, selector?:string}) {
+    
   }
 
   /**
