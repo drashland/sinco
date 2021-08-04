@@ -1,6 +1,5 @@
-declare global{
-  var timeStamp: string,
-  interface Window {timeStamp}
+declare global {
+  var timeStamp: string;
 }
 export const existsSync = (filename: string): boolean => {
   try {
@@ -16,4 +15,10 @@ export const existsSync = (filename: string): boolean => {
       throw error;
     }
   }
+};
+
+export const generateTimestamp = (): string => {
+  const ts = (new Date()).toJSON();
+  globalThis.timeStamp = ts;
+  return ts;
 };

@@ -1,9 +1,47 @@
+import { existsSync } from './../../src/utility.ts';
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
 import { ChromeClient } from "../../mod.ts";
 import { getChromePath } from "../../src/chrome_client.ts";
 
 Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
+  Rhum.testSuite("takeScreenshot()", () => {
+    const ScreenshotsFolder = "./ScreenshotsChrome";
+    Rhum.beforeAll(() => {
+      try {
+        Deno.removeSync(ScreenshotsFolder, { recursive: true });
+      } catch (e) {
+        console.error((e as Error).message);
+      } finally {
+        Deno.mkdirSync(ScreenshotsFolder);
+      }
+    });
+
+    // Rhum.afterAll(() => {
+    //   Deno.removeSync(ScreenshotsFolder, { recursive: true });
+    // });
+
+    Rhum.testCase(
+      "Takes a jpg screenshot with timestamp as filename",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        Sinco.setScreenshotsFolder(ScreenshotsFolder);
+        await Sinco.goTo("https://chromestatus.com");
+        await Sinco.takeScreenshot();
+        await Sinco.done();
+        
+        Rhum.asserts.assertEquals(
+          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
+          true,
+        );
+        try {
+        Deno.removeSync(ScreenshotsFolder, { recursive: true });
+      } catch (e) {
+        console.error((e as Error).message);
+      }
+      },
+    );
+  });
   Rhum.testSuite("build()", () => {
     Rhum.testCase("Will start chrome headless as a subprocess", async () => {
       const Sinco = await ChromeClient.build();

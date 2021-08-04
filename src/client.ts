@@ -1,5 +1,5 @@
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
-import { existsSync } from "./utility.ts";
+import { existsSync, generateTimestamp } from "./utility.ts";
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
@@ -97,12 +97,17 @@ export class Client {
   /**
    * The file format in which the client will save the screenshot.
    */
-  private screenshot_Format: "jpeg"|"png"|"webp";
-  
+  private screenshot_format: "jpeg" | "png" | "webp";
+
   /**
    * The image quality of screenshots (JPEG only)
    */
   private screenshot_quality: number;
+
+  /**
+   * The folder to store screenshots in
+   */
+  private screenshot_folder: string | null;
 
   constructor(
     socket: WebSocket,
@@ -114,8 +119,9 @@ export class Client {
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
-    this.screenshot_Format = "jpeg";
+    this.screenshot_format = "jpeg";
     this.screenshot_quality = 80;
+    this.screenshot_folder = null;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
@@ -367,10 +373,15 @@ export class Client {
     }
   }
 
-  public async function takeScreenshot(params?:{fileName?:string, selector?:string}) {
-    
+  public async takeScreenshot(
+    params?: { fileName?: string; selector?: string },
+  ): Promise<string> {
+    return `${generateTimestamp()}.jpg`;
   }
 
+  public setScreenshotsFolder(FolderPath: string) {
+    this.screenshot_folder = FolderPath;
+  }
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
    */
