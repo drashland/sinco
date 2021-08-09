@@ -52,6 +52,31 @@ type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
+type DOMRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
+type ViewPort = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scale: number;
+};
+
+type SSOptions = {
+  format?: string;
+  quality?: number;
+  clip?: ViewPort;
+};
+
 export class Client {
   /**
    * The sub process that runs headless chrome
@@ -375,8 +400,37 @@ export class Client {
 
   public async takeScreenshot(
     params?: { fileName?: string; selector?: string },
-  ): Promise<string> {
-    return `${generateTimestamp()}.jpg`;
+  ) {
+    if (!this.screenshot_folder || !existsSync(this.screenshot_folder)) {
+      throw new Error("The Screenshot folder is not set or doesn't exist");
+    }
+
+    let fileName = `${generateTimestamp()}.jpg`;
+    const options: SSOptions = {
+      format: this.screenshot_format,
+      quality: this.screenshot_quality,
+    };
+    if (params) {
+      if (params.fileName) {
+        fileName = params.fileName + ".jpg";
+      }
+      if (params.selector) {
+        const viewPort = await this.getViewport(params.selector);
+        options.clip = viewPort;
+      }
+    }
+    const res: string = await this.sendWebSocketMessage(
+      "Page.captureScreenshot",
+      {
+        format: options.format,
+        quality: options.quality,
+        clip: options.clip,
+      },
+    );
+
+    //Use Buffer here
+    const data = res.replace(/^data:image\/\w+;base64,/, "");
+    return fileName;
   }
 
   public setScreenshotsFolder(FolderPath: string) {
@@ -395,6 +449,29 @@ export class Client {
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
+
+  private async getViewport(selector: string) {
+    const command =
+      `document.querySelector('${selector}').getBoundingClientRect()`;
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression: command,
+    }) as {
+      result: {
+        type: "object";
+        value?: DOMRect;
+      };
+    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
+      result: Exception;
+      exceptionDetails: ExceptionDetails;
+    };
+    if ("exceptionDetails" in res) {
+      this.checkForErrorResult(res, command);
+    }
+
+    const { x, y, height, width } = ((res.result as { value: DOMRect }).value);
+    const viewPort: ViewPort = { x, y, width, height, scale: 1 };
+    return viewPort;
+  }
 
   private handleSocketMessage(message: MessageResponse | NotificationResponse) {
     if ("id" in message) { // message response
