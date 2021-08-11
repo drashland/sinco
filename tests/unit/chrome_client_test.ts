@@ -5,85 +5,6 @@ import { ChromeClient } from "../../mod.ts";
 import { getChromePath } from "../../src/chrome_client.ts";
 
 Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
-  Rhum.testSuite("takeScreenshot()", () => {
-    const ScreenshotsFolder = "./ScreenshotsChrome";
-    Rhum.beforeAll(() => {
-      try {
-        Deno.removeSync(ScreenshotsFolder, { recursive: true });
-      } catch (e) {
-        console.log((e as Error).message);
-      } finally {
-        Deno.mkdirSync(ScreenshotsFolder);
-      }
-    });
-
-    Rhum.testCase(
-      "Throws an error if screenshot folder is not set",
-      async () => {
-        const Sinco = await ChromeClient.build();
-        await Sinco.goTo("https://chromestatus.com");
-        let msg = "";
-        try {
-          await Sinco.takeScreenshot();
-        } catch (err) {
-          msg = (err as Error).message;
-        }
-        await Sinco.done();
-        Rhum.asserts.assertEquals(
-          msg,
-          "The Screenshot folder is not set or doesn't exist",
-        );
-      },
-    );
-
-    Rhum.testCase(
-      "Takes a jpg screenshot with timestamp as filename",
-      async () => {
-        const Sinco = await ChromeClient.build();
-        Sinco.setScreenshotsFolder(ScreenshotsFolder);
-        await Sinco.goTo("https://chromestatus.com");
-        await Sinco.takeScreenshot();
-        await Sinco.done();
-
-        Rhum.asserts.assertEquals(
-          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
-          true,
-        );
-      },
-    );
-
-    Rhum.testCase(
-      "Takes screenshot of only the element passed as selector",
-      async () => {
-        const Sinco = await ChromeClient.build();
-        Sinco.setScreenshotsFolder(ScreenshotsFolder);
-        await Sinco.goTo("https://chromestatus.com");
-        await Sinco.takeScreenshot({ selector: "span" });
-        await Sinco.done();
-        Rhum.asserts.assertEquals(
-          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
-          true,
-        );
-      },
-    );
-
-    Rhum.testCase("Saves File with Given Filename", async () => {
-      const Sinco = await ChromeClient.build();
-      Sinco.setScreenshotsFolder(ScreenshotsFolder);
-      await Sinco.goTo("https://chromestatus.com");
-      await Sinco.takeScreenshot({ fileName: "Happy" });
-      await Sinco.done();
-      Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}/Happy.jpg`)),
-        true,
-      );
-    });
-
-    Rhum.afterAll(() => {
-      Deno.removeSync(ScreenshotsFolder, { recursive: true });
-    });
-  });
-
   Rhum.testSuite("build()", () => {
     Rhum.testCase("Will start chrome headless as a subprocess", async () => {
       const Sinco = await ChromeClient.build();
@@ -476,6 +397,84 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     });
   });
 
+  Rhum.testSuite("takeScreenshot()", () => {
+    const ScreenshotsFolder = "./ScreenshotsChrome";
+    Rhum.beforeAll(() => {
+      try {
+        Deno.removeSync(ScreenshotsFolder, { recursive: true });
+      } catch (e) {
+        console.log((e as Error).message);
+      } finally {
+        Deno.mkdirSync(ScreenshotsFolder);
+      }
+    });
+
+    Rhum.testCase(
+      "Throws an error if screenshot folder is not set",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot();
+        } catch (err) {
+          msg = (err as Error).message;
+        }
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          msg,
+          "The Screenshot folder is not set or doesn't exist",
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes a jpg screenshot with timestamp as filename",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        Sinco.setScreenshotsFolder(ScreenshotsFolder);
+        await Sinco.goTo("https://chromestatus.com");
+        await Sinco.takeScreenshot();
+        await Sinco.done();
+
+        Rhum.asserts.assertEquals(
+          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes screenshot of only the element passed as selector",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        Sinco.setScreenshotsFolder(ScreenshotsFolder);
+        await Sinco.goTo("https://chromestatus.com");
+        await Sinco.takeScreenshot({ selector: "span" });
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase("Saves File with Given Filename", async () => {
+      const Sinco = await ChromeClient.build();
+      Sinco.setScreenshotsFolder(ScreenshotsFolder);
+      await Sinco.goTo("https://chromestatus.com");
+      await Sinco.takeScreenshot({ fileName: "Happy" });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        (existsSync(`${ScreenshotsFolder}/Happy.jpg`)),
+        true,
+      );
+    });
+
+    Rhum.afterAll(() => {
+      Deno.removeSync(ScreenshotsFolder, { recursive: true });
+    });
+  });
   // Rhum.testSuite("waitForAnchorChange()", () => {
   //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
   //     const Sinco = await ChromeClient.build();
