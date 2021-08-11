@@ -55,6 +55,19 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         );
       },
     );
+
+    Rhum.testCase("Takes screenshot of only the element passed as selector", async () =>{
+      const Sinco = await ChromeClient.build();
+        Sinco.setScreenshotsFolder(ScreenshotsFolder);
+        await Sinco.goTo("https://chromestatus.com");
+        await Sinco.takeScreenshot({selector:"span.num-features"});
+        await Sinco.done();
+
+        Rhum.asserts.assertEquals(
+          (existsSync(`${ScreenshotsFolder}/${globalThis.timeStamp}.jpg`)),
+          true,
+        );
+    })
   });
 
   Rhum.testSuite("build()", () => {

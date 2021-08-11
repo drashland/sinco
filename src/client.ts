@@ -1,4 +1,9 @@
-import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import {
+  assertEquals,
+  Deferred,
+  deferred,
+  readLines,
+} from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 
 export interface BuildOptions {
@@ -52,7 +57,7 @@ type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
-type DOMRect = {
+class DOMRect {
   x: number;
   y: number;
   width: number;
@@ -61,7 +66,17 @@ type DOMRect = {
   right: number;
   bottom: number;
   left: number;
-};
+  constructor(x:number,y:number,width:number,height:number,top:number,right:number,bottom:number,left:number){
+   this.x=x;
+   this.y=y;
+   this.width=width;
+   this.height=height;
+   this.top=top;
+   this.right=right;
+   this.bottom=bottom;
+   this.left=left;
+  }
+}
 
 type ViewPort = {
   x: number;
@@ -419,17 +434,22 @@ export class Client {
         options.clip = viewPort;
       }
     }
-    const res: string = await this.sendWebSocketMessage(
+    const res = await this.sendWebSocketMessage(
       "Page.captureScreenshot",
       {
         format: options.format,
         quality: options.quality,
         clip: options.clip,
       },
-    );
+    ) as {
+      data: string;
+    };
 
-    //Use Buffer here
-    const data = res.replace(/^data:image\/\w+;base64,/, "");
+    //Writing the Obtained Base64 encoded string to image file
+    fileName = `${this.screenshot_folder}/${fileName}`;
+    const B64str = (res as {data:string}).data
+    const u8Arr = Uint8Array.from<string>(atob(B64str), c => c.charCodeAt(0));
+    Deno.writeFileSync(fileName,u8Arr);
     return fileName;
   }
 
@@ -458,18 +478,22 @@ export class Client {
     }) as {
       result: {
         type: "object";
+        className: "DOMRect";
         value?: DOMRect;
       };
     } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
+       result: Exception;
+       exceptionDetails: ExceptionDetails;
+     };
+    
     if ("exceptionDetails" in res) {
       this.checkForErrorResult(res, command);
     }
-
-    const { x, y, height, width } = ((res.result as { value: DOMRect }).value);
-    const viewPort: ViewPort = { x, y, width, height, scale: 1 };
+    console.log(`Obtained ${JSON.stringify((res.result as {value:DOMRect}).value)}`)
+    //continue from here
+    // const { x, y, height, width } = ((res.result as { value: DOMRect }).value);
+    const viewPort: ViewPort = { x:1, y:3, width:1, height:1, scale: 1 };
+    Deno.exit(0);
     return viewPort;
   }
 
