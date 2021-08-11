@@ -49,13 +49,19 @@ export class ChromeClient extends Client {
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Entry point for creating a headless chrome browser.
+   *
+   * @param buildOptions - Any extra options you wish to provide to customise how the headless browser sub process is ran
+   *   - hostname: Defaults to localhost
+   *   - port: Defaults to 9293
+   *
+   * @returns An instance of ChromeClient, that is now ready.
+   */
   public static async build(options: BuildOptions = {}): Promise<Client> {
     // Setup build options
     if (!options.debuggerPort) {
       options.debuggerPort = 9292;
-    }
-    if (!options.defaultUrl) {
-      options.defaultUrl = "https://chromestatus.com";
     }
     if (!options.hostname) {
       options.hostname = "localhost";
@@ -68,7 +74,6 @@ export class ChromeClient extends Client {
       "--remote-debugging-port=" + options.debuggerPort,
       "--disable-gpu",
       "--no-sandbox",
-      options.defaultUrl,
     ];
     return await Client.create(args, {
       hostname: options.hostname,

@@ -42,13 +42,6 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         await Sinco.done();
       },
     );
-    Rhum.testCase("Uses the url when passed in to the parameters", async () => {
-      const Sinco = await ChromeClient.build({
-        defaultUrl: "https://drash.land",
-      });
-      await Sinco.assertUrlIs("https://drash.land/");
-      await Sinco.done();
-    });
     Rhum.testCase(
       "Uses the hostname when passed in to the parameters",
       async () => {

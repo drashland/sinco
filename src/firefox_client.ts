@@ -53,7 +53,6 @@ export class FirefoxClient extends Client {
    * @param buildOptions - Any extra options you wish to provide to customise how the headless browser sub process is ran
    *   - hostname: Defaults to 0.0.0.0 for macos/linux, 127.0.0.1 for windows
    *   - port: Defaults to 9293
-   *   - url: Defaults to https://developer.mozilla.org/
    *
    * @returns An instance of FirefoxClient, that is now ready.
    */
@@ -67,11 +66,10 @@ export class FirefoxClient extends Client {
     if (!buildOptions.debuggerPort) {
       buildOptions.debuggerPort = defaultBuildOptions.debuggerServerPort;
     }
-    if (!buildOptions.defaultUrl) {
-      buildOptions.defaultUrl = defaultBuildOptions.defaultUrl;
-    }
+
     // Create the profile the browser will use. Create a test one so we can enable required options to enable communication with it
     const tmpDirName = Deno.makeTempDirSync();
+
     // Create the arguments we will use when spawning the headless browser
     const args = [
       buildOptions.binaryPath || getFirefoxPath(),
@@ -83,9 +81,6 @@ export class FirefoxClient extends Client {
       "-profile",
       tmpDirName,
     ];
-    if (buildOptions.defaultUrl) {
-      args.push(buildOptions.defaultUrl);
-    }
     // Create the sub process to start the browser
     return await Client.create(
       args,
