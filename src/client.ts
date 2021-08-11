@@ -405,7 +405,8 @@ export class Client {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
-    // deno-lint-ignore no-explicit-any The return value could literally be anything
+    // The return value could literally be anything
+    // deno-lint-ignore no-explicit-any
   ): Promise<any> {
     const data: {
       id: number;
