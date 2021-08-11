@@ -1,9 +1,4 @@
-import {
-  assertEquals,
-  Deferred,
-  deferred,
-  readLines,
-} from "../deps.ts";
+import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 
 export interface BuildOptions {
@@ -57,27 +52,7 @@ type DOMOutput = {
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
 };
 
-class DOMRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-  constructor(x:number,y:number,width:number,height:number,top:number,right:number,bottom:number,left:number){
-   this.x=x;
-   this.y=y;
-   this.width=width;
-   this.height=height;
-   this.top=top;
-   this.right=right;
-   this.bottom=bottom;
-   this.left=left;
-  }
-}
-
+//Type for ViewPort, as it is required for Screenshot of an area
 type ViewPort = {
   x: number;
   y: number;
@@ -86,10 +61,12 @@ type ViewPort = {
   scale: number;
 };
 
+//Screenshot Options
 type SSOptions = {
   format?: string;
   quality?: number;
-  clip?: ViewPort;
+  // deno-lint-ignore ban-types
+  clip?: Object;
 };
 
 export class Client {
@@ -412,10 +389,15 @@ export class Client {
       this.checkForErrorResult(res, command);
     }
   }
-
+ 
+  /**
+   * 
+   * @param params filename, selector
+   * @returns Filename
+   */
   public async takeScreenshot(
     params?: { fileName?: string; selector?: string },
-  ) {
+  ) :Promise<string> {
     if (!this.screenshot_folder || !existsSync(this.screenshot_folder)) {
       throw new Error("The Screenshot folder is not set or doesn't exist");
     }
@@ -447,12 +429,25 @@ export class Client {
 
     //Writing the Obtained Base64 encoded string to image file
     fileName = `${this.screenshot_folder}/${fileName}`;
-    const B64str = (res as {data:string}).data
-    const u8Arr = Uint8Array.from<string>(atob(B64str), c => c.charCodeAt(0));
-    Deno.writeFileSync(fileName,u8Arr);
+    const B64str = (res as { data: string }).data;
+    const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
+    try {
+      Deno.writeFileSync(fileName, u8Arr);
+    } catch (e) {
+      console.error(
+        "Write Image to File Failed. Please check FileName and Path",
+      );
+      throw e;
+    }
+
     return fileName;
   }
-
+  /**
+   * To set the Folder for screenshots, 
+   * so that we can save specific screenshots in specific folders.
+   * Need to be present already.
+   * @param FolderPath 
+   */
   public setScreenshotsFolder(FolderPath: string) {
     this.screenshot_folder = FolderPath;
   }
@@ -471,29 +466,19 @@ export class Client {
   //////////////////////////////////////////////////////////////////////////////
 
   private async getViewport(selector: string) {
-    const command =
-      `document.querySelector('${selector}').getBoundingClientRect()`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: {
-        type: "object";
-        className: "DOMRect";
-        value?: DOMRect;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-       result: Exception;
-       exceptionDetails: ExceptionDetails;
-     };
-    
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-    console.log(`Obtained ${JSON.stringify((res.result as {value:DOMRect}).value)}`)
-    //continue from here
-    // const { x, y, height, width } = ((res.result as { value: DOMRect }).value);
-    const viewPort: ViewPort = { x:1, y:3, width:1, height:1, scale: 1 };
-    Deno.exit(0);
+    const Values: DOMRect = JSON.parse(
+      "" +
+        await this.evaluatePage(
+          `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
+        ),
+    );
+    const viewPort: ViewPort = {
+      x: Values.x,
+      y: Values.y,
+      width: Values.width,
+      height: Values.height,
+      scale: 2,
+    };
     return viewPort;
   }
 

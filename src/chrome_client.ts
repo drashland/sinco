@@ -76,11 +76,3 @@ export class ChromeClient extends Client {
     }, "chrome");
   }
 }
-
- const ScreenshotsFolder = "./ScreenshotsChrome";
-  const Sinco = await ChromeClient.build();
-  Sinco.setScreenshotsFolder(ScreenshotsFolder);
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.waitForPageChange();
-  await Sinco.takeScreenshot({selector:"span"});
-  await Sinco.done();
