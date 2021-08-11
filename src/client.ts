@@ -389,15 +389,15 @@ export class Client {
       this.checkForErrorResult(res, command);
     }
   }
- 
+
   /**
-   * 
+   *
    * @param params filename, selector
    * @returns Filename
    */
   public async takeScreenshot(
     params?: { fileName?: string; selector?: string },
-  ) :Promise<string> {
+  ): Promise<string> {
     if (!this.screenshot_folder || !existsSync(this.screenshot_folder)) {
       throw new Error("The Screenshot folder is not set or doesn't exist");
     }
@@ -443,10 +443,10 @@ export class Client {
     return fileName;
   }
   /**
-   * To set the Folder for screenshots, 
+   * To set the Folder for screenshots,
    * so that we can save specific screenshots in specific folders.
    * Need to be present already.
-   * @param FolderPath 
+   * @param FolderPath
    */
   public setScreenshotsFolder(FolderPath: string) {
     this.screenshot_folder = FolderPath;
