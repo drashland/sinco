@@ -430,14 +430,14 @@ export class Client {
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    fileName = `${this.screenshot_folder}/${fileName}`;
+    fileName = this.screenshot_folder+((Deno.build.os == "windows")?'\\':'/')+fileName;
     const B64str = (res as { data: string }).data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
       Deno.writeFileSync(fileName, u8Arr);
     } catch (e) {
       console.error(
-        "Write Image to File Failed. Please check FileName and Path",
+        "Write Image to File Failed. Please check FileName and Path", (e as Error).message
       );
       throw e;
     }

@@ -1,5 +1,5 @@
 import { ChromeClient, FirefoxClient } from "../../mod.ts";
-const ScreenshotsFolder = "./Screenshots";
+const ScreenshotsFolder = "."+((Deno.build.os == "windows")?'\\':'/')+"Screenshots";
 
 try {
   Deno.removeSync(ScreenshotsFolder, { recursive: true });

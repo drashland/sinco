@@ -403,7 +403,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   });
 
   Rhum.testSuite("takeScreenshot()", () => {
-    const ScreenshotsFolder = "./ScreenshotsFirefox";
+    const ScreenshotsFolder = "."+((Deno.build.os == "windows")?'\\':'/')+"ScreenshotsFirefox";
     Rhum.beforeAll(() => {
       try {
         Deno.removeSync(ScreenshotsFolder, { recursive: true });
