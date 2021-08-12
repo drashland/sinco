@@ -26,48 +26,50 @@ import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 // THIS TEST SHOULD NOT HANG, IF IT DOES, THEN THIS TEST FAILS
 
-Deno.test("Chrome: Assertion methods cleanup when an assertion fails", async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
-  let gotError = false;
-  let errMsg = "";
-  try {
-    await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
-  } catch (err) {
-    gotError = true;
-    errMsg = err.message
-      // deno-lint-ignore no-control-regex
-      .replace(/\x1b/g, "") // or \x1b\[90m
-      .replace(/\[1m/g, "")
-      .replace(/\[[0-9][0-9]m/g, "")
-      .replace(/\n/g, "");
-  }
-  assertEquals(gotError, true);
-  assertEquals(
-    errMsg,
-    "Values are not equal:    [Diff] Actual / Expected-   false+   true",
-  );
-  // Now we should be able to run tests again without it hanging
-  const Sinco2 = await ChromeClient.build();
-  await Sinco2.goTo("https://chromestatus.com");
-  await Sinco2.assertUrlIs("https://chromestatus.com/features");
-  try {
-    await Sinco2.assertSee("Chrome Versions");
-  } catch (_err) {
-    //
-  }
-});
+// Deno.test("Chrome: Assertion methods cleanup when an assertion fails", async () => {
+//   const Sinco = await ChromeClient.build();
+//   await Sinco.goTo("https://chromestatus.com");
+//   await Sinco.assertUrlIs("https://chromestatus.com/features");
+//   let gotError = false;
+//   let errMsg = "";
+//   try {
+//     await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
+//   } catch (err) {
+//     gotError = true;
+//     errMsg = err.message
+//       // deno-lint-ignore no-control-regex
+//       .replace(/\x1b/g, "") // or \x1b\[90m
+//       .replace(/\[1m/g, "")
+//       .replace(/\[[0-9][0-9]m/g, "")
+//       .replace(/\n/g, "");
+//   }
+//   assertEquals(gotError, true);
+//   assertEquals(
+//     errMsg,
+//     "Values are not equal:    [Diff] Actual / Expected-   false+   true",
+//   );
+//   // Now we should be able to run tests again without it hanging
+//   const Sinco2 = await ChromeClient.build();
+//   await Sinco2.goTo("https://chromestatus.com");
+//   await Sinco2.assertUrlIs("https://chromestatus.com/features");
+//   try {
+//     await Sinco2.assertSee("Chrome Versions");
+//   } catch (_err) {
+//     //
+//   }
+// });
 
 Deno.test("Firefox: Assertion methods cleanup when an assertion fails", async () => {
   const Sinco = await FirefoxClient.build();
   await Sinco.goTo("https://chromestatus.com");
+  console.log('after goto')
   await Sinco.assertUrlIs("https://chromestatus.com/features");
   let gotError = false;
   let errMsg = "";
   try {
     await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
   } catch (err) {
+    console.log('ERR')
     gotError = true;
     errMsg = err.message
       // deno-lint-ignore no-control-regex

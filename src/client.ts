@@ -157,6 +157,7 @@ export class Client {
     const method = "Page.loadEventFired";
     this.notification_resolvables.set(method, deferred());
     const notificationPromise = this.notification_resolvables.get(method);
+    console.log('gotoing')
     const res = await this.sendWebSocketMessage("Page.navigate", {
       url: urlToVisit,
     }) as {
@@ -369,6 +370,7 @@ export class Client {
   //////////////////////////////////////////////////////////////////////////////
 
   private handleSocketMessage(message: MessageResponse | NotificationResponse) {
+    console.log(message)
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
       if (resolvable) {
@@ -462,24 +464,30 @@ export class Client {
       stderr: "piped",
       stdout: "piped",
     });
+    console.log('ran subprocess')
     // Oddly, this is needed before the json/list endpoint is up.
     // but the ws url provided here isn't the one we need
     for await (const line of readLines(browserProcess.stderr)) {
+      console.log(line)
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
       if (!match) {
         continue;
       }
       break;
     }
+    console.log('getting url')
     const wsUrl = await Client.getWebSocketUrl(
       wsOptions.hostname,
       wsOptions.port,
     );
+    console.log('got url')
     const websocket = new WebSocket(wsUrl);
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
+    console.log('open')
     const TempClient = new Client(websocket, browserProcess, browser);
+
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
     return new Client(websocket, browserProcess, browser, firefoxProfilePath);
@@ -504,8 +512,10 @@ export class Client {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
+        console.log(json)
         debugUrl = json[0]["webSocketDebuggerUrl"];
       } catch (_err) {
+        console.log(_err.message)
         // do nothing, loop again until the endpoint is ready
       }
     }
