@@ -398,7 +398,10 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   });
 
   Rhum.testSuite("takeScreenshot()", () => {
-    const ScreenshotsFolder = "."+((Deno.build.os == "windows")?'\\':'/')+"ScreenshotsChrome";
+    const ScreenshotsFolder = "." + ((Deno.build.os == "windows")
+      ? "\\"
+      : "/") +
+      "ScreenshotsChrome";
     Rhum.beforeAll(() => {
       try {
         Deno.removeSync(ScreenshotsFolder, { recursive: true });
