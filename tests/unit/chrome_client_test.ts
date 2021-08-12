@@ -403,7 +403,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       try {
         Deno.removeSync(ScreenshotsFolder, { recursive: true });
       } catch (e) {
-        console.log((e as Error).message);
+        console.debug((e as Error).message);
       } finally {
         Deno.mkdirSync(ScreenshotsFolder);
       }
@@ -429,7 +429,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     );
 
     Rhum.testCase(
-      "Takes a jpg screenshot with timestamp as filename",
+      "Takes a screenshot with timestamp as filename",
       async () => {
         const Sinco = await ChromeClient.build();
         Sinco.setScreenshotsFolder(ScreenshotsFolder);

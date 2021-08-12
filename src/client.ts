@@ -391,7 +391,9 @@ export class Client {
   }
 
   /**
-   *
+   * This Method allows the user to take a screenshot. If no selector is passed
+   * then a full page screenshot is saved.
+   * if no filename is passed, then file is stored with a timestamp as the filename
    * @param params filename, selector
    * @returns Filename
    */
@@ -445,7 +447,7 @@ export class Client {
   /**
    * To set the Folder for screenshots,
    * so that we can save specific screenshots in specific folders.
-   * Need to be present already.
+   * Folders need to be present already.
    * @param FolderPath
    */
   public setScreenshotsFolder(FolderPath: string) {
@@ -465,8 +467,14 @@ export class Client {
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * This method is used internally to calculate the element Viewport (Dimensions)
+   * @param selector
+   * @returns ViewPort object
+   */
   private async getViewport(selector: string) {
     const Values: DOMRect = JSON.parse(
+      //Had to do this to make it parse
       "" +
         await this.evaluatePage(
           `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
