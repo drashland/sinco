@@ -430,9 +430,8 @@ export class Client {
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    fileName = this.screenshot_folder + ((Deno.build.os == "windows")
-      ? "\\"
-      : "/") +
+    fileName = this.screenshot_folder +
+      ((Deno.build.os == "windows") ? "\\" : "/") +
       fileName;
     const B64str = (res as { data: string }).data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
