@@ -75,11 +75,12 @@ export class FirefoxClient extends Client {
       buildOptions.binaryPath || getFirefoxPath(),
       "--start-debugger-server",
       buildOptions.debuggerPort.toString(),
+      '-headless',
       "--remote-debugging-port",
       buildOptions.debuggerPort.toString(),
-      "--headless",
       "-profile",
       tmpDirName,
+      "about:blank"
     ];
     // Create the sub process to start the browser
     return await Client.create(
