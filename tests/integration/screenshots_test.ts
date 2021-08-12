@@ -1,7 +1,13 @@
 import { ChromeClient, FirefoxClient } from "../../mod.ts";
 const ScreenshotsFolder = "./Screenshots";
 
-Deno.mkdirSync(ScreenshotsFolder, { recursive: true });
+try {
+  Deno.removeSync(ScreenshotsFolder, { recursive: true });
+} catch (e) {
+  console.log((e as Error).message);
+} finally {
+  Deno.mkdirSync(ScreenshotsFolder);
+}
 
 Deno.test("Chrome - Tutorial for taking screenshots in the docs should work", async () => {
   const Sinco = await ChromeClient.build();
@@ -22,10 +28,5 @@ Deno.test("Firefox - Tutorial for taking screenshots in the docs should work", a
     selector: "span",
   });
   await Sinco.done();
-});
-
-try {
   Deno.removeSync(ScreenshotsFolder, { recursive: true });
-} catch (e) {
-  console.log((e as Error).message);
-}
+});
