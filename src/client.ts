@@ -61,14 +61,6 @@ type ViewPort = {
   scale: number;
 };
 
-//Screenshot Options
-type SSOptions = {
-  format?: string;
-  quality?: number;
-  // deno-lint-ignore ban-types
-  clip?: Object;
-};
-
 export class Client {
   /**
    * The sub process that runs headless chrome
@@ -111,21 +103,6 @@ export class Client {
    */
   private firefox_profile_path: string | undefined = undefined;
 
-  /**
-   * The file format in which the client will save the screenshot.
-   */
-  private screenshot_format: "jpeg" | "png" | "webp";
-
-  /**
-   * The image quality of screenshots (JPEG only)
-   */
-  private screenshot_quality: number;
-
-  /**
-   * The folder to store screenshots in
-   */
-  private screenshot_folder: string | null;
-
   constructor(
     socket: WebSocket,
     browserProcess: Deno.Process,
@@ -136,9 +113,6 @@ export class Client {
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
-    this.screenshot_format = "jpeg";
-    this.screenshot_quality = 80;
-    this.screenshot_folder = null;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
@@ -398,63 +372,60 @@ export class Client {
    * @returns Filename
    */
   public async takeScreenshot(
-    params?: { fileName?: string; selector?: string },
-  ): Promise<string> {
-    if (!this.screenshot_folder || !existsSync(this.screenshot_folder)) {
-      throw new Error("The Screenshot folder is not set or doesn't exist");
+    path: string,
+    options?: {
+      selector?: string;
+      fileName?: string;
+      format?: "jpeg" | "png" | "webp";
+      quality?: number;
+    },
+  ): Promise<void> {
+    if (!existsSync(path)) {
+      await this.done();
+      throw new Error(`The provided folder path - ${path} doesn't exist`);
+    }
+    let ext = "jpeg";
+    let quality: number | undefined = undefined;
+    // deno-lint-ignore ban-types
+    let clip: Object | undefined = undefined;
+
+    if (options?.format) {
+      ext = options.format;
+      quality = (ext == "jpeg")
+        ? ((options.quality && Math.abs(options.quality) <= 100)
+          ? Math.abs(options.quality)
+          : 80)
+        : undefined;
     }
 
-    let fileName = `${generateTimestamp()}.jpg`;
-    const options: SSOptions = {
-      format: this.screenshot_format,
-      quality: this.screenshot_quality,
-    };
-    if (params) {
-      if (params.fileName) {
-        fileName = params.fileName + ".jpg";
-      }
-      if (params.selector) {
-        const viewPort = await this.getViewport(params.selector);
-        options.clip = viewPort;
-      }
+    if (options?.selector) {
+      clip = await this.getViewport(options.selector);
     }
+
     const res = await this.sendWebSocketMessage(
       "Page.captureScreenshot",
       {
-        format: options.format,
-        quality: options.quality,
-        clip: options.clip,
+        format: "jpeg",
+        quality: quality,
+        clip: clip,
       },
     ) as {
       data: string;
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    fileName = this.screenshot_folder +
+    let fName = (options?.fileName || generateTimestamp()) + `.${ext}`;
+    fName = path +
       ((Deno.build.os == "windows") ? "\\" : "/") +
-      fileName;
-    const B64str = (res as { data: string }).data;
+      fName;
+    const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
-      Deno.writeFileSync(fileName, u8Arr);
+      Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      console.error(
-        "Write Image to File Failed. Please check FileName and Path",
-        (e as Error).message,
-      );
-      throw e;
+      await this.done();
+      throw new Error(e.message);
     }
-
-    return fileName;
-  }
-  /**
-   * To set the Folder for screenshots,
-   * so that we can save specific screenshots in specific folders.
-   * Folders need to be present already.
-   * @param FolderPath
-   */
-  public setScreenshotsFolder(FolderPath: string) {
-    this.screenshot_folder = FolderPath;
   }
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
@@ -476,18 +447,25 @@ export class Client {
    * @returns ViewPort object
    */
   private async getViewport(selector: string) {
-    const Values: DOMRect = JSON.parse(
-      //Had to do this to make it parse
-      "" +
+    let values: DOMRect;
+    try {
+      values = JSON.parse(
         await this.evaluatePage(
           `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
-        ),
-    );
+        ) as string,
+      );
+    } catch (error) {
+      await this.done();
+      throw new Error(
+        "Selector supplied doesn't return any element, JSON Parse error" +
+          error.name,
+      );
+    }
     const viewPort: ViewPort = {
-      x: Values.x,
-      y: Values.y,
-      width: Values.width,
-      height: Values.height,
+      x: values.x,
+      y: values.y,
+      width: values.width,
+      height: values.height,
       scale: 2,
     };
     return viewPort;
