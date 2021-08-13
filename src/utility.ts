@@ -18,7 +18,9 @@ export const existsSync = (filename: string): boolean => {
 };
 
 export const generateTimestamp = (): string => {
-  const ts = (new Date()).toJSON();
+  const dt = new Date();
+  const ts = dt.toLocaleDateString().replace(/\//g, "_") + "_" +
+    dt.toLocaleTimeString().replace(/:/g, "_");
   globalThis.timeStamp = ts;
   return ts;
 };
