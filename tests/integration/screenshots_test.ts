@@ -4,8 +4,8 @@ const ScreenshotsFolder =
 
 try {
   Deno.removeSync(ScreenshotsFolder, { recursive: true });
-} catch (e) {
-  console.log((e as Error).message);
+} catch (_e) {
+  //
 } finally {
   Deno.mkdirSync(ScreenshotsFolder);
 }

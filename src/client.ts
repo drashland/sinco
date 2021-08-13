@@ -365,12 +365,17 @@ export class Client {
   }
 
   /**
-   * This Method allows the user to take a screenshot. If no selector is passed
-   * then a full page screenshot is saved.
-   * if no filename is passed, then file is stored with a timestamp as the filename
-   * @param params filename, selector
-   * @returns Filename
-   */
+ * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+ * If `selector` is passed in, it will take a screenshot of only that element
+ * and its children as opposed to the whole page.
+ *
+ * @param path - The path of where to save the screenshot to
+ * @param options - options
+ * @param options.filename - Name to be given to the screenshot. Optional
+ * @param options.selector - Screenshot the given selector instead of the full page. Optional
+ * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg", "png", and "webp" - Optional
+ * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
+ */
   public async takeScreenshot(
     path: string,
     options?: {
@@ -385,7 +390,7 @@ export class Client {
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
     let ext = "jpeg";
-    let quality: number | undefined = undefined;
+    let quality: number | undefined = 80;
     // deno-lint-ignore ban-types
     let clip: Object | undefined = undefined;
 
@@ -508,7 +513,8 @@ export class Client {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
-    // deno-lint-ignore no-explicit-any The return value could literally be anything
+    // because we return a packet
+    // deno-lint-ignore no-explicit-any
   ): Promise<any> {
     const data: {
       id: number;
