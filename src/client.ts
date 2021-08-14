@@ -392,7 +392,7 @@ export class Client {
     const ext = options?.format ?? "jpeg";
     // deno-lint-ignore ban-types
     const clip: Object | undefined = (options?.selector)
-      ? await this.getViewport(options!.selector)
+      ? await this.getViewport(options.selector)
       : undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
