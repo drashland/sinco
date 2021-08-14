@@ -384,33 +384,31 @@ export class Client {
       format?: "jpeg" | "png" | "webp";
       quality?: number;
     },
-  ): Promise<void> {
+  ): Promise<string> {
     if (!existsSync(path)) {
       await this.done();
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
-    let ext = "jpeg";
-    let quality: number | undefined = 80;
+    const ext = options?.format ?? "jpeg";
     // deno-lint-ignore ban-types
-    let clip: Object | undefined = undefined;
+    const clip: Object | undefined = (options?.selector)
+      ? await this.getViewport(options!.selector)
+      : undefined;
 
-    if (options?.format) {
-      ext = options.format;
-      quality = (ext == "jpeg")
-        ? ((options.quality && Math.abs(options.quality) <= 100)
-          ? Math.abs(options.quality)
-          : 80)
-        : undefined;
+    if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
+      await this.done();
+      throw new Error("A quality value greater than 100 is not allowed.");
     }
 
-    if (options?.selector) {
-      clip = await this.getViewport(options.selector);
-    }
+    //Quality should defined only if format is jpeg
+    const quality = (ext == "jpeg")
+      ? ((options?.quality) ? Math.abs(options.quality) : 80)
+      : undefined;
 
     const res = await this.sendWebSocketMessage(
       "Page.captureScreenshot",
       {
-        format: "jpeg",
+        format: ext,
         quality: quality,
         clip: clip,
       },
@@ -419,10 +417,9 @@ export class Client {
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    let fName = (options?.fileName || generateTimestamp()) + `.${ext}`;
-    fName = path +
-      ((Deno.build.os == "windows") ? "\\" : "/") +
-      fName;
+    const fName =
+      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png|.webp/g, "") ??
+        generateTimestamp()}.${ext}`;
     const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
@@ -431,6 +428,8 @@ export class Client {
       await this.done();
       throw new Error(e.message);
     }
+
+    return fName;
   }
   /**
    * Wait for anchor navigation. Usually used when typing into an input field
@@ -448,32 +447,42 @@ export class Client {
 
   /**
    * This method is used internally to calculate the element Viewport (Dimensions)
-   * @param selector
-   * @returns ViewPort object
+   * executes getBoundingClientRect of the obtained element
+   * @param selector - The selector for the element to capture
+   * @returns ViewPort object - Which contains the dimensions of the element captured
    */
-  private async getViewport(selector: string) {
-    let values: DOMRect;
-    try {
-      values = JSON.parse(
-        await this.evaluatePage(
-          `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
-        ) as string,
-      );
-    } catch (error) {
+  private async getViewport(selector: string): Promise<ViewPort> {
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression:
+        `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
+    }) as {
+      result: {
+        type: "string";
+        value?: string;
+      };
+    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
+      result: Exception;
+      exceptionDetails?: ExceptionDetails;
+    };
+    if (
+      "exceptionDetails" in res ||
+      (res.result as Exception)?.subtype
+    ) {
       await this.done();
-      throw new Error(
-        "Selector supplied doesn't return any element, JSON Parse error" +
-          error.name,
+      this.checkForErrorResult(
+        res,
+        `document.querySelector('${selector}').getBoundingClientRect()`,
       );
     }
-    const viewPort: ViewPort = {
+
+    const values: DOMRect = JSON.parse((res.result as { value: string }).value);
+    return {
       x: values.x,
       y: values.y,
       width: values.width,
       height: values.height,
       scale: 2,
     };
-    return viewPort;
   }
 
   private handleSocketMessage(message: MessageResponse | NotificationResponse) {

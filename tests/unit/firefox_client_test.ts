@@ -403,10 +403,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   });
 
   Rhum.testSuite("takeScreenshot()", () => {
-    const ScreenshotsFolder = ((Deno.build.os == "windows")
-      ? "Screenshots"
-      : "./Screenshots");
-    const pathSeperator = ((Deno.build.os == "windows") ? "\\" : "/");
+    const ScreenshotsFolder = "Screenshots";
 
     Rhum.beforeAll(() => {
       try {
@@ -442,12 +439,12 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        await Sinco.takeScreenshot(ScreenshotsFolder);
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder);
         await Sinco.done();
 
         Rhum.asserts.assertEquals(
           (existsSync(
-            `${ScreenshotsFolder}${pathSeperator}${globalThis.timeStamp}.jpeg`,
+            fileName,
           )),
           true,
         );
@@ -459,14 +456,14 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        await Sinco.takeScreenshot(ScreenshotsFolder, {
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
           selector: "span",
           quality: 50,
         });
         await Sinco.done();
         Rhum.asserts.assertEquals(
           (existsSync(
-            `${ScreenshotsFolder}${pathSeperator}${globalThis.timeStamp}.jpeg`,
+            fileName,
           )),
           true,
         );
@@ -474,7 +471,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
     );
 
     Rhum.testCase(
-      "Throws an error if selector provided doesn't return any element",
+      "Throws an error if there is any issue with the selector string",
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
@@ -484,13 +481,30 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
             selector: "thsgdjhs",
           });
         } catch (error) {
-          msg = error.message;
+          msg = error.name;
         }
         await Sinco.done();
 
-        Rhum.asserts.assertStringContains(
+        Rhum.asserts.assertMatch(msg, /Error|Exception/);
+      },
+    );
+
+    Rhum.testCase(
+      "Throws an error when format passed is jpeg(or default) and quality > than 100",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot(ScreenshotsFolder, { quality: 999 });
+        } catch (error) {
+          msg = error.message;
+        }
+
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
           msg,
-          "Selector supplied doesn't return any element",
+          "A quality value greater than 100 is not allowed.",
         );
       },
     );
@@ -501,26 +515,45 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}${pathSeperator}Happy.jpeg`)),
+        (existsSync(`${ScreenshotsFolder}/Happy.jpeg`)),
         true,
       );
     });
 
     Rhum.testCase(
-      "Saves Screenshot with given format (jpeg | png | webp)",
+      "Saves Screenshot with given format (jpeg | png)",
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        await Sinco.takeScreenshot(ScreenshotsFolder, { format: "png" });
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
+          format: "png",
+        });
         await Sinco.done();
         Rhum.asserts.assertEquals(
           (existsSync(
-            `${ScreenshotsFolder}${pathSeperator}${globalThis.timeStamp}.png`,
+            fileName,
           )),
           true,
         );
       },
     );
+
+    Rhum.testCase("Firefox doesn't support webp format", async () => {
+      const Sinco = await FirefoxClient.build();
+      await Sinco.goTo("https://chromestatus.com");
+      let msg = "";
+      try {
+        await Sinco.takeScreenshot(ScreenshotsFolder, { format: "webp" });
+      } catch (error) {
+        msg = error.message;
+      }
+
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        msg,
+        "Failed to decode base64: invalid character",
+      );
+    });
 
     Rhum.testCase("Saves Screenshot with all options provided", async () => {
       const Sinco = await FirefoxClient.build();
@@ -533,7 +566,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}${pathSeperator}AllOpts.jpeg`)),
+        (existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`)),
         true,
       );
     });

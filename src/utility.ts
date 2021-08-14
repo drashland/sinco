@@ -1,6 +1,3 @@
-declare global {
-  var timeStamp: string;
-}
 export const existsSync = (filename: string): boolean => {
   try {
     Deno.statSync(filename);
@@ -21,6 +18,5 @@ export const generateTimestamp = (): string => {
   const dt = new Date();
   const ts = dt.toLocaleDateString().replace(/\//g, "_") + "_" +
     dt.toLocaleTimeString().replace(/:/g, "_");
-  globalThis.timeStamp = ts;
   return ts;
 };
