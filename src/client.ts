@@ -411,6 +411,7 @@ export class Client {
         format: ext,
         quality: quality,
         clip: clip,
+        captureBeyondViewport:true,
       },
     ) as {
       data: string;
