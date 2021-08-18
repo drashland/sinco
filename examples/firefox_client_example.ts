@@ -68,7 +68,7 @@ async function simplifiedFirefoxExample() {
 
   async function request(type: string, params = {}, name: string): Promise<{
     id: number;
-    // deno-lint-ignore no-explicit-any Any because we return a packet
+    // deno-lint-ignore no-explicit-any
     message: Record<string, any>;
   }> {
     // Construct data in required format to send
