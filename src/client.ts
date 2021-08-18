@@ -83,9 +83,7 @@ export class Client {
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       if (data.method === "Page.frameStartedLoading") {
-        if (!this.frame_id) {
-          this.frame_id = data.params.frameId;
-        }
+        this.frame_id = data.params.frameId;
         console.log("FRAME ID " + this.frame_id);
       }
       this.handleSocketMessage(data);
@@ -398,10 +396,6 @@ export class Client {
     const exceptionDetail = result.exceptionDetails;
     if (!exceptionDetail) {
       return;
-    }
-    if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-      await this.done();
-      throw new Error(exceptionDetail.text);
     }
     const errorMessage = exceptionDetail.exception!.description ??
       exceptionDetail.text;
