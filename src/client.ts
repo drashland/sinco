@@ -84,7 +84,6 @@ export class Client {
       const data = JSON.parse(msg.data);
       if (data.method === "Page.frameStartedLoading") {
         this.frame_id = data.params.frameId;
-        console.log("FRAME ID " + this.frame_id);
       }
       this.handleSocketMessage(data);
     };
@@ -472,7 +471,6 @@ export class Client {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
-        console.log(json);
         debugUrl = json[0]["webSocketDebuggerUrl"];
         frameId = json[0]["id"];
       } catch (_err) {

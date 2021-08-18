@@ -319,9 +319,17 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        const val = await Sinco.getInputValue('a[href="/features/schedule"]');
+        let errMsg = "";
+        try {
+          await Sinco.getInputValue('a[href="/features/schedule"]');
+        } catch (e) {
+          errMsg = e.message;
+        }
         await Sinco.done();
-        Rhum.asserts.assertEquals(val, "undefined");
+        Rhum.asserts.assertEquals(
+          errMsg,
+          'a[href="/features/schedule"] is either not an input element, or does not exist',
+        );
       },
     );
   });
