@@ -399,6 +399,10 @@ export class Client {
     if (!exceptionDetail) {
       return;
     }
+    if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
+      await this.done();
+      throw new Error(exceptionDetail.text);
+    }
     const errorMessage = exceptionDetail.exception!.description ??
       exceptionDetail.text;
     if (errorMessage.includes("SyntaxError")) { // a syntax error
