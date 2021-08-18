@@ -1,4 +1,10 @@
-import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import {
+  assertEquals,
+  Deferred,
+  deferred,
+  Protocol,
+  readLines,
+} from "../deps.ts";
 import { existsSync } from "./utility.ts";
 
 export interface BuildOptions {
@@ -19,39 +25,6 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: unknown;
 }
 
-type SuccessResult = {
-  value?: string | boolean; // only present if type is a string or boolean
-  type: string; // the type of result that the `value` will be, eg object or string or boolean, ,
-  className: string; // eg Location if command is `window.location`, only present when type is object
-  description: string; // eg Location if command is `window.location`, only present when type is object
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-};
-
-type UndefinedResult = { // not sure when this happens, but i believe it to be when the result of a command is undefined, for example if a command is `window.loction`
-  type: string; // undefined
-};
-
-type Exception = {
-  className: string; // eg SyntaxError
-  description: string; // eg SyntaxError: Uncaught identifier
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-  subtype: string; // eg error
-  type: string; // eg object
-};
-type ExceptionDetails = { // exists when an error
-  columnNumber: number;
-  exception: Exception;
-  exceptionId: number;
-  lineNumber: number;
-  scriptId: string; // eg "12"
-  text: string; // eg Uncaught
-};
-
-type DOMOutput = {
-  result: SuccessResult | Exception | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
-};
-
 export class Client {
   /**
    * The sub process that runs headless chrome
@@ -68,7 +41,7 @@ export class Client {
    */
   private next_message_id = 1;
 
-  private frame_id = null;
+  private frame_id: string;
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
@@ -98,17 +71,22 @@ export class Client {
     socket: WebSocket,
     browserProcess: Deno.Process,
     browser: "firefox" | "chrome",
+    frameId: string,
     firefoxProfilePath?: string,
   ) {
     this.browser = browser;
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
+    this.frame_id = frameId;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       if (data.method === "Page.frameStartedLoading") {
-        this.frame_id = data.params.frameId;
+        if (!this.frame_id) {
+          this.frame_id = data.params.frameId;
+        }
+        console.log("FRAME ID " + this.frame_id);
       }
       this.handleSocketMessage(data);
     };
@@ -158,16 +136,15 @@ export class Client {
     const method = "Page.loadEventFired";
     this.notification_resolvables.set(method, deferred());
     const notificationPromise = this.notification_resolvables.get(method);
-    const res = await this.sendWebSocketMessage("Page.navigate", {
-      url: urlToVisit,
-    }) as {
-      frameId: string;
-      loaderId: string;
-      errorText?: string; // Only present when an error occurred, eg page doesn't exist
-    };
+    const res = await this.sendWebSocketMessage<Protocol.Page.NavigateResponse>(
+      "Page.navigate",
+      {
+        url: urlToVisit,
+      },
+    );
     await notificationPromise;
     if (res.errorText) {
-      //await this.done();
+      await this.done();
       throw new Error(
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
@@ -184,34 +161,33 @@ export class Client {
    */
   public async click(selector: string): Promise<void> {
     const command = `document.querySelector('${selector}').click()`;
-    const result = await this.sendWebSocketMessage("Runtime.evaluate", {
+    const result = await this.sendWebSocketMessage<
+      Protocol.Runtime.AwaitPromiseResponse
+    >("Runtime.evaluate", {
       expression: command,
-    }) as {
-      //  If all went ok and an elem was clicked
-      result: {
-        type: "undefined";
-      };
-    } | { // else a other error, eg no elem exists with the selector, or `selector` is `">>"`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-    if ("exceptionDetails" in result) {
-      this.checkForErrorResult(result, command);
-    }
+    });
+    await this.checkForErrorResult(result, command);
   }
 
   /**
    * Invoke a function or string expression on the current frame.
    *
    * @param pageCommand - The function to be called or the line of code to execute.
+   *
+   * @returns The result of the evaluation
    */
   public async evaluatePage(
     pageCommand: (() => unknown) | string,
-  ): Promise<unknown> {
+    // As defined by the protocol, the `value` is `any`
+    // deno-lint-ignore no-explicit-any
+  ): Promise<any> {
     if (typeof pageCommand === "string") {
-      const result = await this.sendWebSocketMessage("Runtime.evaluate", {
+      const result = await this.sendWebSocketMessage<
+        Protocol.Runtime.AwaitPromiseResponse
+      >("Runtime.evaluate", {
         expression: pageCommand,
       });
+      await this.checkForErrorResult(result, pageCommand);
       return result.result.value;
     }
 
@@ -223,7 +199,9 @@ export class Client {
         },
       );
 
-      const { result } = await this.sendWebSocketMessage(
+      const res = await this.sendWebSocketMessage<
+        Protocol.Runtime.AwaitPromiseResponse
+      >(
         "Runtime.callFunctionOn",
         {
           functionDeclaration: pageCommand.toString(),
@@ -233,7 +211,8 @@ export class Client {
           userGesture: true,
         },
       );
-      return result.value;
+      await this.checkForErrorResult(res, pageCommand.toString());
+      return res.result.value;
     }
   }
 
@@ -261,26 +240,21 @@ export class Client {
    */
   public async getInputValue(selector: string): Promise<string> {
     const command = `document.querySelector('${selector}').value`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+    const res = await this.sendWebSocketMessage<
+      Protocol.Runtime.AwaitPromiseResponse
+    >("Runtime.evaluate", {
       expression: command,
-    }) as {
-      result: {
-        type: "undefined" | "string";
-        value?: string;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-    const type = (res as DOMOutput).result.type;
+    });
+    await this.checkForErrorResult(res, command);
+    const type = res.result.type;
     if (type === "undefined") { // not an input elem
-      return "undefined";
+      await this.done();
+      throw new Error(
+        `${selector} is either not an input element, or does not exist`,
+      );
     }
     // Tried and tested, value and type are a string and `res.result.value` definitely exists at this stage
-    const value = (res.result as { value: string }).value;
+    const value = res.result.value;
     return value || "";
   }
 
@@ -339,20 +313,7 @@ export class Client {
    */
   public async type(selector: string, value: string): Promise<void> {
     const command = `document.querySelector('${selector}').value = "${value}"`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    } | {
-      result: {
-        type: string;
-        value: string;
-      };
-    };
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
+    await this.evaluatePage(command);
   }
 
   /**
@@ -403,24 +364,23 @@ export class Client {
    *
    * @returns
    */
-  private async sendWebSocketMessage(
+  private async sendWebSocketMessage<T>(
     method: string,
-    params?: { [key: string]: unknown },
-    // deno-lint-ignore no-explicit-any The return value could literally be anything
-  ): Promise<any> {
+    params?: Record<string, unknown>,
+  ): Promise<T> {
     const data: {
       id: number;
       method: string;
-      params?: { [key: string]: unknown };
+      params?: Record<string, unknown>;
     } = {
       id: this.next_message_id++,
       method: method,
     };
     if (params) data.params = params;
-    this.resolvables.set(data.id, deferred());
-    const messagePromise = this.resolvables.get(data.id);
+    const promise = deferred<T>();
+    this.resolvables.set(data.id, promise);
     this.socket.send(JSON.stringify(data));
-    const result = await messagePromise;
+    const result = await promise;
     this.resolvables.delete(data.id);
     return result;
   }
@@ -431,20 +391,23 @@ export class Client {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  private checkForErrorResult(result: DOMOutput, commandSent: string): void {
-    // Is an error
-    if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
-      const exceptionDetail = result.exceptionDetails;
-      if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-        throw new Error(exceptionDetail.text);
-      }
-      const errorMessage = exceptionDetail.exception.description;
-      if (errorMessage.includes("SyntaxError")) { // a syntax error
-        const message = errorMessage.replace("SyntaxError: ", "");
-        throw new SyntaxError(message + ": `" + commandSent + "`");
-      } else { // any others, unsure what they'd be
-        throw new Error(`${errorMessage}: "${commandSent}"`);
-      }
+  private async checkForErrorResult(
+    result: Protocol.Runtime.AwaitPromiseResponse,
+    commandSent: string,
+  ): Promise<void> {
+    const exceptionDetail = result.exceptionDetails;
+    if (!exceptionDetail) {
+      return;
+    }
+    const errorMessage = exceptionDetail.exception!.description ??
+      exceptionDetail.text;
+    if (errorMessage.includes("SyntaxError")) { // a syntax error
+      const message = errorMessage.replace("SyntaxError: ", "");
+      await this.done();
+      throw new SyntaxError(message + ": `" + commandSent + "`");
+    } else { // any others, unsure what they'd be
+      await this.done();
+      throw new Error(`${errorMessage}: "${commandSent}"`);
     }
   }
 
@@ -471,7 +434,7 @@ export class Client {
       }
       break;
     }
-    const wsUrl = await Client.getWebSocketUrl(
+    const { debugUrl: wsUrl, frameId } = await Client.getWebSocketInfo(
       wsOptions.hostname,
       wsOptions.port,
     );
@@ -479,10 +442,16 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
-    const TempClient = new Client(websocket, browserProcess, browser);
+    const TempClient = new Client(websocket, browserProcess, browser, frameId);
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
-    return new Client(websocket, browserProcess, browser, firefoxProfilePath);
+    return new Client(
+      websocket,
+      browserProcess,
+      browser,
+      frameId,
+      firefoxProfilePath,
+    );
   }
 
   /**
@@ -495,20 +464,26 @@ export class Client {
    *
    * @returns The url to connect to
    */
-  private static async getWebSocketUrl(
+  private static async getWebSocketInfo(
     hostname: string,
     port: number,
-  ): Promise<string> {
+  ): Promise<{ debugUrl: string; frameId: string }> {
     let debugUrl = "";
+    let frameId = "";
     while (debugUrl === "") {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
+        console.log(json);
         debugUrl = json[0]["webSocketDebuggerUrl"];
+        frameId = json[0]["id"];
       } catch (_err) {
         // do nothing, loop again until the endpoint is ready
       }
     }
-    return debugUrl;
+    return {
+      debugUrl,
+      frameId,
+    };
   }
 }
