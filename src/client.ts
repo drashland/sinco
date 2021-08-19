@@ -373,7 +373,7 @@ export class Client {
  * @param options - options
  * @param options.filename - Name to be given to the screenshot. Optional
  * @param options.selector - Screenshot the given selector instead of the full page. Optional
- * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg", "png", and "webp" - Optional
+ * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
  * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
  */
   public async takeScreenshot(
