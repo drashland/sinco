@@ -516,7 +516,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     });
 
     Rhum.testCase(
-      "Saves Screenshot with given format (jpeg | png | webp)",
+      "Saves Screenshot with given format (jpeg | png)",
       async () => {
         const Sinco = await ChromeClient.build();
         await Sinco.goTo("https://chromestatus.com");

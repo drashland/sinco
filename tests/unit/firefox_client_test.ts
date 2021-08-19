@@ -538,23 +538,6 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       },
     );
 
-    Rhum.testCase("Firefox doesn't support webp format", async () => {
-      const Sinco = await FirefoxClient.build();
-      await Sinco.goTo("https://chromestatus.com");
-      let msg = "";
-      try {
-        await Sinco.takeScreenshot(ScreenshotsFolder, { format: "webp" });
-      } catch (error) {
-        msg = error.message;
-      }
-
-      await Sinco.done();
-      Rhum.asserts.assertEquals(
-        msg,
-        "Failed to decode base64: invalid character",
-      );
-    });
-
     Rhum.testCase("Saves Screenshot with all options provided", async () => {
       const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");

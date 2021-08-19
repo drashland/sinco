@@ -15,7 +15,7 @@ Deno.test("Chrome - Tutorial for taking screenshots in the docs should work", as
   await Sinco.takeScreenshot(ScreenshotsFolder, {
     fileName: "FirstSpanChrome",
     selector: "span",
-    format: "webp",
+    format: "png",
   });
   await Sinco.done();
 });
@@ -35,7 +35,7 @@ Deno.test("Firefox - Tutorial for taking screenshots in the docs should work", a
   await Sinco.takeScreenshot(ScreenshotsFolder, {
     fileName: "FirstSpanFirefox",
     selector: "span",
-    format: "png", //Firefox doesn't support webp format as of writing this test.
+    format: "png",
   });
   await Sinco.done();
 });

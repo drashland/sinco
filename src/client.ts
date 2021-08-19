@@ -381,7 +381,7 @@ export class Client {
     options?: {
       selector?: string;
       fileName?: string;
-      format?: "jpeg" | "png" | "webp";
+      format?: "jpeg" | "png";
       quality?: number;
     },
   ): Promise<string> {
@@ -419,7 +419,7 @@ export class Client {
 
     //Writing the Obtained Base64 encoded string to image file
     const fName =
-      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png|.webp/g, "") ??
+      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
         generateTimestamp()}.${ext}`;
     const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
