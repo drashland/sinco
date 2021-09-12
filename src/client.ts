@@ -286,8 +286,10 @@ export class Client {
 
   /**
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
+   *
+   * @param errMsg - If supplied, will finally throw an error with the message after closing all processes
    */
-  public async done(): Promise<void> {
+  public async done(errMsg?: string): Promise<void> {
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.browser_process_closed === true) {
@@ -300,6 +302,9 @@ export class Client {
     this.browser_process.stdout!.close();
     this.browser_process.close();
     this.browser_process_closed = true;
+    // Zombie processes is a thing with Windows, the firefox process on windows
+    // will not actually be closed using the above.
+    // Related Deno issue: https://github.com/denoland/deno/issues/7087
     if (this.browser === "firefox" && Deno.build.os === "windows") {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
@@ -324,6 +329,43 @@ export class Client {
           // Just try removing again
         }
       }
+    }
+    if (errMsg) {
+      throw new Error(errMsg);
+    }
+  }
+
+  /**
+   * Set a cookie for the `url`. Will be passed across 'sessions' based
+   * from the `url`
+   *
+   * @param name - Name of the cookie, eg X-CSRF-TOKEN
+   * @param value - Value to assign to the cookie name, eg "some cryptic token"
+   * @param url - The domain to assign the cookie to, eg "https://drash.land"
+   *
+   * @example
+   * ```ts
+   * await Sinco.setCookie("X-CSRF-TOKEN", "abc123", "https://drash.land")
+   * const result = await Sinco.evaluatePage(`document.cookie`) // "X-CSRF-TOKEN=abc123"
+   * ```
+   */
+  public async setCookie(
+    name: string,
+    value: string,
+    url: string,
+  ): Promise<void> {
+    const res = await this.sendWebSocketMessage("Network.setCookie", {
+      name,
+      value,
+      url,
+    }) as ({ // if error response. only encountered when I (ed) tried to send a message without passing in a url prop
+      code: number; // eg -32602
+      message: string; // eg "At least one of the url or domain needs to be specified"
+    } | { // if success response
+      success: true;
+    });
+    if ("success" in res === false && "message" in res) {
+      await this.done(res.message);
     }
   }
 
