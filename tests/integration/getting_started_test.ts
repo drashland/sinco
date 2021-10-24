@@ -11,9 +11,9 @@ Deno.test("Chrome: Tutorial for Getting Started in the docs should work", async 
   await Sinco.type('input[placeholder="Filter"]', "Hello");
   const value = await Sinco.getInputValue('input[placeholder="Filter"]');
   assertEquals(value, "Hello");
-  await Sinco.click('a[href="/features/schedule"]');
+  await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
   await Sinco.assertSee("Release timeline");
 
   // Once finished, close
@@ -30,9 +30,9 @@ Deno.test("Firefox: Tutorial for Getting Started in the docs should work", async
   await Sinco.type('input[placeholder="Filter"]', "Hello");
   const value = await Sinco.getInputValue('input[placeholder="Filter"]');
   assertEquals(value, "Hello");
-  await Sinco.click('a[href="/features/schedule"]');
+  await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
   await Sinco.assertSee("Release timeline");
 
   // Once finished, close

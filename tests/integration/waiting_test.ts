@@ -5,9 +5,9 @@ Deno.test("Chrome: Waiting - Tutorial for this feature in the docs should work",
   await Sinco.goTo("https://chromestatus.com");
   await Sinco.assertUrlIs("https://chromestatus.com/features");
   await Sinco.type('input[placeholder="Filter"]', "Hello");
-  await Sinco.click('a[href="/features/schedule"]');
+  await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
   await Sinco.done();
 });
 
@@ -16,8 +16,8 @@ Deno.test("Firefox: Waiting - Tutorial for this feature in the docs should work"
   await Sinco.goTo("https://chromestatus.com");
   await Sinco.assertUrlIs("https://chromestatus.com/features");
   await Sinco.type('input[placeholder="Filter"]', "Hello");
-  await Sinco.click('a[href="/features/schedule"]');
+  await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
   await Sinco.done();
 });

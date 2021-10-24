@@ -5,10 +5,10 @@ import { BuildOptions, Client } from "./client.ts";
 import { existsSync } from "./utility.ts";
 
 /**
-   * Gets the full path to the chrome executable on the users filesystem
-   *
-   * @returns The path to chrome
-   */
+ * Gets the full path to the chrome executable on the users filesystem
+ *
+ * @returns The path to chrome
+ */
 export function getChromePath(): string {
   const paths = {
     // deno-lint-ignore camelcase
