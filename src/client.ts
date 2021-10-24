@@ -1,5 +1,5 @@
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
-import { existsSync } from "./utility.ts";
+import { existsSync, generateTimestamp } from "./utility.ts";
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
@@ -50,6 +50,15 @@ type ExceptionDetails = { // exists when an error
 type DOMOutput = {
   result: SuccessResult | Exception | UndefinedResult;
   exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
+};
+
+//Type for ViewPort, as it is required for Screenshot of an area
+type ViewPort = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scale: number;
 };
 
 export class Client {
@@ -398,6 +407,74 @@ export class Client {
   }
 
   /**
+ * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+ * If `selector` is passed in, it will take a screenshot of only that element
+ * and its children as opposed to the whole page.
+ *
+ * @param path - The path of where to save the screenshot to
+ * @param options - options
+ * @param options.filename - Name to be given to the screenshot. Optional
+ * @param options.selector - Screenshot the given selector instead of the full page. Optional
+ * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
+ * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
+ */
+  public async takeScreenshot(
+    path: string,
+    options?: {
+      selector?: string;
+      fileName?: string;
+      format?: "jpeg" | "png";
+      quality?: number;
+    },
+  ): Promise<string> {
+    if (!existsSync(path)) {
+      await this.done();
+      throw new Error(`The provided folder path - ${path} doesn't exist`);
+    }
+    const ext = options?.format ?? "jpeg";
+    // deno-lint-ignore ban-types
+    const clip: Object | undefined = (options?.selector)
+      ? await this.getViewport(options.selector)
+      : undefined;
+
+    if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
+      await this.done();
+      throw new Error("A quality value greater than 100 is not allowed.");
+    }
+
+    //Quality should defined only if format is jpeg
+    const quality = (ext == "jpeg")
+      ? ((options?.quality) ? Math.abs(options.quality) : 80)
+      : undefined;
+
+    const res = await this.sendWebSocketMessage(
+      "Page.captureScreenshot",
+      {
+        format: ext,
+        quality: quality,
+        clip: clip,
+        captureBeyondViewport: true,
+      },
+    ) as {
+      data: string;
+    };
+
+    //Writing the Obtained Base64 encoded string to image file
+    const fName =
+      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
+        generateTimestamp()}.${ext}`;
+    const B64str = res.data;
+    const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
+    try {
+      Deno.writeFileSync(fName, u8Arr);
+    } catch (e) {
+      await this.done();
+      throw new Error(e.message);
+    }
+
+    return fName;
+  }
+  /**
    * Wait for anchor navigation. Usually used when typing into an input field
    */
   // public async waitForAnchorChange(): Promise<void> {
@@ -410,6 +487,46 @@ export class Client {
   //////////////////////////////////////////////////////////////////////////////
   // FILE MARKER - METHODS - PRIVATE ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * This method is used internally to calculate the element Viewport (Dimensions)
+   * executes getBoundingClientRect of the obtained element
+   * @param selector - The selector for the element to capture
+   * @returns ViewPort object - Which contains the dimensions of the element captured
+   */
+  private async getViewport(selector: string): Promise<ViewPort> {
+    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+      expression:
+        `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
+    }) as {
+      result: {
+        type: "string";
+        value?: string;
+      };
+    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
+      result: Exception;
+      exceptionDetails?: ExceptionDetails;
+    };
+    if (
+      "exceptionDetails" in res ||
+      (res.result as Exception)?.subtype
+    ) {
+      await this.done();
+      this.checkForErrorResult(
+        res,
+        `document.querySelector('${selector}').getBoundingClientRect()`,
+      );
+    }
+
+    const values: DOMRect = JSON.parse((res.result as { value: string }).value);
+    return {
+      x: values.x,
+      y: values.y,
+      width: values.width,
+      height: values.height,
+      scale: 2,
+    };
+  }
 
   private handleSocketMessage(message: MessageResponse | NotificationResponse) {
     if ("id" in message) { // message response
@@ -448,7 +565,8 @@ export class Client {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
-    // deno-lint-ignore no-explicit-any The return value could literally be anything
+    // because we return a packet
+    // deno-lint-ignore no-explicit-any
   ): Promise<any> {
     const data: {
       id: number;

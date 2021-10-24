@@ -13,3 +13,10 @@ export const existsSync = (filename: string): boolean => {
     }
   }
 };
+
+export const generateTimestamp = (): string => {
+  const dt = new Date();
+  const ts = dt.toLocaleDateString().replace(/\//g, "_") + "_" +
+    dt.toLocaleTimeString().replace(/:/g, "_");
+  return ts;
+};
