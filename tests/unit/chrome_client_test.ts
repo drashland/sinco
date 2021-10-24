@@ -223,7 +223,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read properties of null *reading 'click')\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+            `TypeError: Cannot read properties of null (reading 'click')\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
         });
       },
     );
