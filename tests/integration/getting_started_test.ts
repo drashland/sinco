@@ -14,7 +14,7 @@ Deno.test("Chrome: Tutorial for Getting Started in the docs should work", async 
   await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
   await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-  await Sinco.assertSee("Release timeline");
+  await Sinco.assertSee("Roadmap");
 
   // Once finished, close
   await Sinco.done();
@@ -33,7 +33,7 @@ Deno.test("Firefox: Tutorial for Getting Started in the docs should work", async
   await Sinco.click('a[href="/roadmap"]');
   await Sinco.waitForPageChange();
   await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-  await Sinco.assertSee("Release timeline");
+  await Sinco.assertSee("Roadmap");
 
   // Once finished, close
   await Sinco.done();
