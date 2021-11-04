@@ -1,5 +1,6 @@
 import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
+import { Element } from "./element.ts"
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
@@ -181,6 +182,14 @@ export class Client {
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
     }
+  }
+
+  public querySelector(selector: string) {
+    return new Element('document.querySelector', selector, this.socket, this.browser_process, this.browser, this.firefox_profile_path)
+  }
+
+  public $x(selector: string) {
+    return new Element('$x', selector, this.socket, this.browser_process, this.browser, this.firefox_profile_path)
   }
 
   /**
@@ -494,7 +503,7 @@ export class Client {
    * @param selector - The selector for the element to capture
    * @returns ViewPort object - Which contains the dimensions of the element captured
    */
-  private async getViewport(selector: string): Promise<ViewPort> {
+  protected async getViewport(selector: string): Promise<ViewPort> {
     const res = await this.sendWebSocketMessage("Runtime.evaluate", {
       expression:
         `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
@@ -528,7 +537,7 @@ export class Client {
     };
   }
 
-  private handleSocketMessage(message: MessageResponse | NotificationResponse) {
+  protected handleSocketMessage(message: MessageResponse | NotificationResponse) {
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
       if (resolvable) {
@@ -562,7 +571,7 @@ export class Client {
    *
    * @returns
    */
-  private async sendWebSocketMessage(
+   protected async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
     // because we return a packet
@@ -591,7 +600,7 @@ export class Client {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  private checkForErrorResult(result: DOMOutput, commandSent: string): void {
+   protected checkForErrorResult(result: DOMOutput, commandSent: string): void {
     // Is an error
     if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
       const exceptionDetail = result.exceptionDetails;
