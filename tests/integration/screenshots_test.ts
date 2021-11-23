@@ -15,6 +15,7 @@ Deno.test("Chrome - Tutorial for taking screenshots in the docs should work", as
     selector: 'a[href="https://github.com/drashland"]',
   }); // Will screenshot only the GitHub icon section, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
   await Sinco.done();
+  Deno.removeSync("./screenshots", { recursive: true });
 });
 
 Deno.test("Firefox - Tutorial for taking screenshots in the docs should work", async () => {
@@ -32,4 +33,5 @@ Deno.test("Firefox - Tutorial for taking screenshots in the docs should work", a
     selector: 'a[href="https://github.com/drashland"]',
   }); // Will screenshot only the GitHub icon section, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
   await Sinco.done();
+  Deno.removeSync("./screenshots", { recursive: true });
 });
