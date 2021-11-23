@@ -44,8 +44,8 @@ Deno.test("Chrome: Evaluating a script - Tutorial for this feature in the docume
   await Sinco.done();
   assertEquals(pageTitle, "Drash Land");
   assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 14);
-  assertEquals(newBodyLength, 15);
+  assertEquals(oldBodyLength, 3);
+  assertEquals(newBodyLength, 4);
 });
 
 Deno.test("Firefox: Manipulate Webpage", async () => {
@@ -90,6 +90,6 @@ Deno.test("Firefox: Evaluating a script - Tutorial for this feature in the docum
   await Sinco.done();
   assertEquals(pageTitle, "Drash Land");
   assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 14);
-  assertEquals(newBodyLength, 15);
+  assertEquals(oldBodyLength, 3);
+  assertEquals(newBodyLength, 4);
 });
