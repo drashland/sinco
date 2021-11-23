@@ -3,7 +3,7 @@ import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 Deno.test("Chrome: Manipulate Webpage", async () => {
   const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
+  await Sinco.goTo("https://drash.land");
 
   const updatedBody = await Sinco.evaluatePage(() => {
     // deno-lint-ignore no-undef
@@ -50,7 +50,7 @@ Deno.test("Chrome: Evaluating a script - Tutorial for this feature in the docume
 
 Deno.test("Firefox: Manipulate Webpage", async () => {
   const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com");
+  await Sinco.goTo("https://drash.land");
 
   const updatedBody = await Sinco.evaluatePage(() => {
     // deno-lint-ignore no-undef

@@ -1,40 +1,31 @@
-import { assertEquals } from "../../deps.ts";
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { buildFor } from "../../mod.ts";
 
 Deno.test("Chrome: Tutorial for Getting Started in the docs should work", async () => {
   // Setup
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com"); // Go to this page
+  const Sinco = await buildFor("chrome"); // also supports firefox
+  await Sinco.goTo("https://drash.land"); // Go to this page
 
   // Do any actions and assertions, in any order
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
-  await Sinco.type('input[placeholder="Filter"]', "Hello");
-  const value = await Sinco.getInputValue('input[placeholder="Filter"]');
-  assertEquals(value, "Hello");
-  await Sinco.click('a[href="/roadmap"]');
+  await Sinco.assertUrlIs("https://drash.land/");
+  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]'); // This element will take the user to Sinco's documentation
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-  await Sinco.assertSee("Roadmap");
+  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
 
-  // Once finished, close
+  // Once finished, close to clean up any processes
   await Sinco.done();
 });
 
 Deno.test("Firefox: Tutorial for Getting Started in the docs should work", async () => {
   // Setup
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com"); // Go to this page
+  const Sinco = await buildFor("firefox"); // also supports firefox
+  await Sinco.goTo("https://drash.land"); // Go to this page
 
   // Do any actions and assertions, in any order
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
-  await Sinco.type('input[placeholder="Filter"]', "Hello");
-  const value = await Sinco.getInputValue('input[placeholder="Filter"]');
-  assertEquals(value, "Hello");
-  await Sinco.click('a[href="/roadmap"]');
+  await Sinco.assertUrlIs("https://drash.land/");
+  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]'); // This element will take the user to Sinco's documentation
   await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-  await Sinco.assertSee("Roadmap");
+  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
 
-  // Once finished, close
+  // Once finished, close to clean up any processes
   await Sinco.done();
 });
