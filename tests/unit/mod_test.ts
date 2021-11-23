@@ -14,7 +14,7 @@ Rhum.testPlan("tests/unit/mod_test.ts", () => {
       await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
       await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
     Rhum.testCase("Builds for chrome correctly", async () => {
@@ -27,7 +27,7 @@ Rhum.testPlan("tests/unit/mod_test.ts", () => {
       await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
       await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
   });
