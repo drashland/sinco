@@ -126,8 +126,8 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
   Rhum.testSuite("goto()", () => {
     Rhum.testCase("Successfully navigates when url is correct", async () => {
       const Sinco = await FirefoxClient.build();
-      await Sinco.goTo("https://chromestatus.com/features/schedule");
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.goTo("https://chromestatus.com/roadmap");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -187,9 +187,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
       const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -319,7 +319,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        const val = await Sinco.getInputValue('a[href="/features/schedule"]');
+        const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(val, "undefined");
       },
@@ -395,9 +395,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       const Sinco = await FirefoxClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
   });
@@ -443,9 +443,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.done();
 
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -462,9 +462,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         });
         await Sinco.done();
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -515,7 +515,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}/Happy.jpeg`)),
+        existsSync(`${ScreenshotsFolder}/Happy.jpeg`),
         true,
       );
     });
@@ -530,9 +530,9 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         });
         await Sinco.done();
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -549,7 +549,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`)),
+        existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`),
         true,
       );
     });

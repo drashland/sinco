@@ -11,10 +11,10 @@ Rhum.testPlan("tests/unit/mod_test.ts", () => {
       await Sinco.type('input[placeholder="Filter"]', "Hello");
       const value = await Sinco.getInputValue('input[placeholder="Filter"]');
       assertEquals(value, "Hello");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
     Rhum.testCase("Builds for chrome correctly", async () => {
@@ -24,10 +24,10 @@ Rhum.testPlan("tests/unit/mod_test.ts", () => {
       await Sinco.type('input[placeholder="Filter"]', "Hello");
       const value = await Sinco.getInputValue('input[placeholder="Filter"]');
       assertEquals(value, "Hello");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
   });
