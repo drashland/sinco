@@ -115,8 +115,8 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   Rhum.testSuite("goto()", () => {
     Rhum.testCase("Successfully navigates when url is correct", async () => {
       const Sinco = await ChromeClient.build();
-      await Sinco.goTo("https://chromestatus.com/features/schedule");
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.goTo("https://chromestatus.com/roadmap");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -176,9 +176,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
       const Sinco = await ChromeClient.build();
       await Sinco.goTo("https://chromestatus.com");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -223,7 +223,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+            `TypeError: Cannot read properties of null (reading 'click')\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
         });
       },
     );
@@ -303,7 +303,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
+            `TypeError: Cannot read properties of null (reading 'value')\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
         });
       },
     );
@@ -312,7 +312,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       async () => {
         const Sinco = await ChromeClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        const val = await Sinco.getInputValue('a[href="/features/schedule"]');
+        const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(val, "undefined");
       },
@@ -370,7 +370,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
+            `TypeError: Cannot set properties of null (setting 'value')\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
         });
       },
     );
@@ -390,9 +390,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       const Sinco = await ChromeClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
   });
@@ -438,9 +438,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         await Sinco.done();
 
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -457,9 +457,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         });
         await Sinco.done();
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -510,7 +510,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}/Happy.jpeg`)),
+        existsSync(`${ScreenshotsFolder}/Happy.jpeg`),
         true,
       );
     });
@@ -525,9 +525,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         });
         await Sinco.done();
         Rhum.asserts.assertEquals(
-          (existsSync(
+          existsSync(
             fileName,
-          )),
+          ),
           true,
         );
       },
@@ -544,7 +544,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       });
       await Sinco.done();
       Rhum.asserts.assertEquals(
-        (existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`)),
+        existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`),
         true,
       );
     });

@@ -16,7 +16,6 @@ import { ChromeClient, FirefoxClient } from "../../mod.ts";
  * 4. user runs test again
  * 5. hangs
  *
- *
  * How this test SHOULD run:
  * 1. test runs
  * 2. test fails
