@@ -395,6 +395,162 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
     });
   });
 
+  Rhum.testSuite("takeScreenshot()", () => {
+    const ScreenshotsFolder = "Screenshots";
+
+    Rhum.beforeAll(() => {
+      try {
+        Deno.removeSync(ScreenshotsFolder, { recursive: true });
+      } catch (_e) {
+        //
+      } finally {
+        Deno.mkdirSync(ScreenshotsFolder);
+      }
+    });
+
+    Rhum.testCase(
+      "Throws an error if provided path doesn't exist",
+      async () => {
+        let msg = "";
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        try {
+          await Sinco.takeScreenshot("eieio");
+        } catch (error) {
+          msg = error.message;
+        }
+
+        Rhum.asserts.assertEquals(
+          msg,
+          `The provided folder path - eieio doesn't exist`,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes a Screenshot with timestamp as filename if filename is not provided",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder);
+        await Sinco.done();
+
+        Rhum.asserts.assertEquals(
+          (existsSync(
+            fileName,
+          )),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
+          selector: "span",
+          quality: 50,
+        });
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          (existsSync(
+            fileName,
+          )),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Throws an error if there is any issue with the selector string",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot(ScreenshotsFolder, {
+            selector: "thsgdjhs",
+          });
+        } catch (error) {
+          msg = error.name;
+        }
+        await Sinco.done();
+
+        Rhum.asserts.assertMatch(msg, /Error|Exception/);
+      },
+    );
+
+    Rhum.testCase(
+      "Throws an error when format passed is jpeg(or default) and quality > than 100",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot(ScreenshotsFolder, { quality: 999 });
+        } catch (error) {
+          msg = error.message;
+        }
+
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          msg,
+          "A quality value greater than 100 is not allowed.",
+        );
+      },
+    );
+
+    Rhum.testCase("Saves Screenshot with Given Filename", async () => {
+      const Sinco = await FirefoxClient.build();
+      await Sinco.goTo("https://chromestatus.com");
+      await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        (existsSync(`${ScreenshotsFolder}/Happy.jpeg`)),
+        true,
+      );
+    });
+
+    Rhum.testCase(
+      "Saves Screenshot with given format (jpeg | png)",
+      async () => {
+        const Sinco = await FirefoxClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
+          format: "png",
+        });
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          (existsSync(
+            fileName,
+          )),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase("Saves Screenshot with all options provided", async () => {
+      const Sinco = await FirefoxClient.build();
+      await Sinco.goTo("https://chromestatus.com");
+      await Sinco.takeScreenshot(ScreenshotsFolder, {
+        fileName: "AllOpts",
+        selector: "span",
+        format: "jpeg",
+        quality: 100,
+      });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        (existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`)),
+        true,
+      );
+    });
+
+    Rhum.afterAll(() => {
+      Deno.removeSync(ScreenshotsFolder, { recursive: true });
+    });
+  });
   // Rhum.testSuite("waitForAnchorChange()", () => {
   //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
   //     const Sinco = await FirefoxClient.build();
