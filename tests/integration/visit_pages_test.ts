@@ -1,15 +1,15 @@
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { buildFor } from "../../mod.ts";
 
 Deno.test("Chrome: Visit pages - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
+  const Sinco = await buildFor("chrome");
+  await Sinco.goTo("https://drash.land");
+  await Sinco.assertUrlIs("https://drash.land/");
   await Sinco.done();
 });
 
 Deno.test("Firfox: Visit pages - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
+  const Sinco = await buildFor("firefox");
+  await Sinco.goTo("https://drash.land");
+  await Sinco.assertUrlIs("https://drash.land/");
   await Sinco.done();
 });

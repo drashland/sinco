@@ -406,17 +406,17 @@ export class Client {
   }
 
   /**
- * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
- * If `selector` is passed in, it will take a screenshot of only that element
- * and its children as opposed to the whole page.
- *
- * @param path - The path of where to save the screenshot to
- * @param options - options
- * @param options.filename - Name to be given to the screenshot. Optional
- * @param options.selector - Screenshot the given selector instead of the full page. Optional
- * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
- * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
- */
+   * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+   * If `selector` is passed in, it will take a screenshot of only that element
+   * and its children as opposed to the whole page.
+   *
+   * @param path - The path of where to save the screenshot to
+   * @param options - options
+   * @param options.filename - Name to be given to the screenshot. Optional
+   * @param options.selector - Screenshot the given selector instead of the full page. Optional
+   * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
+   * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
+   */
   public async takeScreenshot(
     path: string,
     options?: {
@@ -459,9 +459,10 @@ export class Client {
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    const fName =
-      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
-        generateTimestamp()}.${ext}`;
+    const fName = `${path}/${
+      options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
+        generateTimestamp()
+    }.${ext}`;
     const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
