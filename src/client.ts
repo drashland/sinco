@@ -3,7 +3,6 @@ import { existsSync, generateTimestamp } from "./utility.ts";
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
-  defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
   hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
   binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
 }
@@ -566,6 +565,7 @@ export class Client {
   private async sendWebSocketMessage(
     method: string,
     params?: { [key: string]: unknown },
+    // The return value could literally be anything
     // because we return a packet
     // deno-lint-ignore no-explicit-any
   ): Promise<any> {
@@ -641,6 +641,7 @@ export class Client {
     websocket.onopen = () => promise.resolve();
     await promise;
     const TempClient = new Client(websocket, browserProcess, browser);
+
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
     return new Client(websocket, browserProcess, browser, firefoxProfilePath);
