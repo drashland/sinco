@@ -443,22 +443,14 @@ export class Client {
    * @param selector - The selector for the element to capture
    * @returns ViewPort object - Which contains the dimensions of the element captured
    */
-  private async getViewport(selector: string): Promise<ViewPort> {
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
+  private async getViewport(selector: string): Promise<Protocol.Page.Viewport> {
+    const res = await this.sendWebSocketMessage<Protocol.Runtime.AwaitPromiseResponse>("Runtime.evaluate", {
       expression:
         `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
-    }) as {
-      result: {
-        type: "string";
-        value?: string;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails?: ExceptionDetails;
-    };
+    })
     if (
       "exceptionDetails" in res ||
-      (res.result as Exception)?.subtype
+      (res.result)?.subtype
     ) {
       await this.done();
       this.checkForErrorResult(
@@ -467,7 +459,7 @@ export class Client {
       );
     }
 
-    const values: DOMRect = JSON.parse((res.result as { value: string }).value);
+    const values = JSON.parse((res.result as { value: string }).value);
     return {
       x: values.x,
       y: values.y,
