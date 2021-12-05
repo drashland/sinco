@@ -109,7 +109,7 @@ export class Client {
    */
   public async assertSee(text: string): Promise<void> {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
-    const exists = await this.sendWebSocketMessage(command);
+    const exists = await this.evaluatePage(command);
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
       await this.done();
     }
