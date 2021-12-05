@@ -321,7 +321,7 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.done();
         Rhum.asserts.assertEquals(
           errMsg,
-          'a[href="/features/schedule"] is either not an input element, or does not exist',
+          'a[href="/roadmap"] is either not an input element, or does not exist',
         );
       },
     );
