@@ -147,7 +147,6 @@ export class Client {
       `document.querySelector('${selector}')`,
     );
     if (result === null) {
-      console.log("dont exist");
       await this.done(
         'The selector "' + selector + '" does not exist inside the DOM',
       );
@@ -303,7 +302,6 @@ export class Client {
       value,
       url,
     });
-    console.log(res);
     if ("success" in res === false && "message" in res) {
       //await this.done(res.message);
     }

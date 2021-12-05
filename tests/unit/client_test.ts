@@ -18,9 +18,8 @@ Rhum.testPlan("tests/unit/client.ts", () => {
             errored: false,
             msg: "",
           };
-          const elem = await Sinco.querySelector("hkkkjgjkgk");
           try {
-            await elem.click();
+            await Sinco.querySelector("hkkkjgjkgk");
           } catch (err) {
             error.errored = true;
             error.msg = err.message;
@@ -28,7 +27,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
           await Sinco.done();
           Rhum.asserts.assertEquals(error, {
             errored: true,
-            msg: `todo`,
+            msg: `The selector "hkkkjgjkgk" does not exist inside the DOM`,
           });
         },
       );
@@ -41,9 +40,8 @@ Rhum.testPlan("tests/unit/client.ts", () => {
             errored: false,
             msg: "",
           };
-          const elem = await Sinco.querySelector("a#dont-exist");
           try {
-            await elem.click();
+            await Sinco.querySelector("a#dont-exist");
           } catch (err) {
             error.errored = true;
             error.msg = err.message;
@@ -51,8 +49,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
           await Sinco.done();
           Rhum.asserts.assertEquals(error, {
             errored: true,
-            msg:
-              `TypeError: Cannot read properties of null (reading 'click')\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+            msg: `The selector "hkkkjgjkgk" does not exist inside the DOM`,
           });
         },
       );
