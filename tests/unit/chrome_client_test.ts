@@ -311,7 +311,6 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         } catch (e) {
           errMsg = e.message;
         }
-        const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(
           errMsg,
