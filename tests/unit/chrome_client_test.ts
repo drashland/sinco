@@ -467,25 +467,6 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     );
 
     Rhum.testCase(
-      "Throws an error if there is any issue with the selector string",
-      async () => {
-        const Sinco = await ChromeClient.build();
-        await Sinco.goTo("https://chromestatus.com");
-        let msg = "";
-        try {
-          await Sinco.takeScreenshot(ScreenshotsFolder, {
-            selector: "thsgdjhs",
-          });
-        } catch (error) {
-          msg = error.message;
-        }
-        await Sinco.done();
-
-        Rhum.asserts.assertMatch(msg, /Error|Exception/);
-      },
-    );
-
-    Rhum.testCase(
       "Throws an error when format passed is jpeg(or default) and quality > than 100",
       async () => {
         const Sinco = await ChromeClient.build();

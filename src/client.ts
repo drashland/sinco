@@ -380,8 +380,7 @@ export class Client {
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
     const ext = options?.format ?? "jpeg";
-    // deno-lint-ignore ban-types
-    const clip: Object | undefined = (options?.selector)
+    const clip = (options?.selector)
       ? await this.getViewport(options.selector)
       : undefined;
 
@@ -444,10 +443,12 @@ export class Client {
    * @returns ViewPort object - Which contains the dimensions of the element captured
    */
   private async getViewport(selector: string): Promise<Protocol.Page.Viewport> {
-    const res = await this.sendWebSocketMessage<Protocol.Runtime.AwaitPromiseResponse>("Runtime.evaluate", {
+    const res = await this.sendWebSocketMessage<
+      Protocol.Runtime.AwaitPromiseResponse
+    >("Runtime.evaluate", {
       expression:
         `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
-    })
+    });
     if (
       "exceptionDetails" in res ||
       (res.result)?.subtype
