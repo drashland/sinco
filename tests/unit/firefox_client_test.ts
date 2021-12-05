@@ -312,9 +312,17 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
       async () => {
         const Sinco = await FirefoxClient.build();
         await Sinco.goTo("https://chromestatus.com");
-        const val = await Sinco.getInputValue('a[href="/roadmap"]');
+        let errMsg = "";
+        try {
+          await Sinco.getInputValue('a[href="/roadmap"]');
+        } catch (e) {
+          errMsg = e.message;
+        }
         await Sinco.done();
-        Rhum.asserts.assertEquals(val, "undefined");
+        Rhum.asserts.assertEquals(
+          errMsg,
+          'a[href="/roadmap"] is either not an input element, or does not exist',
+        );
       },
     );
   });
@@ -460,25 +468,6 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
           ),
           true,
         );
-      },
-    );
-
-    Rhum.testCase(
-      "Throws an error if there is any issue with the selector string",
-      async () => {
-        const Sinco = await FirefoxClient.build();
-        await Sinco.goTo("https://chromestatus.com");
-        let msg = "";
-        try {
-          await Sinco.takeScreenshot(ScreenshotsFolder, {
-            selector: "thsgdjhs",
-          });
-        } catch (error) {
-          msg = error.name;
-        }
-        await Sinco.done();
-
-        Rhum.asserts.assertMatch(msg, /Error|Exception/);
       },
     );
 
