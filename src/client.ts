@@ -184,38 +184,20 @@ export class Client {
     }
   }
 
-  public querySelector(selector: string) {
-    return new Element('document.querySelector', selector, this.socket, this.browser_process, this.browser, this.firefox_profile_path)
+  public async querySelector(selector: string) {
+    const result = await this.evaluatePage(`document.querySelector('${selector}')`)
+    console.log(result)
+    if (result === null) {
+      console.log('dont exist')
+      // todo call done with erro cause selecotor doesnt exist
+    }
+    return new Element('document.querySelector', selector, this)
   }
 
   public $x(selector: string) {
-    return new Element('$x', selector, this.socket, this.browser_process, this.browser, this.firefox_profile_path)
-  }
-
-  /**
-   * Clicks a button with the given selector
-   *
-   *     await this.click("#username");
-   *     await this.click('button[type="submit"]')
-   *
-   * @param selector - The tag name, id or class
-   */
-  public async click(selector: string): Promise<void> {
-    const command = `document.querySelector('${selector}').click()`;
-    const result = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      //  If all went ok and an elem was clicked
-      result: {
-        type: "undefined";
-      };
-    } | { // else a other error, eg no elem exists with the selector, or `selector` is `">>"`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-    if ("exceptionDetails" in result) {
-      this.checkForErrorResult(result, command);
-    }
+    throw new Error('Client#$x not impelemented')
+    // todo check the element exists first
+    //return new Element('$x', selector, this)
   }
 
   /**
@@ -229,6 +211,7 @@ export class Client {
     if (typeof pageCommand === "string") {
       const result = await this.sendWebSocketMessage("Runtime.evaluate", {
         expression: pageCommand,
+        includeCommandLineAPI: true,
       });
       return result.result.value;
     }
@@ -264,42 +247,6 @@ export class Client {
     const notificationPromise = this.notification_resolvables.get(method);
     await notificationPromise;
     this.notification_resolvables.delete(method);
-  }
-
-  /**
-   * Gets the text for the given selector
-   * Must be an input element
-   *
-   * @param selector - eg input[type="submit"] or #submit
-   *
-   * @throws When:
-   *     - Error with the element (using selector)
-   *
-   * @returns The text inside the selector, eg could be "" or "Edward"
-   */
-  public async getInputValue(selector: string): Promise<string> {
-    const command = `document.querySelector('${selector}').value`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: {
-        type: "undefined" | "string";
-        value?: string;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    };
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
-    }
-    const type = (res as DOMOutput).result.type;
-    if (type === "undefined") { // not an input elem
-      return "undefined";
-    }
-    // Tried and tested, value and type are a string and `res.result.value` definitely exists at this stage
-    const value = (res.result as { value: string }).value;
-    return value || "";
   }
 
   /**
@@ -384,34 +331,6 @@ export class Client {
     });
     if ("success" in res === false && "message" in res) {
       await this.done(res.message);
-    }
-  }
-
-  /**
-   * Type into an input element, by the given selector
-   *
-   *     <input name="city"/>
-   *
-   *     await this.type('input[name="city"]', "Stockholm")
-   *
-   * @param selector - The value for the name attribute of the input to type into
-   * @param value - The value to set the input to
-   */
-  public async type(selector: string, value: string): Promise<void> {
-    const command = `document.querySelector('${selector}').value = "${value}"`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as {
-      result: Exception;
-      exceptionDetails: ExceptionDetails;
-    } | {
-      result: {
-        type: string;
-        value: string;
-      };
-    };
-    if ("exceptionDetails" in res) {
-      this.checkForErrorResult(res, command);
     }
   }
 

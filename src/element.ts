@@ -1,29 +1,30 @@
 import { Client } from "./client.ts"
-export class Element extends Client {
+export class Element {
     public selector: string
-    public method: string
-    constructor(method: string, selector: string, socket: WebSocket, process: Deno.Process, browser: "chrome" | "firefox", firefoxPath?: string) {
-        super(socket, process, browser, firefoxPath)
+    public method: "document.querySelector" | "$x"
+    private client: Client
+    public value: string|null = null
+
+ 
+    constructor(method: "document.querySelector" | "$x", selector: string, client: Client) {
+        this.client = client
         this.selector = selector
         this.method = method
+        const self = this;
+        Object.defineProperty(this, 'value', {
+            async set(value: string) {
+                await self.client.evaluatePage(`${self.method}('${self.selector}').value = '${value}'`)
+            },
+            async get() {
+                const value = await self.client.evaluatePage(`${self.method}('${self.selector}').value`)
+                return value
+             },
+            configurable: true,
+            enumerable: true
+        })
     }
 
-    private formatQuery() {
-        let cmd = `${this.method}('${this.selector}')` 
-        if (this.method === '$x'){ // todo problem is, $x rerturns an array, eg [h1] as opposed to queryselector: h1
-            cmd += '[0]'
-        }
-        return cmd
+    public async click() {
+        await this.client.evaluatePage(`${this.method}('${this.selector}').click()`)
     }
-
-    public async value(newValue?: string) {
-        let cmd = this.formatQuery()
-        cmd += '.value'
-        if (newValue) {
-            cmd += ` = '${newValue}`
-        }
-        return await this.evaluatePage(cmd)
-    }
-
-    // todo add most methods from client here
 }
