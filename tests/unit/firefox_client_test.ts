@@ -314,11 +314,10 @@ Rhum.testPlan("tests/unit/firefox_client_test.ts", () => {
         await Sinco.goTo("https://chromestatus.com");
         let errMsg = "";
         try {
-          await Sinco.getInputValue('a[href="/features/schedule"]');
+          await Sinco.getInputValue('a[href="/roadmap"]');
         } catch (e) {
           errMsg = e.message;
         }
-        //const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(
           errMsg,
