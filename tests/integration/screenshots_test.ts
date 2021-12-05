@@ -1,41 +1,27 @@
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { buildFor } from "../../mod.ts";
 
-Deno.test("Chrome - Tutorial for taking screenshots in the docs should work", async () => {
-  const ScreenshotsFolder = "ScreenshotsInteg";
-  try {
-    Deno.removeSync(ScreenshotsFolder, { recursive: true });
-  } catch (_e) {
-    //
-  } finally {
-    Deno.mkdirSync(ScreenshotsFolder);
-  }
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.takeScreenshot(ScreenshotsFolder);
-  await Sinco.takeScreenshot(ScreenshotsFolder, {
-    fileName: "FirstSpanChrome",
-    selector: "span",
-    format: "png",
-  });
-  await Sinco.done();
-});
+import { browserList } from "../browser_list.ts";
 
-Deno.test("Firefox - Tutorial for taking screenshots in the docs should work", async () => {
-  const ScreenshotsFolder = "ScreenshotsInteg";
-  try {
-    Deno.removeSync(ScreenshotsFolder, { recursive: true });
-  } catch (_e) {
-    //
-  } finally {
-    Deno.mkdirSync(ScreenshotsFolder);
-  }
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.takeScreenshot(ScreenshotsFolder);
-  await Sinco.takeScreenshot(ScreenshotsFolder, {
-    fileName: "FirstSpanFirefox",
-    selector: "span",
-    format: "png",
-  });
-  await Sinco.done();
-});
+for (const browserItem of browserList) {
+  Deno.test(
+    browserItem.name +
+      " - Tutorial for taking screenshots in the docs should work",
+    async () => {
+      const Sinco = await buildFor(browserItem.name);
+      await Sinco.location("https://drash.land");
+      const screenshotsFolder = "./screenshots";
+      Deno.mkdirSync(screenshotsFolder); // Ensure you create the directory your screenshots will be put within
+      await Sinco.takeScreenshot(screenshotsFolder); // Will take a screenshot of the whole page, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
+      await Sinco.takeScreenshot(screenshotsFolder, {
+        fileName: "drash_land.png",
+        format: "png",
+      }); // Specify filename and format. Will be saved as `./screenshots/drash_land.png`
+      await Sinco.takeScreenshot(screenshotsFolder, {
+        fileName: "modules.jpeg",
+        selector: 'a[href="https://github.com/drashland"]',
+      }); // Will screenshot only the GitHub icon section, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
+      await Sinco.done();
+      Deno.removeSync("./screenshots", { recursive: true });
+    },
+  );
+}

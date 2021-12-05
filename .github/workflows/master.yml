@@ -3,10 +3,10 @@ name: master
 on:
   pull_request:
     branches:
-      - master
+      - main
   push:
     branches:
-      - master
+      - main
 
 jobs:
   docker-tests:
@@ -61,7 +61,7 @@ jobs:
           deno-version: vx.x.x
 
       - name: Lint
-        run: deno lint
+        run: deno lint --ignore=examples
 
       - name: Formatter
         run: deno fmt --check

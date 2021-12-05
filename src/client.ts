@@ -1,10 +1,15 @@
-import { assertEquals, Deferred, deferred, readLines } from "../deps.ts";
+import {
+  assertEquals,
+  Deferred,
+  deferred,
+  Protocol,
+  readLines,
+} from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
-import { Element } from "./element.ts"
+import { Element } from "./element.ts";
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
-  defaultUrl?: string; // Default url chrome will open when it is ran. Defaults to "https://chromestatus.com"
   hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
   binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
 }
@@ -19,48 +24,6 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   method: string;
   params: unknown;
 }
-
-type SuccessResult = {
-  value?: string | boolean; // only present if type is a string or boolean
-  type: string; // the type of result that the `value` will be, eg object or string or boolean, ,
-  className: string; // eg Location if command is `window.location`, only present when type is object
-  description: string; // eg Location if command is `window.location`, only present when type is object
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-};
-
-type UndefinedResult = { // not sure when this happens, but i believe it to be when the result of a command is undefined, for example if a command is `window.loction`
-  type: string; // undefined
-};
-
-type Exception = {
-  className: string; // eg SyntaxError
-  description: string; // eg SyntaxError: Uncaught identifier
-  objectId: string; // only present when type is object, eg '{"injectedScriptId":2,"id":2}'
-  subtype: string; // eg error
-  type: string; // eg object
-};
-type ExceptionDetails = { // exists when an error
-  columnNumber: number;
-  exception: Exception;
-  exceptionId: number;
-  lineNumber: number;
-  scriptId: string; // eg "12"
-  text: string; // eg Uncaught
-};
-
-type DOMOutput = {
-  result: SuccessResult | Exception | UndefinedResult;
-  exceptionDetails?: ExceptionDetails; // exists when an error, but an undefined response value wont trigger it, for example if the command is `window.location`, there is no `exceptionDetails` property, but if the command is `window.` (syntax error), this prop will exist
-};
-
-//Type for ViewPort, as it is required for Screenshot of an area
-type ViewPort = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  scale: number;
-};
 
 export class Client {
   /**
@@ -78,7 +41,7 @@ export class Client {
    */
   private next_message_id = 1;
 
-  private frame_id = null;
+  private frame_id: string;
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
@@ -108,12 +71,14 @@ export class Client {
     socket: WebSocket,
     browserProcess: Deno.Process,
     browser: "firefox" | "chrome",
+    frameId: string,
     firefoxProfilePath?: string,
   ) {
     this.browser = browser;
     this.socket = socket;
     this.browser_process = browserProcess;
     this.firefox_profile_path = firefoxProfilePath;
+    this.frame_id = frameId;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
@@ -144,15 +109,7 @@ export class Client {
    */
   public async assertSee(text: string): Promise<void> {
     const command = `document.body.innerText.indexOf('${text}') >= 0`;
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression: command,
-    }) as { // Tried and tested
-      result: {
-        type: "boolean";
-        value: boolean;
-      };
-    };
-    const exists = res.result.value;
+    const exists = await this.sendWebSocketMessage(command);
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
       await this.done();
     }
@@ -164,38 +121,42 @@ export class Client {
    *
    * @param urlToVisit - The page to go to
    */
-  public async goTo(urlToVisit: string): Promise<void> {
+  public async location(urlToVisit: string): Promise<void> {
     const method = "Page.loadEventFired";
     this.notification_resolvables.set(method, deferred());
     const notificationPromise = this.notification_resolvables.get(method);
-    const res = await this.sendWebSocketMessage("Page.navigate", {
-      url: urlToVisit,
-    }) as {
-      frameId: string;
-      loaderId: string;
-      errorText?: string; // Only present when an error occurred, eg page doesn't exist
-    };
+    const res = await this.sendWebSocketMessage<
+      Protocol.Page.NavigateRequest,
+      Protocol.Page.NavigateResponse
+    >(
+      "Page.navigate",
+      {
+        url: urlToVisit,
+      },
+    );
     await notificationPromise;
     if (res.errorText) {
-      //await this.done();
-      throw new Error(
+      await this.done(
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
     }
   }
 
   public async querySelector(selector: string) {
-    const result = await this.evaluatePage(`document.querySelector('${selector}')`)
-    console.log(result)
+    const result = await this.evaluatePage(
+      `document.querySelector('${selector}')`,
+    );
     if (result === null) {
-      console.log('dont exist')
-      // todo call done with erro cause selecotor doesnt exist
+      console.log("dont exist");
+      await this.done(
+        'The selector "' + selector + '" does not exist inside the DOM',
+      );
     }
-    return new Element('document.querySelector', selector, this)
+    return new Element("document.querySelector", selector, this);
   }
 
-  public $x(selector: string) {
-    throw new Error('Client#$x not impelemented')
+  public $x(_selector: string) {
+    throw new Error("Client#$x not impelemented");
     // todo check the element exists first
     //return new Element('$x', selector, this)
   }
@@ -204,27 +165,41 @@ export class Client {
    * Invoke a function or string expression on the current frame.
    *
    * @param pageCommand - The function to be called or the line of code to execute.
+   *
+   * @returns The result of the evaluation
    */
   public async evaluatePage(
     pageCommand: (() => unknown) | string,
-  ): Promise<unknown> {
+    // As defined by the protocol, the `value` is `any`
+    // deno-lint-ignore no-explicit-any
+  ): Promise<any> {
     if (typeof pageCommand === "string") {
-      const result = await this.sendWebSocketMessage("Runtime.evaluate", {
+      const result = await this.sendWebSocketMessage<
+        Protocol.Runtime.EvaluateRequest,
+        Protocol.Runtime.EvaluateResponse
+      >("Runtime.evaluate", {
         expression: pageCommand,
-        includeCommandLineAPI: true,
+        includeCommandLineAPI: true, // sopprts things like $x
       });
+      await this.checkForErrorResult(result, pageCommand);
       return result.result.value;
     }
 
     if (typeof pageCommand === "function") {
-      const { executionContextId } = await this.sendWebSocketMessage(
+      const { executionContextId } = await this.sendWebSocketMessage<
+        Protocol.Page.CreateIsolatedWorldRequest,
+        Protocol.Page.CreateIsolatedWorldResponse
+      >(
         "Page.createIsolatedWorld",
         {
           frameId: this.frame_id,
         },
       );
 
-      const { result } = await this.sendWebSocketMessage(
+      const res = await this.sendWebSocketMessage<
+        Protocol.Runtime.CallFunctionOnRequest,
+        Protocol.Runtime.CallFunctionOnResponse
+      >(
         "Runtime.callFunctionOn",
         {
           functionDeclaration: pageCommand.toString(),
@@ -234,7 +209,8 @@ export class Client {
           userGesture: true,
         },
       );
-      return result.value;
+      await this.checkForErrorResult(res, pageCommand.toString());
+      return res.result.value;
     }
   }
 
@@ -319,33 +295,32 @@ export class Client {
     value: string,
     url: string,
   ): Promise<void> {
-    const res = await this.sendWebSocketMessage("Network.setCookie", {
+    const res = await this.sendWebSocketMessage<
+      Protocol.Network.SetCookieRequest,
+      Protocol.Network.SetCookieResponse
+    >("Network.setCookie", {
       name,
       value,
       url,
-    }) as ({ // if error response. only encountered when I (ed) tried to send a message without passing in a url prop
-      code: number; // eg -32602
-      message: string; // eg "At least one of the url or domain needs to be specified"
-    } | { // if success response
-      success: true;
     });
+    console.log(res);
     if ("success" in res === false && "message" in res) {
-      await this.done(res.message);
+      //await this.done(res.message);
     }
   }
 
   /**
- * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
- * If `selector` is passed in, it will take a screenshot of only that element
- * and its children as opposed to the whole page.
- *
- * @param path - The path of where to save the screenshot to
- * @param options - options
- * @param options.filename - Name to be given to the screenshot. Optional
- * @param options.selector - Screenshot the given selector instead of the full page. Optional
- * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
- * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
- */
+   * Take a screenshot of the page and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+   * If `selector` is passed in, it will take a screenshot of only that element
+   * and its children as opposed to the whole page.
+   *
+   * @param path - The path of where to save the screenshot to
+   * @param options - options
+   * @param options.filename - Name to be given to the screenshot. Optional
+   * @param options.selector - Screenshot the given selector instead of the full page. Optional
+   * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
+   * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
+   */
   public async takeScreenshot(
     path: string,
     options?: {
@@ -360,8 +335,7 @@ export class Client {
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
     const ext = options?.format ?? "jpeg";
-    // deno-lint-ignore ban-types
-    const clip: Object | undefined = (options?.selector)
+    const clip = (options?.selector)
       ? await this.getViewport(options.selector)
       : undefined;
 
@@ -375,22 +349,25 @@ export class Client {
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 
-    const res = await this.sendWebSocketMessage(
+    const res = await this.sendWebSocketMessage<
+      Protocol.Page.CaptureScreenshotRequest,
+      Protocol.Page.CaptureScreenshotResponse
+    >(
       "Page.captureScreenshot",
       {
         format: ext,
         quality: quality,
         clip: clip,
-        captureBeyondViewport: true,
       },
     ) as {
       data: string;
     };
 
     //Writing the Obtained Base64 encoded string to image file
-    const fName =
-      `${path}/${options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
-        generateTimestamp()}.${ext}`;
+    const fName = `${path}/${
+      options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
+        generateTimestamp()
+    }.${ext}`;
     const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
@@ -422,31 +399,11 @@ export class Client {
    * @param selector - The selector for the element to capture
    * @returns ViewPort object - Which contains the dimensions of the element captured
    */
-  protected async getViewport(selector: string): Promise<ViewPort> {
-    const res = await this.sendWebSocketMessage("Runtime.evaluate", {
-      expression:
-        `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
-    }) as {
-      result: {
-        type: "string";
-        value?: string;
-      };
-    } | { // Present if we get a `cannot read property 'value' of null`, eg if `selector` is `input[name="fff']`
-      result: Exception;
-      exceptionDetails?: ExceptionDetails;
-    };
-    if (
-      "exceptionDetails" in res ||
-      (res.result as Exception)?.subtype
-    ) {
-      await this.done();
-      this.checkForErrorResult(
-        res,
-        `document.querySelector('${selector}').getBoundingClientRect()`,
-      );
-    }
-
-    const values: DOMRect = JSON.parse((res.result as { value: string }).value);
+  private async getViewport(selector: string): Promise<Protocol.Page.Viewport> {
+    const res = await this.evaluatePage(
+      `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
+    );
+    const values = JSON.parse(res);
     return {
       x: values.x,
       y: values.y,
@@ -456,7 +413,9 @@ export class Client {
     };
   }
 
-  protected handleSocketMessage(message: MessageResponse | NotificationResponse) {
+  protected handleSocketMessage(
+    message: MessageResponse | NotificationResponse,
+  ) {
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
       if (resolvable) {
@@ -490,25 +449,23 @@ export class Client {
    *
    * @returns
    */
-   protected async sendWebSocketMessage(
+  private async sendWebSocketMessage<RequestType, ResponseType>(
     method: string,
-    params?: { [key: string]: unknown },
-    // because we return a packet
-    // deno-lint-ignore no-explicit-any
-  ): Promise<any> {
+    params?: RequestType,
+  ): Promise<ResponseType> {
     const data: {
       id: number;
       method: string;
-      params?: { [key: string]: unknown };
+      params?: RequestType;
     } = {
       id: this.next_message_id++,
       method: method,
     };
     if (params) data.params = params;
-    this.resolvables.set(data.id, deferred());
-    const messagePromise = this.resolvables.get(data.id);
+    const promise = deferred<ResponseType>();
+    this.resolvables.set(data.id, promise);
     this.socket.send(JSON.stringify(data));
-    const result = await messagePromise;
+    const result = await promise;
     this.resolvables.delete(data.id);
     return result;
   }
@@ -519,21 +476,26 @@ export class Client {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-   protected checkForErrorResult(result: DOMOutput, commandSent: string): void {
-    // Is an error
-    if (result.exceptionDetails) { // Error with the sent command, maybe there is a syntax error
-      const exceptionDetail = result.exceptionDetails;
-      if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-        throw new Error(exceptionDetail.text);
-      }
-      const errorMessage = exceptionDetail.exception.description;
-      if (errorMessage.includes("SyntaxError")) { // a syntax error
-        const message = errorMessage.replace("SyntaxError: ", "");
-        throw new SyntaxError(message + ": `" + commandSent + "`");
-      } else { // any others, unsure what they'd be
-        throw new Error(`${errorMessage}: "${commandSent}"`);
-      }
+  private async checkForErrorResult(
+    result: Protocol.Runtime.AwaitPromiseResponse,
+    commandSent: string,
+  ): Promise<void> {
+    const exceptionDetail = result.exceptionDetails;
+    if (!exceptionDetail) {
+      return;
     }
+    if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
+      await this.done(exceptionDetail.text);
+    }
+    const errorMessage = exceptionDetail.exception!.description ??
+      exceptionDetail.text;
+    if (errorMessage.includes("SyntaxError")) { // a syntax error
+      const message = errorMessage.replace("SyntaxError: ", "");
+      await this.done();
+      throw new SyntaxError(message + ": `" + commandSent + "`");
+    }
+    // any others, unsure what they'd be
+    await this.done(`${errorMessage}: "${commandSent}"`);
   }
 
   protected static async create(
@@ -559,7 +521,7 @@ export class Client {
       }
       break;
     }
-    const wsUrl = await Client.getWebSocketUrl(
+    const { debugUrl: wsUrl, frameId } = await Client.getWebSocketInfo(
       wsOptions.hostname,
       wsOptions.port,
     );
@@ -567,10 +529,16 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
-    const TempClient = new Client(websocket, browserProcess, browser);
+    const TempClient = new Client(websocket, browserProcess, browser, frameId);
     await TempClient.sendWebSocketMessage("Page.enable");
     await TempClient.sendWebSocketMessage("Runtime.enable");
-    return new Client(websocket, browserProcess, browser, firefoxProfilePath);
+    return new Client(
+      websocket,
+      browserProcess,
+      browser,
+      frameId,
+      firefoxProfilePath,
+    );
   }
 
   /**
@@ -583,20 +551,25 @@ export class Client {
    *
    * @returns The url to connect to
    */
-  private static async getWebSocketUrl(
+  private static async getWebSocketInfo(
     hostname: string,
     port: number,
-  ): Promise<string> {
+  ): Promise<{ debugUrl: string; frameId: string }> {
     let debugUrl = "";
+    let frameId = "";
     while (debugUrl === "") {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
         debugUrl = json[0]["webSocketDebuggerUrl"];
+        frameId = json[0]["id"];
       } catch (_err) {
         // do nothing, loop again until the endpoint is ready
       }
     }
-    return debugUrl;
+    return {
+      debugUrl,
+      frameId,
+    };
   }
 }

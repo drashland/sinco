@@ -5,10 +5,10 @@ import { BuildOptions, Client } from "./client.ts";
 import { existsSync } from "./utility.ts";
 
 /**
-   * Gets the full path to the chrome executable on the users filesystem
-   *
-   * @returns The path to chrome
-   */
+ * Gets the full path to the chrome executable on the users filesystem
+ *
+ * @returns The path to chrome
+ */
 export function getChromePath(): string {
   const paths = {
     // deno-lint-ignore camelcase
@@ -50,13 +50,19 @@ export class ChromeClient extends Client {
   // FILE MARKER - METHODS - PUBLIC ////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Entry point for creating a headless chrome browser.
+   *
+   * @param buildOptions - Any extra options you wish to provide to customise how the headless browser sub process is ran
+   *   - hostname: Defaults to localhost
+   *   - port: Defaults to 9293
+   *
+   * @returns An instance of ChromeClient, that is now ready.
+   */
   public static async build(options: BuildOptions = {}): Promise<Client> {
     // Setup build options
     if (!options.debuggerPort) {
       options.debuggerPort = 9292;
-    }
-    if (!options.defaultUrl) {
-      options.defaultUrl = "https://chromestatus.com";
     }
     if (!options.hostname) {
       options.hostname = "localhost";
@@ -69,7 +75,6 @@ export class ChromeClient extends Client {
       "--remote-debugging-port=" + options.debuggerPort,
       "--disable-gpu",
       "--no-sandbox",
-      options.defaultUrl,
     ];
     return await Client.create(args, {
       hostname: options.hostname,

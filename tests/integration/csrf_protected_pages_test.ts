@@ -1,4 +1,3 @@
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
 import { Rhum } from "../deps.ts";
 /**
  * Other ways you can achieve this are:
@@ -9,26 +8,19 @@ import { Rhum } from "../deps.ts";
 const title =
   "CSRF Protected Pages - Tutorial for this feature in the docs should work";
 
-Deno.test("Chrome: " + title, async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://drash.land");
-  await Sinco.setCookie("X-CSRF-TOKEN", "hi:)", "https://drash.land");
-  await Sinco.goTo("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
-  const cookieVal = await Sinco.evaluatePage(() => {
-    return document.cookie;
-  });
-  await Sinco.done();
-  Rhum.asserts.assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
-});
+import { buildFor } from "../../mod.ts";
+import { browserList } from "../browser_list.ts";
 
-Deno.test("Firefox: " + title, async () => {
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://drash.land");
-  await Sinco.setCookie("X-CSRF-TOKEN", "hi:)", "https://drash.land");
-  await Sinco.goTo("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
-  const cookieVal = await Sinco.evaluatePage(() => {
-    return document.cookie;
+for (const browserItem of browserList) {
+  Deno.test("Chrome: " + title, async () => {
+    const Sinco = await buildFor(browserItem.name);
+    await Sinco.location("https://drash.land");
+    await Sinco.setCookie("X-CSRF-TOKEN", "hi:)", "https://drash.land");
+    await Sinco.location("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
+    const cookieVal = await Sinco.evaluatePage(() => {
+      return document.cookie;
+    });
+    await Sinco.done();
+    Rhum.asserts.assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
   });
-  await Sinco.done();
-  Rhum.asserts.assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
-});
+}
