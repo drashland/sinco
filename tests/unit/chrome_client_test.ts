@@ -1,3 +1,4 @@
+import { existsSync } from "./../../src/utility.ts";
 import { Rhum } from "../deps.ts";
 import { deferred } from "../../deps.ts";
 import { ChromeClient } from "../../mod.ts";
@@ -42,13 +43,6 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         await Sinco.done();
       },
     );
-    Rhum.testCase("Uses the url when passed in to the parameters", async () => {
-      const Sinco = await ChromeClient.build({
-        defaultUrl: "https://drash.land",
-      });
-      await Sinco.assertUrlIs("https://drash.land/");
-      await Sinco.done();
-    });
     Rhum.testCase(
       "Uses the hostname when passed in to the parameters",
       async () => {
@@ -114,8 +108,8 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
   Rhum.testSuite("goto()", () => {
     Rhum.testCase("Successfully navigates when url is correct", async () => {
       const Sinco = await ChromeClient.build();
-      await Sinco.goTo("https://chromestatus.com/features/schedule");
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.goTo("https://chromestatus.com/roadmap");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -175,9 +169,9 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
     Rhum.testCase("It should allow clicking of elements", async () => {
       const Sinco = await ChromeClient.build();
       await Sinco.goTo("https://chromestatus.com");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertSee("Release timeline");
+      await Sinco.assertSee("Roadmap");
       await Sinco.done();
     });
     Rhum.testCase(
@@ -222,7 +216,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'click' of null\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
+            `TypeError: Cannot read properties of null (reading 'click')\n    at <anonymous>:1:39: "document.querySelector('a#dont-exist').click()"`,
         });
       },
     );
@@ -302,7 +296,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot read property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
+            `TypeError: Cannot read properties of null (reading 'value')\n    at <anonymous>:1:50: "document.querySelector('input[name="dontexist"]').value"`,
         });
       },
     );
@@ -317,6 +311,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         } catch (e) {
           errMsg = e.message;
         }
+        //const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(
           errMsg,
@@ -377,7 +372,7 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
         Rhum.asserts.assertEquals(error, {
           errored: true,
           msg:
-            `TypeError: Cannot set property 'value' of null\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
+            `TypeError: Cannot set properties of null (setting 'value')\n    at <anonymous>:1:50: "document.querySelector('input#dont-exist').value = "qaloo""`,
         });
       },
     );
@@ -397,13 +392,169 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       const Sinco = await ChromeClient.build();
       await Sinco.goTo("https://chromestatus.com");
       await Sinco.assertUrlIs("https://chromestatus.com/features");
-      await Sinco.click('a[href="/features/schedule"]');
+      await Sinco.click('a[href="/roadmap"]');
       await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://chromestatus.com/features/schedule");
+      await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
       await Sinco.done();
     });
   });
 
+  Rhum.testSuite("takeScreenshot()", () => {
+    const ScreenshotsFolder = "Screenshots";
+
+    Rhum.beforeAll(() => {
+      try {
+        Deno.removeSync(ScreenshotsFolder, { recursive: true });
+      } catch (_e) {
+        //
+      } finally {
+        Deno.mkdirSync(ScreenshotsFolder);
+      }
+    });
+
+    Rhum.testCase(
+      "Throws an error if provided path doesn't exist",
+      async () => {
+        let msg = "";
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        try {
+          await Sinco.takeScreenshot("eieio");
+        } catch (error) {
+          msg = error.message;
+        }
+
+        Rhum.asserts.assertEquals(
+          msg,
+          `The provided folder path - eieio doesn't exist`,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes a Screenshot with timestamp as filename if filename is not provided",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder);
+        await Sinco.done();
+
+        Rhum.asserts.assertEquals(
+          existsSync(
+            fileName,
+          ),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
+          selector: "span",
+          quality: 50,
+        });
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          existsSync(
+            fileName,
+          ),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "Throws an error if there is any issue with the selector string",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot(ScreenshotsFolder, {
+            selector: "thsgdjhs",
+          });
+        } catch (error) {
+          msg = error.message;
+        }
+        await Sinco.done();
+
+        Rhum.asserts.assertMatch(msg, /Error|Exception/);
+      },
+    );
+
+    Rhum.testCase(
+      "Throws an error when format passed is jpeg(or default) and quality > than 100",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        let msg = "";
+        try {
+          await Sinco.takeScreenshot(ScreenshotsFolder, { quality: 999 });
+        } catch (error) {
+          msg = error.message;
+        }
+
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          msg,
+          "A quality value greater than 100 is not allowed.",
+        );
+      },
+    );
+
+    Rhum.testCase("Saves Screenshot with Given Filename", async () => {
+      const Sinco = await ChromeClient.build();
+      await Sinco.goTo("https://chromestatus.com");
+      await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        existsSync(`${ScreenshotsFolder}/Happy.jpeg`),
+        true,
+      );
+    });
+
+    Rhum.testCase(
+      "Saves Screenshot with given format (jpeg | png)",
+      async () => {
+        const Sinco = await ChromeClient.build();
+        await Sinco.goTo("https://chromestatus.com");
+        const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
+          format: "png",
+        });
+        await Sinco.done();
+        Rhum.asserts.assertEquals(
+          existsSync(
+            fileName,
+          ),
+          true,
+        );
+      },
+    );
+
+    Rhum.testCase("Saves Screenshot with all options provided", async () => {
+      const Sinco = await ChromeClient.build();
+      await Sinco.goTo("https://chromestatus.com");
+      await Sinco.takeScreenshot(ScreenshotsFolder, {
+        fileName: "AllOpts",
+        selector: "span",
+        format: "jpeg",
+        quality: 100,
+      });
+      await Sinco.done();
+      Rhum.asserts.assertEquals(
+        existsSync(`${ScreenshotsFolder}/AllOpts.jpeg`),
+        true,
+      );
+    });
+
+    Rhum.afterAll(() => {
+      Deno.removeSync(ScreenshotsFolder, { recursive: true });
+    });
+  });
   // Rhum.testSuite("waitForAnchorChange()", () => {
   //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
   //     const Sinco = await ChromeClient.build();
