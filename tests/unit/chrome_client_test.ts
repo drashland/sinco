@@ -305,11 +305,17 @@ Rhum.testPlan("tests/unit/chrome_client_test.ts", () => {
       async () => {
         const Sinco = await ChromeClient.build();
         await Sinco.goTo("https://chromestatus.com");
+        let errMsg = "";
+        try {
+          await Sinco.getInputValue('a[href="/roadmap"]');
+        } catch (e) {
+          errMsg = e.message;
+        }
         const val = await Sinco.getInputValue('a[href="/roadmap"]');
         await Sinco.done();
         Rhum.asserts.assertEquals(
-          val,
-          undefined,
+          errMsg,
+          'a[href="/roadmap"] is either not an input element, or does not exist',
         );
       },
     );
