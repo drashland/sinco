@@ -49,7 +49,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
           await Sinco.done();
           Rhum.asserts.assertEquals(error, {
             errored: true,
-            msg: `The selector "hkkkjgjkgk" does not exist inside the DOM`,
+            msg: `The selector "a#dont-exist" does not exist inside the DOM`,
           });
         },
       );
