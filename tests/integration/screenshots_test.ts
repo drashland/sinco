@@ -8,7 +8,7 @@ for (const browserItem of browserList) {
       " - Tutorial for taking screenshots in the docs should work",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.location("https://drash.land");
+      await Sinco.goTo("https://drash.land");
       const screenshotsFolder = "./screenshots";
       Deno.mkdirSync(screenshotsFolder); // Ensure you create the directory your screenshots will be put within
       await Sinco.takeScreenshot(screenshotsFolder); // Will take a screenshot of the whole page, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`

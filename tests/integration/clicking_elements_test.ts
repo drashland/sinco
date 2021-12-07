@@ -7,7 +7,7 @@ for (const browserItem of browserList) {
       ": Clicking elements - Tutorial for this feature in the docs should work",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.location("https://drash.land");
+      await Sinco.goTo("https://drash.land");
       const elem = await Sinco.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );

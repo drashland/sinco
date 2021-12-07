@@ -13,7 +13,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Should throw an error when selector is invalid",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           const error = {
             errored: false,
             msg: "",
@@ -35,7 +35,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "It should throw an error when no element exists for the selector",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           const error = {
             errored: false,
             msg: "",
@@ -129,13 +129,13 @@ Rhum.testPlan("tests/unit/client.ts", () => {
     Rhum.testSuite("assertUrlIs()", () => {
       Rhum.testCase("Works when an assertion is true", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com/features");
+        await Sinco.goTo("https://chromestatus.com/features");
         await Sinco.assertUrlIs("https://chromestatus.com/features");
         await Sinco.done();
       });
       Rhum.testCase("Will fail when an assertion fails", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com");
+        await Sinco.goTo("https://chromestatus.com");
         let originalErrMsg = "";
         try {
           await Sinco.assertUrlIs("https://hella.com");
@@ -161,7 +161,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
     Rhum.testSuite("location()", () => {
       Rhum.testCase("Successfully navigates when url is correct", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com/roadmap");
+        await Sinco.goTo("https://chromestatus.com/roadmap");
         await Sinco.assertUrlIs("https://chromestatus.com/roadmap");
         await Sinco.done();
       });
@@ -171,7 +171,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
           const Sinco = await buildFor(browserItem.name);
           let msg = "";
           try {
-            await Sinco.location(
+            await Sinco.goTo(
               "https://hellaDOCSWOWThispagesurelycantexist.biscuit",
             );
           } catch (err) {
@@ -191,7 +191,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Assertion should work when text is present on page",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com/features");
+          await Sinco.goTo("https://chromestatus.com/features");
           await Sinco.assertSee("Chrome Platform Status");
           await Sinco.done();
         },
@@ -200,7 +200,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Assertion should NOT work when text is NOT present on page",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           let errorMsg = "";
           try {
             await Sinco.assertSee("Crumpets and tea init?");
@@ -223,7 +223,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "It should evaluate function on current frame",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://drash.land");
+          await Sinco.goTo("https://drash.land");
           const pageTitle = await Sinco.evaluatePage(() => {
             // deno-lint-ignore no-undef
             return document.title;
@@ -234,7 +234,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
       );
       Rhum.testCase("It should evaluate string on current frame", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com");
+        await Sinco.goTo("https://chromestatus.com");
         const parentConstructor = await Sinco.evaluatePage(`1 + 2`);
         await Sinco.done();
         Rhum.asserts.assertEquals(parentConstructor, 3);
@@ -255,7 +255,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Waits for a page to change before continuing",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           await Sinco.assertUrlIs("https://chromestatus.com/features");
           const elem = await Sinco.querySelector('a[href="/roadmap"]');
           await elem.click();
@@ -284,7 +284,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         async () => {
           let msg = "";
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           try {
             await Sinco.takeScreenshot("eieio");
           } catch (error) {
@@ -302,7 +302,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Takes a Screenshot with timestamp as filename if filename is not provided",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           const fileName = await Sinco.takeScreenshot(ScreenshotsFolder);
           await Sinco.done();
           Rhum.asserts.assertEquals(
@@ -318,7 +318,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
             selector: "span",
             quality: 50,
@@ -337,7 +337,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Throws an error when format passed is jpeg(or default) and quality > than 100",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           let msg = "";
           try {
             await Sinco.takeScreenshot(ScreenshotsFolder, { quality: 999 });
@@ -354,7 +354,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
 
       Rhum.testCase("Saves Screenshot with Given Filename", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com");
+        await Sinco.goTo("https://chromestatus.com");
         await Sinco.takeScreenshot(ScreenshotsFolder, { fileName: "Happy" });
         await Sinco.done();
         Rhum.asserts.assertEquals(
@@ -367,7 +367,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
         "Saves Screenshot with given format (jpeg | png)",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://chromestatus.com");
+          await Sinco.goTo("https://chromestatus.com");
           const fileName = await Sinco.takeScreenshot(ScreenshotsFolder, {
             format: "png",
           });
@@ -383,7 +383,7 @@ Rhum.testPlan("tests/unit/client.ts", () => {
 
       Rhum.testCase("Saves Screenshot with all options provided", async () => {
         const Sinco = await buildFor(browserItem.name);
-        await Sinco.location("https://chromestatus.com");
+        await Sinco.goTo("https://chromestatus.com");
         await Sinco.takeScreenshot(ScreenshotsFolder, {
           fileName: "AllOpts",
           selector: "span",

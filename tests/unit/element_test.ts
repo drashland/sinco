@@ -5,7 +5,7 @@ import { browserList } from "../browser_list.ts";
 for (const browserItem of browserList) {
   Deno.test("tests/unit/element_test.ts | click() | It should allow clicking of elements", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.location("https://chromestatus.com");
+    await Sinco.goTo("https://chromestatus.com");
     const elem = await Sinco.querySelector('a[href="/roadmap"]');
     await elem.click();
     await Sinco.waitForPageChange();
@@ -15,7 +15,7 @@ for (const browserItem of browserList) {
 
   Deno.test("tests/unit/element_test.ts | value | It should get the value for the given input element", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.location("https://chromestatus.com");
+    await Sinco.goTo("https://chromestatus.com");
     const elem = await Sinco.querySelector('input[placeholder="Filter"]');
     elem.value = "hello world";
     const val = await elem.value;
@@ -26,7 +26,7 @@ for (const browserItem of browserList) {
     "tests/unit/element_test.ts | value | Should return empty when element is not an input element",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.location("https://chromestatus.com");
+      await Sinco.goTo("https://chromestatus.com");
       let errMsg = "";
       const elem = await Sinco.querySelector("div");
       try {
@@ -44,7 +44,7 @@ for (const browserItem of browserList) {
 
   Deno.test("tests/unit/element_test.ts | value() | It should set the value of the element", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.location("https://chromestatus.com");
+    await Sinco.goTo("https://chromestatus.com");
     const elem = await Sinco.querySelector('input[placeholder="Filter"]');
     elem.value = "hello world";
     const val = await elem.value;

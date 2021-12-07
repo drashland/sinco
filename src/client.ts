@@ -7,6 +7,7 @@ import {
 } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
+import { Page } from "./page.ts";
 
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
@@ -41,12 +42,12 @@ export class Client {
    */
   private next_message_id = 1;
 
-  private frame_id: string;
+  protected frame_id: string;
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
    */
-  private notification_resolvables: Map<string, Deferred<void>> = new Map();
+  protected notification_resolvables: Map<string, Deferred<void>> = new Map();
 
   /**
    * Track if we've closed the sub process, so we dont try close it when it already has been
@@ -94,6 +95,7 @@ export class Client {
    *
    * @param expectedUrl - The expected url, eg `https://google.com/hello`
    */
+  // todo :: no need for this when we use page as user can do assertEquals(..., await page.location)
   public async assertUrlIs(expectedUrl: string): Promise<void> {
     const actualUrl = await this.evaluatePage(`window.location.href`);
     if (actualUrl !== expectedUrl) { // Before we know the test will fail, close everything
@@ -121,7 +123,7 @@ export class Client {
    *
    * @param urlToVisit - The page to go to
    */
-  public async location(urlToVisit: string): Promise<void> {
+  public async goTo(urlToVisit: string): Promise<Page> {
     const method = "Page.loadEventFired";
     this.notification_resolvables.set(method, deferred());
     const notificationPromise = this.notification_resolvables.get(method);
@@ -140,6 +142,13 @@ export class Client {
         `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
       );
     }
+    return new Page(
+      this.socket,
+      this.browser_process,
+      this.browser,
+      this.frame_id,
+      this.firefox_profile_path,
+    );
   }
 
   public async querySelector(selector: string) {
@@ -338,8 +347,7 @@ export class Client {
       : undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
-      await this.done();
-      throw new Error("A quality value greater than 100 is not allowed.");
+      await this.done("A quality value greater than 100 is not allowed.");
     }
 
     //Quality should defined only if format is jpeg
@@ -397,7 +405,9 @@ export class Client {
    * @param selector - The selector for the element to capture
    * @returns ViewPort object - Which contains the dimensions of the element captured
    */
-  private async getViewport(selector: string): Promise<Protocol.Page.Viewport> {
+  protected async getViewport(
+    selector: string,
+  ): Promise<Protocol.Page.Viewport> {
     const res = await this.evaluatePage(
       `JSON.stringify(document.querySelector('${selector}').getBoundingClientRect())`,
     );
@@ -447,7 +457,7 @@ export class Client {
    *
    * @returns
    */
-  private async sendWebSocketMessage<RequestType, ResponseType>(
+  protected async sendWebSocketMessage<RequestType, ResponseType>(
     method: string,
     params?: RequestType,
   ): Promise<ResponseType> {
@@ -474,7 +484,7 @@ export class Client {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  private async checkForErrorResult(
+  protected async checkForErrorResult(
     result: Protocol.Runtime.AwaitPromiseResponse,
     commandSent: string,
   ): Promise<void> {

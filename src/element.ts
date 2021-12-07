@@ -14,16 +14,14 @@ export class Element {
     this.client = client;
     this.selector = selector;
     this.method = method;
-    // deno-lint-ignore no-this-alias
-    const self = this;
     Object.defineProperty(this, "value", {
-      async set(value: string) {
-        await self.client.evaluatePage(
+      async set(value: string): Promise<void> {
+        await client.evaluatePage(
           `${method}('${selector}').value = '${value}'`,
         );
       },
-      async get() {
-        const value = await self.client.evaluatePage(
+      async get(): Promise<string> {
+        const value = await client.evaluatePage(
           `${method}('${selector}').value`,
         );
         return value;

@@ -8,7 +8,7 @@ for (const browserItem of browserList) {
       ": Get and set input value - Tutorial for this feature in the docs should work",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.location("https://chromestatus.com");
+      await Sinco.goTo("https://chromestatus.com");
       const elem = await Sinco.querySelector('input[placeholder="Filter"]');
       elem.value = "hello world";
       const val = await elem.value;

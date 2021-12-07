@@ -7,7 +7,7 @@ for (const browserItem of browserList) {
     async () => {
       // Setup
       const Sinco = await buildFor(browserItem.name); // also supports firefox
-      await Sinco.location("https://drash.land"); // Go to this page
+      await Sinco.goTo("https://drash.land"); // Go to this page
 
       // Do any actions and assertions, in any order
       await Sinco.assertUrlIs("https://drash.land/");

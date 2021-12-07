@@ -9,7 +9,7 @@ Rhum.testPlan("tests/unit/mod_test.ts", () => {
         "Builds for " + browserItem.name + " correctly",
         async () => {
           const Sinco = await buildFor(browserItem.name);
-          await Sinco.location("https://drash.land"); // Go to this page
+          await Sinco.goTo("https://drash.land"); // Go to this page
           await Sinco.assertUrlIs("https://drash.land/");
           await Sinco.done();
         },

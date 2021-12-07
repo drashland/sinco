@@ -6,7 +6,7 @@ import { browserList } from "../browser_list.ts";
 for (const browserItem of browserList) {
   Deno.test(browserItem.name + ": Manipulate Webpage", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.location("https://drash.land");
+    await Sinco.goTo("https://drash.land");
 
     const updatedBody = await Sinco.evaluatePage(() => {
       // deno-lint-ignore no-undef
@@ -28,7 +28,7 @@ for (const browserItem of browserList) {
       ": Evaluating a script - Tutorial for this feature in the documentation works",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.location("https://drash.land");
+      await Sinco.goTo("https://drash.land");
       const pageTitle = await Sinco.evaluatePage(() => {
         // deno-lint-ignore no-undef
         return document.title;
