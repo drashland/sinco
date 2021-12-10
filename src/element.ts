@@ -1,38 +1,54 @@
-import { Client } from "./client.ts";
+import { Page } from "./page.ts";
 
 export class Element {
-  public selector: string;
+  /**
+   * The css selector for the element
+   */
+  public selector: string; // eg "#user" or "div > #name" or "//h1"
+
+  /**
+   * How we select the element
+   */
   public method: "document.querySelector" | "$x";
-  private client: Client;
-  public value = "";
+
+  /**
+   * The page this element belongs to
+   */
+  private page: Page;
 
   constructor(
     method: "document.querySelector" | "$x",
     selector: string,
-    client: Client,
+    page: Page,
   ) {
-    this.client = client;
+    this.page = page;
     this.selector = selector;
     this.method = method;
-    Object.defineProperty(this, "value", {
-      async set(value: string): Promise<void> {
-        await client.evaluatePage(
-          `${method}('${selector}').value = '${value}'`,
-        );
-      },
-      async get(): Promise<string> {
-        const value = await client.evaluatePage(
-          `${method}('${selector}').value`,
-        );
-        return value;
-      },
-      configurable: true,
-      enumerable: true,
-    });
   }
 
+  /**
+   * Get the value of this element, or set the value
+   *
+   * @param newValue - If not passed, will return the value, else will set the value
+   *
+   * @returns The value if setting, else void if not
+   */
+  public async value(newValue?: string) {
+    if (!newValue) {
+      return await this.page.evaluate(
+        `${this.method}('${this.selector}').value`,
+      );
+    }
+    await this.page.evaluate(
+      `${this.method}('${this.selector}').value = \`${newValue}\``,
+    );
+  }
+
+  /**
+   * Click the element
+   */
   public async click(): Promise<void> {
-    await this.client.evaluatePage(
+    await this.page.evaluate(
       `${this.method}('${this.selector}').click()`,
     );
   }

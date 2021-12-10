@@ -1,6 +1,7 @@
 import { buildFor } from "../../mod.ts";
 
 import { browserList } from "../browser_list.ts";
+import { assertEquals } from "../../deps.ts";
 
 for (const browserItem of browserList) {
   Deno.test(
@@ -8,15 +9,15 @@ for (const browserItem of browserList) {
       ": Waiting - Tutorial for this feature in the docs should work",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.goTo("https://drash.land");
-      await Sinco.assertUrlIs("https://drash.land/");
-      const elem = await Sinco.querySelector(
+      const page = await Sinco.goTo("https://drash.land");
+      const elem = await page.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );
       await elem.click();
-      await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
+      await page.waitForPageChange();
+      const location = await page.location();
       await Sinco.done();
+      assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );
 }

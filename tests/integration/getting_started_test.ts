@@ -1,5 +1,6 @@
 import { buildFor } from "../../mod.ts";
 import { browserList } from "../browser_list.ts";
+import { assertEquals } from "../../deps.ts";
 
 for (const browserItem of browserList) {
   Deno.test(
@@ -7,19 +8,20 @@ for (const browserItem of browserList) {
     async () => {
       // Setup
       const Sinco = await buildFor(browserItem.name); // also supports firefox
-      await Sinco.goTo("https://drash.land"); // Go to this page
+      const page = await Sinco.goTo("https://drash.land"); // Go to this page
 
       // Do any actions and assertions, in any order
-      await Sinco.assertUrlIs("https://drash.land/");
-      const elem = await Sinco.querySelector(
+      assertEquals(await page.location(), "https://drash.land/");
+      const elem = await page.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );
       await elem.click(); // This element will take the user to Sinco's documentation
-      await Sinco.waitForPageChange();
-      await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
+      await page.waitForPageChange();
+      const location = await page.location();
 
       // Once finished, close to clean up any processes
       await Sinco.done();
+      assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );
 }

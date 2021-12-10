@@ -14,10 +14,14 @@ import { browserList } from "../browser_list.ts";
 for (const browserItem of browserList) {
   Deno.test("Chrome: " + title, async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.goTo("https://drash.land");
-    await Sinco.setCookie("X-CSRF-TOKEN", "hi:)", "https://drash.land");
+    const page = await Sinco.goTo("https://drash.land");
+    await page.cookie({
+      name: "X-CSRF-TOKEN",
+      value: "hi:)",
+      url: "https://drash.land",
+    });
     await Sinco.goTo("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
-    const cookieVal = await Sinco.evaluatePage(() => {
+    const cookieVal = await page.evaluate(() => {
       return document.cookie;
     });
     await Sinco.done();

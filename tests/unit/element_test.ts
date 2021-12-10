@@ -3,32 +3,32 @@ import { assertEquals } from "../../deps.ts";
 import { browserList } from "../browser_list.ts";
 
 for (const browserItem of browserList) {
-  Deno.test("tests/unit/element_test.ts | click() | It should allow clicking of elements", async () => {
+  Deno.test("click() | It should allow clicking of elements", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.goTo("https://chromestatus.com");
-    const elem = await Sinco.querySelector('a[href="/roadmap"]');
+    const page = await Sinco.goTo("https://chromestatus.com");
+    const elem = await page.querySelector('a[href="/roadmap"]');
     await elem.click();
-    await Sinco.waitForPageChange();
-    await Sinco.assertSee("Roadmap");
+    await page.waitForPageChange();
+    await page.assertSee("Roadmap");
     await Sinco.done();
   });
 
-  Deno.test("tests/unit/element_test.ts | value | It should get the value for the given input element", async () => {
+  Deno.test("value | It should get the value for the given input element", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.goTo("https://chromestatus.com");
-    const elem = await Sinco.querySelector('input[placeholder="Filter"]');
-    elem.value = "hello world";
-    const val = await elem.value;
+    const page = await Sinco.goTo("https://chromestatus.com");
+    const elem = await page.querySelector('input[placeholder="Filter"]');
+    await elem.value("hello world");
+    const val = await elem.value();
     assertEquals(val, "hello world");
     await Sinco.done();
   });
   Deno.test(
-    "tests/unit/element_test.ts | value | Should return empty when element is not an input element",
+    "value | Should return empty when element is not an input element",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.goTo("https://chromestatus.com");
+      const page = await Sinco.goTo("https://chromestatus.com");
       let errMsg = "";
-      const elem = await Sinco.querySelector("div");
+      const elem = await page.querySelector("div");
       try {
         await elem.value;
       } catch (e) {
@@ -42,12 +42,12 @@ for (const browserItem of browserList) {
     },
   );
 
-  Deno.test("tests/unit/element_test.ts | value() | It should set the value of the element", async () => {
+  Deno.test("value() | It should set the value of the element", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.goTo("https://chromestatus.com");
-    const elem = await Sinco.querySelector('input[placeholder="Filter"]');
-    elem.value = "hello world";
-    const val = await elem.value;
+    const page = await Sinco.goTo("https://chromestatus.com");
+    const elem = await page.querySelector('input[placeholder="Filter"]');
+    await elem.value("hello world");
+    const val = await elem.value();
     await Sinco.done();
     assertEquals(val, "hello world");
   });

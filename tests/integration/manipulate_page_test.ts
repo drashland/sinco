@@ -6,9 +6,9 @@ import { browserList } from "../browser_list.ts";
 for (const browserItem of browserList) {
   Deno.test(browserItem.name + ": Manipulate Webpage", async () => {
     const Sinco = await buildFor(browserItem.name);
-    await Sinco.goTo("https://drash.land");
+    const page = await Sinco.goTo("https://drash.land");
 
-    const updatedBody = await Sinco.evaluatePage(() => {
+    const updatedBody = await page.evaluate(() => {
       // deno-lint-ignore no-undef
       const prevBody = document.body.children.length;
       // deno-lint-ignore no-undef
@@ -28,17 +28,17 @@ for (const browserItem of browserList) {
       ": Evaluating a script - Tutorial for this feature in the documentation works",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.goTo("https://drash.land");
-      const pageTitle = await Sinco.evaluatePage(() => {
+      const page = await Sinco.goTo("https://drash.land");
+      const pageTitle = await page.evaluate(() => {
         // deno-lint-ignore no-undef
         return document.title;
       });
-      const sum = await Sinco.evaluatePage(`1 + 10`);
-      const oldBodyLength = await Sinco.evaluatePage(() => {
+      const sum = await page.evaluate(`1 + 10`);
+      const oldBodyLength = await page.evaluate(() => {
         // deno-lint-ignore no-undef
         return document.body.children.length;
       });
-      const newBodyLength = await Sinco.evaluatePage(() => {
+      const newBodyLength = await page.evaluate(() => {
         // deno-lint-ignore no-undef
         const p = document.createElement("p");
         p.textContent = "Hello world!";

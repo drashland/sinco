@@ -31,12 +31,12 @@ for (const browserItem of browserList) {
     browserItem.name + ": Assertion methods cleanup when an assertion fails",
     async () => {
       const Sinco = await buildFor(browserItem.name);
-      await Sinco.goTo("https://chromestatus.com");
-      await Sinco.assertUrlIs("https://chromestatus.com/features");
+      const page = await Sinco.goTo("https://chromestatus.com");
+      assertEquals(await page.location(), "https://chromestatus.com/features");
       let gotError = false;
       let errMsg = "";
       try {
-        await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
+        await page.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
       } catch (err) {
         gotError = true;
         errMsg = err.message
@@ -53,10 +53,10 @@ for (const browserItem of browserList) {
       );
       // Now we should be able to run tests again without it hanging
       const Sinco2 = await buildFor(browserItem.name);
-      await Sinco2.goTo("https://chromestatus.com");
-      await Sinco2.assertUrlIs("https://chromestatus.com/features");
+      const page2 = await Sinco2.goTo("https://chromestatus.com");
+      assertEquals(await page2.location(), "https://chromestatus.com/features");
       try {
-        await Sinco2.assertSee("Chrome Versions");
+        await page2.assertSee("Chrome Versions");
       } catch (_err) {
         //
       }
