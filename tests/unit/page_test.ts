@@ -220,22 +220,6 @@ for (const browserItem of browserList) {
     });
     const cookies = await page.cookie();
     await Sinco.done();
-    assertEquals(cookies, [
-      {
-        domain: "drash.land",
-        expires: -1,
-        httpOnly: false,
-        name: "user",
-        path: "/",
-        priority: "Medium",
-        sameParty: false,
-        secure: true,
-        session: true,
-        size: 6,
-        sourcePort: 443,
-        sourceScheme: "Secure",
-        value: "ed",
-      },
-    ]);
+    assertEquals(cookies, browserItem.cookies);
   });
 }
