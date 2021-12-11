@@ -69,6 +69,7 @@ export class Page {
         Protocol.DOM.GetDocumentRequest,
         Protocol.DOM.GetDocumentResponse
       >("DOM.getDocument");
+      console.log(document)
       return document.root.documentURL ?? "";
     }
     const method = "Page.loadEventFired";
