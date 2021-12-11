@@ -3,6 +3,18 @@ import { deferred, Protocol as ProtocolTypes, readLines } from "../deps.ts";
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 
+// https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
+// FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
+/**
+ * $ <firefox binary> --profile <profile> --headless --remote-debugging-port 1448
+ * ```ts
+ * const res = await fetch("http://localhost:1448/json/list")
+ * const json = await res.json()
+ * consy url = json[json.length - 1]["webSocketDebuggerUrl"]
+ * const c = new WebSocket(url)
+ * ```
+ */
+
 export interface BuildOptions {
   debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
   hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
@@ -115,7 +127,6 @@ export class Client {
     );
     await protocol.sendWebSocketMessage("Page.enable");
     await protocol.sendWebSocketMessage("Runtime.enable");
-    await protocol.sendWebSocketMessage("DOM.enable")
     return new Client(protocol);
   }
 }

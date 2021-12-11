@@ -65,12 +65,11 @@ export class Page {
    */
   public async location(newLocation?: string): Promise<string> {
     if (!newLocation) {
-      const document = await this.#protocol.sendWebSocketMessage<
-        Protocol.DOM.GetDocumentRequest,
-        Protocol.DOM.GetDocumentResponse
-      >("DOM.getDocument");
-      console.log(document)
-      return document.root.documentURL ?? "";
+      const targets = await this.#protocol.sendWebSocketMessage<
+        null,
+        Protocol.Target.GetTargetsResponse
+      >("Target.getTargets");
+      return targets.targetInfos[0].url;
     }
     const method = "Page.loadEventFired";
     this.#protocol.notification_resolvables.set(method, deferred());
