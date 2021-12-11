@@ -115,6 +115,7 @@ export class Client {
     );
     await protocol.sendWebSocketMessage("Page.enable");
     await protocol.sendWebSocketMessage("Runtime.enable");
+    await protocol.sendWebSocketMessage("DOM.enable")
     return new Client(protocol);
   }
 }
