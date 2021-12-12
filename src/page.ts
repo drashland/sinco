@@ -49,7 +49,7 @@ export class Page {
    * const location = await page.location() // "https://drash.land"
    * ```
    *
-   * @returns The location for the page if no parameter is passed in, else an empty array
+   * @returns The location for the page if no parameter is passed in, else an empty string
    */
   public async location(newLocation?: string): Promise<string> {
     if (!newLocation) {
@@ -149,7 +149,7 @@ export class Page {
   }
 
   /**
-   * Check if the given text exists on the dom
+   * Check if the given text exists on the DOM
    *
    * @param text - The text to check for
    */
@@ -170,11 +170,11 @@ export class Page {
   }
 
   /**
-   * Representation of the Browsers `document.querySelector`
+   * Representation of the Browser's `document.querySelector`
    *
    * @param selector - The selector for the element
    *
-   * @returns An element class, allowing you to action upon that element
+   * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
     const result = await this.evaluate(
