@@ -2,19 +2,7 @@ import { assertEquals, deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
-
-export interface ScreenshotOptions {
-  selector?: string;
-  fileName?: string;
-  format?: "jpeg" | "png";
-  quality?: number;
-}
-
-export type Cookie = {
-  name: string;
-  value: string;
-  url: string;
-};
+import { ScreenshotOptions, Cookie  } from "./interfaces.ts"
 
 export class Page {
   readonly #protocol: ProtocolClass;
