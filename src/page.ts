@@ -182,7 +182,7 @@ export class Page {
   }
 
   /**
-   * Representation of the Browsers `document.querySelector`
+   * Representation of the Browser's `document.querySelector`
    *
    * @param selector - The selector for the element
    *
