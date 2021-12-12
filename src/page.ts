@@ -161,7 +161,7 @@ export class Page {
   }
 
   /**
-   * Check if the given text exists on the dom
+   * Check if the given text exists on the DOM
    *
    * @param text - The text to check for
    */
