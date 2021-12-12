@@ -15,12 +15,27 @@ import type { Browsers } from "./types.ts";
  * ```
  */
 
-export interface BuildOptions {
-  debuggerPort?: number; // The port to start the debugger on for Chrome, so that we can connect to it. Defaults to 9292
-  hostname?: string; // The hostname the browser process starts on. If on host machine, this will be "localhost", if in docker, it will bee the container name. Defaults to localhost
-  binaryPath?: string; //The Full Path to the browser binary. If using an alternative chromium based browser, this field is necessary.
-}
-
+/**
+ * A way to interact with the headless browser instance.
+ * 
+ * This is the entrypoint API to creating and interacting with the chrome or
+ * firefox browser. It allows:
+ *   - Starting the headless browser (subprocess)
+ *   - Methods to interact with the client such as:
+ *     - Visiting a page and returning a `Page` class
+ *       to interact with that page.
+ * 
+ * @example
+ * ```js
+ * const client = await Client.create([
+ *   "chrome", "--headless",
+ * ], {
+ *   hostname: "localhost",
+ *   port: 1234
+ * }, "chrome", undefined);
+ * const page = await client.goTo("https://drash.land");
+ * ```
+ */
 export class Client {
   #protocol: ProtocolClass;
   constructor(
