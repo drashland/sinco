@@ -186,7 +186,7 @@ export class Page {
    *
    * @param selector - The selector for the element
    *
-   * @returns An element class, allowing you to action upon that element
+   * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
     const result = await this.evaluate(
