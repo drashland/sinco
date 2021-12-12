@@ -1,6 +1,9 @@
-import { BuildOptions, Client } from "./src/client.ts";
+import { Client } from "./src/client.ts";
+import { BuildOptions } from "./src/interfaces.ts"
 import type { Browsers } from "./src/types.ts";
 import { getChromeArgs, getFirefoxArgs } from "./src/utility.ts";
+
+export type { BuildOptions }
 
 export async function buildFor(
   browser: Browsers,
