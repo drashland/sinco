@@ -61,7 +61,7 @@ export class Page {
    * const location = await page.location() // "https://drash.land"
    * ```
    *
-   * @returns The location for the page if no parameter is passed in, else an empty array
+   * @returns The location for the page if no parameter is passed in, else an empty string
    */
   public async location(newLocation?: string): Promise<string> {
     if (!newLocation) {
