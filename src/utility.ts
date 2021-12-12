@@ -53,7 +53,7 @@ export function getChromePath(): string {
       }
 
       throw new Error(
-        "Cannot find path for chrome in windows. Submit an issue if you encounter this error",
+        "Cannot find path for chrome in Windows. Submit an issue if you encounter this error.",
       );
     case "linux":
       chromePath = paths.linux;
