@@ -1,5 +1,9 @@
 import { Page } from "./page.ts";
 
+/**
+ * A class to represent an element on the page, providing methods
+ * to action on that element
+ */
 export class Element {
   /**
    * The css selector for the element

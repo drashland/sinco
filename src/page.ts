@@ -2,8 +2,12 @@ import { assertEquals, deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
-import { ScreenshotOptions, Cookie  } from "./interfaces.ts"
+import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 
+/**
+ * A representation of the page the client is on, allowing the client to action
+ * on it, such as setting cookies, or selecting elements, or interacting with localstorage etc
+ */
 export class Page {
   readonly #protocol: ProtocolClass;
 
@@ -162,13 +166,6 @@ export class Page {
     assertEquals(exists, true);
   }
 
-  // deno-lint-ignore require-await
-  async #$x(_selector: string) {
-    throw new Error("Client#$x not impelemented");
-    // todo check the element exists first
-    //return new Element('$x', selector, this)
-  }
-
   /**
    * Representation of the Browser's `document.querySelector`
    *
@@ -194,11 +191,9 @@ export class Page {
    * and its children as opposed to the whole page.
    *
    * @param path - The path of where to save the screenshot to
-   * @param options - options
-   * @param options.filename - Name to be given to the screenshot. Optional
-   * @param options.selector - Screenshot the given selector instead of the full page. Optional
-   * @param options.format - The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional
-   * @param options.quality - The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional
+   * @param options
+   *
+   * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
    */
   async takeScreenshot(
     path: string,

@@ -17,14 +17,14 @@ import type { Browsers } from "./types.ts";
 
 /**
  * A way to interact with the headless browser instance.
- * 
+ *
  * This is the entrypoint API to creating and interacting with the chrome or
  * firefox browser. It allows:
  *   - Starting the headless browser (subprocess)
  *   - Methods to interact with the client such as:
  *     - Visiting a page and returning a `Page` class
  *       to interact with that page.
- * 
+ *
  * @example
  * ```js
  * const client = await Client.create([
