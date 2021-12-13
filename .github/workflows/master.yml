@@ -19,9 +19,7 @@ jobs:
           cd tests/integration/docker_test
           docker-compose up -d
           docker exec drivers deno test -A --config tsconfig.json tests/integration
-          docker exec drivers deno test -A --config tsconfig.json tests/unit/chrome_client_test.ts
-          docker exec drivers deno test -A --config tsconfig.json tests/unit/firefox_client_test.ts
-          docker exec drivers deno test -A --config tsconfig.json tests/unit/mod_test.ts
+          docker exec drivers deno test -A --config tsconfig.json tests/unit
 
 
   tests:
@@ -44,9 +42,7 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          deno test -A --config tsconfig.json tests/unit/chrome_client_test.ts
-          deno test -A --config tsconfig.json tests/unit/firefox_client_test.ts
-          deno test -A --config tsconfig.json tests/unit/mod_test.ts
+          deno test -A --config tsconfig.json tests/unit
 
   linter:
     # Only one OS is required since fmt is cross platform

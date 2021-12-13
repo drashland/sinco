@@ -1,5 +1,6 @@
 import { assertEquals } from "../../deps.ts";
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { buildFor } from "../../mod.ts";
+import { browserList } from "../browser_list.ts";
 
 /**
  * The reason for this test is because originally, when an assertion  method failed,
@@ -25,68 +26,40 @@ import { ChromeClient, FirefoxClient } from "../../mod.ts";
 
 // THIS TEST SHOULD NOT HANG, IF IT DOES, THEN THIS TEST FAILS
 
-Deno.test("Chrome: Assertion methods cleanup when an assertion fails", async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
-  let gotError = false;
-  let errMsg = "";
-  try {
-    await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
-  } catch (err) {
-    gotError = true;
-    errMsg = err.message
-      // deno-lint-ignore no-control-regex
-      .replace(/\x1b/g, "") // or \x1b\[90m
-      .replace(/\[1m/g, "")
-      .replace(/\[[0-9][0-9]m/g, "")
-      .replace(/\n/g, "");
-  }
-  assertEquals(gotError, true);
-  assertEquals(
-    errMsg,
-    "Values are not equal:    [Diff] Actual / Expected-   false+   true",
+for (const browserItem of browserList) {
+  Deno.test(
+    browserItem.name + ": Assertion methods cleanup when an assertion fails",
+    async () => {
+      const Sinco = await buildFor(browserItem.name);
+      const page = await Sinco.goTo("https://chromestatus.com");
+      assertEquals(await page.location(), "https://chromestatus.com/features");
+      let gotError = false;
+      let errMsg = "";
+      try {
+        await page.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
+      } catch (err) {
+        gotError = true;
+        errMsg = err.message
+          // deno-lint-ignore no-control-regex
+          .replace(/\x1b/g, "") // or \x1b\[90m
+          .replace(/\[1m/g, "")
+          .replace(/\[[0-9][0-9]m/g, "")
+          .replace(/\n/g, "");
+      }
+      assertEquals(gotError, true);
+      assertEquals(
+        errMsg,
+        "Values are not equal:    [Diff] Actual / Expected-   false+   true",
+      );
+      // Now we should be able to run tests again without it hanging
+      const Sinco2 = await buildFor(browserItem.name);
+      const page2 = await Sinco2.goTo("https://chromestatus.com");
+      assertEquals(await page2.location(), "https://chromestatus.com/features");
+      try {
+        await page2.assertSee("Chrome Versions");
+      } catch (_err) {
+        //
+      }
+    },
   );
-  // Now we should be able to run tests again without it hanging
-  const Sinco2 = await ChromeClient.build();
-  await Sinco2.goTo("https://chromestatus.com");
-  await Sinco2.assertUrlIs("https://chromestatus.com/features");
-  try {
-    await Sinco2.assertSee("Chrome Versions");
-  } catch (_err) {
-    //
-  }
-});
-
-Deno.test("Firefox: Assertion methods cleanup when an assertion fails", async () => {
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://chromestatus.com");
-  await Sinco.assertUrlIs("https://chromestatus.com/features");
-  let gotError = false;
-  let errMsg = "";
-  try {
-    await Sinco.assertSee("Chrome Versions"); // Does not exist on the page (the `V` is lowercase, whereas here we use an uppercase)
-  } catch (err) {
-    gotError = true;
-    errMsg = err.message
-      // deno-lint-ignore no-control-regex
-      .replace(/\x1b/g, "") // or \x1b\[90m
-      .replace(/\[1m/g, "")
-      .replace(/\[[0-9][0-9]m/g, "")
-      .replace(/\n/g, "");
-  }
-  assertEquals(gotError, true);
-  assertEquals(
-    errMsg,
-    "Values are not equal:    [Diff] Actual / Expected-   false+   true",
-  );
-  // Now we should be able to run tests again without it hanging
-  const Sinco2 = await FirefoxClient.build();
-  await Sinco2.goTo("https://chromestatus.com");
-  await Sinco2.assertUrlIs("https://chromestatus.com/features");
-  try {
-    await Sinco2.assertSee("Chrome Versions");
-  } catch (_err) {
-    //
-  }
-});
+}

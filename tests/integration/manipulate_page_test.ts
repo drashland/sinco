@@ -1,95 +1,57 @@
 import { assertEquals } from "../../deps.ts";
-import { ChromeClient, FirefoxClient } from "../../mod.ts";
+import { buildFor } from "../../mod.ts";
 
-Deno.test("Chrome: Manipulate Webpage", async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://drash.land");
+import { browserList } from "../browser_list.ts";
 
-  const updatedBody = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    const prevBody = document.body.children.length;
-    // deno-lint-ignore no-undef
-    const newEl = document.createElement("p");
-    // deno-lint-ignore no-undef
-    document.body.appendChild(newEl);
-    // deno-lint-ignore no-undef
-    return prevBody === document.body.children.length - 1;
-  });
-  assertEquals(updatedBody, true);
+for (const browserItem of browserList) {
+  Deno.test(browserItem.name + ": Manipulate Webpage", async () => {
+    const Sinco = await buildFor(browserItem.name);
+    const page = await Sinco.goTo("https://drash.land");
 
-  await Sinco.done();
-});
+    const updatedBody = await page.evaluate(() => {
+      // deno-lint-ignore no-undef
+      const prevBody = document.body.children.length;
+      // deno-lint-ignore no-undef
+      const newEl = document.createElement("p");
+      // deno-lint-ignore no-undef
+      document.body.appendChild(newEl);
+      // deno-lint-ignore no-undef
+      return prevBody === document.body.children.length - 1;
+    });
+    assertEquals(updatedBody, true);
 
-Deno.test("Chrome: Evaluating a script - Tutorial for this feature in the documentation works", async () => {
-  const Sinco = await ChromeClient.build();
-  await Sinco.goTo("https://drash.land");
-  const pageTitle = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    return document.title;
+    await Sinco.done();
   });
-  const sum = await Sinco.evaluatePage(`1 + 10`);
-  const oldBodyLength = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    return document.body.children.length;
-  });
-  const newBodyLength = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    const p = document.createElement("p");
-    p.textContent = "Hello world!";
-    // deno-lint-ignore no-undef
-    document.body.appendChild(p);
-    // deno-lint-ignore no-undef
-    return document.body.children.length;
-  });
-  await Sinco.done();
-  assertEquals(pageTitle, "Drash Land");
-  assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 3);
-  assertEquals(newBodyLength, 4);
-});
 
-Deno.test("Firefox: Manipulate Webpage", async () => {
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://drash.land");
-
-  const updatedBody = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    const prevBody = document.body.children.length;
-    // deno-lint-ignore no-undef
-    const newEl = document.createElement("p");
-    // deno-lint-ignore no-undef
-    document.body.appendChild(newEl);
-    // deno-lint-ignore no-undef
-    return prevBody === document.body.children.length - 1;
-  });
-  await Sinco.done();
-  assertEquals(updatedBody, true);
-});
-
-Deno.test("Firefox: Evaluating a script - Tutorial for this feature in the documentation works", async () => {
-  const Sinco = await FirefoxClient.build();
-  await Sinco.goTo("https://drash.land");
-  const pageTitle = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    return document.title;
-  });
-  const sum = await Sinco.evaluatePage(`1 + 10`);
-  const oldBodyLength = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    return document.body.children.length;
-  });
-  const newBodyLength = await Sinco.evaluatePage(() => {
-    // deno-lint-ignore no-undef
-    const p = document.createElement("p");
-    p.textContent = "Hello world!";
-    // deno-lint-ignore no-undef
-    document.body.appendChild(p);
-    // deno-lint-ignore no-undef
-    return document.body.children.length;
-  });
-  await Sinco.done();
-  assertEquals(pageTitle, "Drash Land");
-  assertEquals(sum, 11);
-  assertEquals(oldBodyLength, 3);
-  assertEquals(newBodyLength, 4);
-});
+  Deno.test(
+    browserItem.name +
+      ": Evaluating a script - Tutorial for this feature in the documentation works",
+    async () => {
+      const Sinco = await buildFor(browserItem.name);
+      const page = await Sinco.goTo("https://drash.land");
+      const pageTitle = await page.evaluate(() => {
+        // deno-lint-ignore no-undef
+        return document.title;
+      });
+      const sum = await page.evaluate(`1 + 10`);
+      const oldBodyLength = await page.evaluate(() => {
+        // deno-lint-ignore no-undef
+        return document.body.children.length;
+      });
+      const newBodyLength = await page.evaluate(() => {
+        // deno-lint-ignore no-undef
+        const p = document.createElement("p");
+        p.textContent = "Hello world!";
+        // deno-lint-ignore no-undef
+        document.body.appendChild(p);
+        // deno-lint-ignore no-undef
+        return document.body.children.length;
+      });
+      await Sinco.done();
+      assertEquals(pageTitle, "Drash Land");
+      assertEquals(sum, 11);
+      assertEquals(oldBodyLength, 3);
+      assertEquals(newBodyLength, 4);
+    },
+  );
+}

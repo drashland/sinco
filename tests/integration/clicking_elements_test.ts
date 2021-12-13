@@ -1,19 +1,24 @@
 import { buildFor } from "../../mod.ts";
+import { browserList } from "../browser_list.ts";
+import { assertEquals } from "../../deps.ts";
 
-Deno.test("Chrome: Clicking elements - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await buildFor("chrome");
-  await Sinco.goTo("https://drash.land");
-  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]');
-  await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
-  await Sinco.done();
-});
-
-Deno.test("Firefox: Clicking elements - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await buildFor("firefox");
-  await Sinco.goTo("https://drash.land");
-  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]');
-  await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
-  await Sinco.done();
-});
+for (const browserItem of browserList) {
+  Deno.test(
+    browserItem.name +
+      ": Clicking elements - Tutorial for this feature in the docs should work",
+    async () => {
+      const Sinco = await buildFor(browserItem.name);
+      const page = await Sinco.goTo("https://drash.land");
+      const elem = await page.querySelector(
+        'a[href="https://discord.gg/RFsCSaHRWK"]',
+      );
+      await elem.click();
+      await page.waitForPageChange();
+      assertEquals(
+        await page.location(),
+        "https://discord.com/invite/RFsCSaHRWK",
+      );
+      await Sinco.done();
+    },
+  );
+}

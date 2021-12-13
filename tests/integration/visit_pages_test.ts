@@ -1,15 +1,17 @@
 import { buildFor } from "../../mod.ts";
+import { browserList } from "../browser_list.ts";
+import { assertEquals } from "../../deps.ts";
 
-Deno.test("Chrome: Visit pages - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await buildFor("chrome");
-  await Sinco.goTo("https://drash.land");
-  await Sinco.assertUrlIs("https://drash.land/");
-  await Sinco.done();
-});
-
-Deno.test("Firfox: Visit pages - Tutorial for this feature in the docs should work", async () => {
-  const Sinco = await buildFor("firefox");
-  await Sinco.goTo("https://drash.land");
-  await Sinco.assertUrlIs("https://drash.land/");
-  await Sinco.done();
-});
+for (const browserItem of browserList) {
+  Deno.test(
+    browserItem.name +
+      ": Visit pages - Tutorial for this feature in the docs should work",
+    async () => {
+      const Sinco = await buildFor(browserItem.name);
+      const page = await Sinco.goTo("https://drash.land");
+      const location = await page.location();
+      await Sinco.done();
+      assertEquals(location, "https://drash.land/");
+    },
+  );
+}

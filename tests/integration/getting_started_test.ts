@@ -1,31 +1,27 @@
 import { buildFor } from "../../mod.ts";
+import { browserList } from "../browser_list.ts";
+import { assertEquals } from "../../deps.ts";
 
-Deno.test("Chrome: Tutorial for Getting Started in the docs should work", async () => {
-  // Setup
-  const Sinco = await buildFor("chrome"); // also supports firefox
-  await Sinco.goTo("https://drash.land"); // Go to this page
+for (const browserItem of browserList) {
+  Deno.test(
+    browserItem.name + ": Tutorial for Getting Started in the docs should work",
+    async () => {
+      // Setup
+      const Sinco = await buildFor(browserItem.name); // also supports firefox
+      const page = await Sinco.goTo("https://drash.land"); // Go to this page
 
-  // Do any actions and assertions, in any order
-  await Sinco.assertUrlIs("https://drash.land/");
-  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]'); // This element will take the user to Sinco's documentation
-  await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
+      // Do any actions and assertions, in any order
+      assertEquals(await page.location(), "https://drash.land/");
+      const elem = await page.querySelector(
+        'a[href="https://discord.gg/RFsCSaHRWK"]',
+      );
+      await elem.click(); // This element will take the user to Sinco's documentation
+      await page.waitForPageChange();
+      const location = await page.location();
 
-  // Once finished, close to clean up any processes
-  await Sinco.done();
-});
-
-Deno.test("Firefox: Tutorial for Getting Started in the docs should work", async () => {
-  // Setup
-  const Sinco = await buildFor("firefox"); // also supports firefox
-  await Sinco.goTo("https://drash.land"); // Go to this page
-
-  // Do any actions and assertions, in any order
-  await Sinco.assertUrlIs("https://drash.land/");
-  await Sinco.click('a[href="https://discord.gg/RFsCSaHRWK"]'); // This element will take the user to Sinco's documentation
-  await Sinco.waitForPageChange();
-  await Sinco.assertUrlIs("https://discord.com/invite/RFsCSaHRWK");
-
-  // Once finished, close to clean up any processes
-  await Sinco.done();
-});
+      // Once finished, close to clean up any processes
+      await Sinco.done();
+      assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
+    },
+  );
+}
