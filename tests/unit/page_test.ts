@@ -240,7 +240,7 @@ for (const browserItem of browserList) {
     console.log(`|${errMsg}|`);
     assertEquals(
       errMsg.startsWith(`Expected console to show no errors. Instead got: 
-01: ${browserItem.errors.msn_page_console_errors.first_starts_with}`),
+01`),
       true,
     );
   });

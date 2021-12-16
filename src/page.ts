@@ -211,7 +211,7 @@ export class Page {
       // Otherwise, we have not gotten anymore notifs in the last .5s
       clearInterval(interval);
       forMessages.resolve();
-    }, 1000);
+    }, 2000);
     await forMessages;
     const notifs = this.#protocol.getStoredNotifications<
       Protocol.Log.EntryAddedEvent
