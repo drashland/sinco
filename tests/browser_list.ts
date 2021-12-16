@@ -6,6 +6,9 @@ export const browserList: Array<{
   errors: {
     page_not_exist_message: string;
     page_name_not_resolved: string;
+    msn_page_console_errors: {
+      first_starts_with: string;
+    };
   };
   cookies: Record<string, string | number | boolean>[];
   getPath: () => string;
@@ -17,6 +20,10 @@ export const browserList: Array<{
         'NS_ERROR_UNKNOWN_HOST: Error for navigating to page "https://hellaDOCSWOWThispagesurelycantexist.biscuit"',
       page_name_not_resolved:
         'net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "https://hhh"',
+      msn_page_console_errors: {
+        first_starts_with:
+          "Failed to load resource: the server responded with a status of",
+      },
     },
     getPath: getChromePath,
     cookies: [
@@ -44,6 +51,9 @@ export const browserList: Array<{
         'net::ERR_NAME_NOT_RESOLVED: Error for navigating to page "https://hellaDOCSWOWThispagesurelycantexist.biscuit"',
       page_name_not_resolved:
         'NS_ERROR_UNKNOWN_HOST: Error for navigating to page "https://hhh"',
+      msn_page_console_errors: {
+        first_starts_with: "Cross-Origin Request Blocked:",
+      },
     },
     getPath: getFirefoxPath,
     cookies: [
