@@ -65,8 +65,8 @@ export function getChromePath(): string {
 export function getChromeArgs(port: number, binaryPath?: string): string[] {
   return [
     binaryPath || getChromePath(),
-    "--headless",
     "--remote-debugging-port=" + port,
+    "--headless",
     "--disable-gpu",
     "--no-sandbox",
   ];

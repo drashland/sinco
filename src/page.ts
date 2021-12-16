@@ -1,4 +1,4 @@
-import { assertEquals, deferred, Protocol } from "../deps.ts";
+import { assertEquals, AssertionError, deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
@@ -106,7 +106,7 @@ export class Page {
         expression: pageCommand,
         includeCommandLineAPI: true, // supports things like $x
       });
-      await this.#checkForErrorResult(result, pageCommand);
+      //await this.#checkForErrorResult(result, pageCommand);
       return result.result.value;
     }
 
@@ -183,6 +183,51 @@ export class Page {
       );
     }
     return new Element("document.querySelector", selector, this);
+  }
+
+  /**
+   * Assert that there are no errors in the developer console, such as:
+   *   - 404's (favicon for example)
+   *   - Issues with JavaScript files
+   *   - etc
+   *
+   * @throws AssertionError
+   */
+  public async assertNoConsoleErrors() {
+    const forMessages = deferred();
+    let notifCount = 0;
+    // deno-lint-ignore no-this-alias
+    const self = this;
+    const interval = setInterval(function () {
+      const notifs = self.#protocol.getStoredNotifications<
+        Protocol.Log.EntryAddedEvent
+      >("Log.entryAdded");
+      // If stored notifs is greater than what we've got, then
+      // more notifs are being sent to us, so wait again
+      if (notifs.length > notifCount) {
+        notifCount = notifs.length;
+        return;
+      }
+      // Otherwise, we have not gotten anymore notifs in the last .5s
+      clearInterval(interval);
+      forMessages.resolve();
+    }, 1000);
+    await forMessages;
+    const notifs = this.#protocol.getStoredNotifications<
+      Protocol.Log.EntryAddedEvent
+    >("Log.entryAdded");
+    const errorNotifs = notifs.filter((notif) => notif.entry.level === "error");
+    const errorLogs = errorNotifs.map((notif) => notif.entry.text);
+    if (errorLogs.length) {
+      await this.#protocol.done();
+    }
+    let errorStr = "";
+    for (const i in errorLogs) {
+      errorStr += `${i + 1}: ${errorLogs[i]}\n`;
+    }
+    throw new AssertionError(
+      "Expected console to show no errors. Instead got: \n" + errorStr,
+    );
   }
 
   /**

@@ -222,4 +222,27 @@ for (const browserItem of browserList) {
     await Sinco.done();
     assertEquals(cookies, browserItem.cookies);
   });
+
+  Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should throw when errors`, async () => {
+    const Sinco = await buildFor(browserItem.name);
+    // I (ed) knows this page shows errors, but if we ever need to change it in the future,
+    // can always spin up a drash web app and add errors in the js to produce console errors
+    const page = await Sinco.goTo(
+      "https://www.msn.com/en-gb/?ocid=wispr&pc=u477",
+    );
+    let errMsg = "";
+    try {
+      await page.assertNoConsoleErrors();
+    } catch (e) {
+      errMsg = e.message;
+    }
+    await Sinco.done();
+    console.log(`|${errMsg}|`);
+    assertEquals(
+      errMsg.startsWith(`Expected console to show no errors. Instead got: 
+01: Failed to load resource: the server responded with a status of`),
+      true,
+    );
+  });
+  break;
 }

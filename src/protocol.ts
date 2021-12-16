@@ -10,7 +10,7 @@ interface MessageResponse { // For when we send an event to get one back, eg run
 
 interface NotificationResponse { // Not entirely sure when, but when we send the `Network.enable` method
   method: string;
-  params: unknown;
+  params: Record<string, unknown>;
 }
 
 export class Protocol {
@@ -58,6 +58,11 @@ export class Protocol {
    */
   public browser_process_closed = false;
 
+  /**
+   * Map of notifications, where the key is the method and the value is an array of the events
+   */
+  #stored_notifications: Map<string, Record<string, unknown>[]> = new Map();
+
   constructor(
     socket: WebSocket,
     browserProcess: Deno.Process,
@@ -78,6 +83,11 @@ export class Protocol {
       }
       this.#handleSocketMessage(data);
     };
+  }
+
+  // deno-lint-ignore ban-types
+  public getStoredNotifications<T extends object>(method: string): Array<T> {
+    return this.#stored_notifications.get(method) as T[] ?? [];
   }
 
   /**
@@ -197,22 +207,29 @@ export class Protocol {
   ) {
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
-      if (resolvable) {
-        if ("result" in message) { // success response
-          if ("errorText" in message.result!) {
-            const r = this.notification_resolvables.get("Page.loadEventFired");
-            if (r) {
-              r.resolve();
-            }
+      if (!resolvable) {
+        return;
+      }
+      if ("result" in message) { // success response
+        if ("errorText" in message.result!) {
+          const r = this.notification_resolvables.get("Page.loadEventFired");
+          if (r) {
+            r.resolve();
           }
-          resolvable.resolve(message.result);
         }
-        if ("error" in message) { // error response
-          resolvable.resolve(message.error);
-        }
+        resolvable.resolve(message.result);
+      }
+      if ("error" in message) { // error response
+        resolvable.resolve(message.error);
       }
     }
     if ("method" in message) { // Notification response
+      // Store certain methods for if we need to query them later
+      if (message.method === "Log.entryAdded") {
+        const notif = this.#stored_notifications.get(message.method) ?? [];
+        notif.push(message.params);
+        this.#stored_notifications.set(message.method, notif);
+      }
       const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {
         resolvable.resolve();
