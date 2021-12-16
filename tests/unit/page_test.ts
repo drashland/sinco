@@ -244,5 +244,13 @@ for (const browserItem of browserList) {
       true,
     );
   });
-  break;
+
+  Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should not throw when no errors`, async () => {
+    const Sinco = await buildFor(browserItem.name);
+    const page = await Sinco.goTo(
+      "https://drash.land",
+    );
+    await page.assertNoConsoleErrors();
+    await Sinco.done();
+  });
 }
