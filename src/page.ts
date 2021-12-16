@@ -106,7 +106,7 @@ export class Page {
         expression: pageCommand,
         includeCommandLineAPI: true, // supports things like $x
       });
-      //await this.#checkForErrorResult(result, pageCommand);
+      await this.#checkForErrorResult(result, pageCommand);
       return result.result.value;
     }
 
@@ -218,9 +218,10 @@ export class Page {
     >("Log.entryAdded");
     const errorNotifs = notifs.filter((notif) => notif.entry.level === "error");
     const errorLogs = errorNotifs.map((notif) => notif.entry.text);
-    if (errorLogs.length) {
-      await this.#protocol.done();
+    if (!errorLogs.length) {
+      return;
     }
+    await this.#protocol.done();
     let errorStr = "";
     for (const i in errorLogs) {
       errorStr += `${i + 1}: ${errorLogs[i]}\n`;
