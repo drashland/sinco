@@ -1,6 +1,7 @@
 import { Deferred, deferred } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 import type { Browsers } from "./types.ts";
+import { Protocol as ProtocolTypes } from "../deps.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -61,7 +62,7 @@ export class Protocol {
   /**
    * Map of notifications, where the key is the method and the value is an array of the events
    */
-  #stored_notifications: Map<string, Record<string, unknown>[]> = new Map();
+  public console_errors: string[] = [];
 
   constructor(
     socket: WebSocket,
@@ -83,11 +84,6 @@ export class Protocol {
       }
       this.#handleSocketMessage(data);
     };
-  }
-
-  // deno-lint-ignore ban-types
-  public getStoredNotifications<T extends object>(method: string): Array<T> {
-    return this.#stored_notifications.get(method) as T[] ?? [];
   }
 
   /**
@@ -225,10 +221,23 @@ export class Protocol {
     }
     if ("method" in message) { // Notification response
       // Store certain methods for if we need to query them later
+      if (message.method === "Runtime.exceptionThrown") {
+        const params = message
+          .params as unknown as ProtocolTypes.Runtime.ExceptionThrownEvent;
+        const errorMessage = params.exceptionDetails.exception?.description;
+        if (errorMessage) {
+          this.console_errors.push(errorMessage);
+        }
+      }
       if (message.method === "Log.entryAdded") {
-        const notif = this.#stored_notifications.get(message.method) ?? [];
-        notif.push(message.params);
-        this.#stored_notifications.set(message.method, notif);
+        const params = message
+          .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
+        if (params.entry.level === "error") {
+          const errorMessage = params.entry.text;
+          if (errorMessage) {
+            this.console_errors.push(errorMessage);
+          }
+        }
       }
       const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {

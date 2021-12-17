@@ -18,8 +18,8 @@ jobs:
         run: |
           cd tests/integration/docker_test
           docker-compose up -d
-          docker exec drivers deno test -A --config tsconfig.json tests/integration
-          docker exec drivers deno test -A --config tsconfig.json tests/unit
+          docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration
+          docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/unit
 
 
   tests:
@@ -38,11 +38,11 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          deno test -A tests/integration --config tsconfig.json
+          deno test -A tests/integration --config tsconfig.json --no-check=remote
 
       - name: Run Unit Tests
         run: |
-          deno test -A --config tsconfig.json tests/unit
+          deno test -A --config tsconfig.json tests/unit --no-check=remote
 
   linter:
     # Only one OS is required since fmt is cross platform

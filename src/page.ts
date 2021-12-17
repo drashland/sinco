@@ -191,17 +191,17 @@ export class Page {
    *   - Issues with JavaScript files
    *   - etc
    *
+   * @param exceptions - A list of strings that if matched, will be ignored such as ["favicon.ico"] if you want/need to ignore a 404 error for this file
+   *
    * @throws AssertionError
    */
-  public async assertNoConsoleErrors() {
+  public async assertNoConsoleErrors(exceptions: string[] = []) {
     const forMessages = deferred();
     let notifCount = 0;
     // deno-lint-ignore no-this-alias
     const self = this;
     const interval = setInterval(function () {
-      const notifs = self.#protocol.getStoredNotifications<
-        Protocol.Log.EntryAddedEvent
-      >("Log.entryAdded");
+      const notifs = self.#protocol.console_errors;
       // If stored notifs is greater than what we've got, then
       // more notifs are being sent to us, so wait again
       if (notifs.length > notifCount) {
@@ -211,23 +211,30 @@ export class Page {
       // Otherwise, we have not gotten anymore notifs in the last .5s
       clearInterval(interval);
       forMessages.resolve();
-    }, 2000);
+    }, 1000);
     await forMessages;
-    const notifs = this.#protocol.getStoredNotifications<
-      Protocol.Log.EntryAddedEvent
-    >("Log.entryAdded");
-    const errorNotifs = notifs.filter((notif) => notif.entry.level === "error");
-    const errorLogs = errorNotifs.map((notif) => notif.entry.text);
-    if (!errorLogs.length) {
+    const errorNotifs = this.#protocol.console_errors;
+    const filteredNotifs = !exceptions.length
+      ? errorNotifs
+      : errorNotifs.filter((notif) => {
+        const notifCanBeIgnored = exceptions.find((exception) => {
+          if (notif.includes(exception)) {
+            return true;
+          }
+          return false;
+        });
+        if (notifCanBeIgnored) {
+          return false;
+        }
+        return true;
+      });
+    if (!filteredNotifs.length) {
       return;
     }
     await this.#protocol.done();
-    let errorStr = "";
-    for (const i in errorLogs) {
-      errorStr += `${i + 1}: ${errorLogs[i]}\n`;
-    }
     throw new AssertionError(
-      "Expected console to show no errors. Instead got: \n" + errorStr,
+      "Expected console to show no errors. Instead got:\n" +
+        filteredNotifs.join("\n"),
     );
   }
 

@@ -3,6 +3,7 @@ const ScreenshotsFolder = "./tests/unit/Screenshots";
 import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { existsSync } from "../../src/utility.ts";
+import { server } from "../server.ts";
 
 for (const browserItem of browserList) {
   Deno.test(
@@ -224,11 +225,12 @@ for (const browserItem of browserList) {
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should throw when errors`, async () => {
+    server.run();
     const Sinco = await buildFor(browserItem.name);
     // I (ed) knows this page shows errors, but if we ever need to change it in the future,
     // can always spin up a drash web app and add errors in the js to produce console errors
     const page = await Sinco.goTo(
-      "https://www.msn.com/en-gb/?ocid=wispr&pc=u477",
+      server.address,
     );
     let errMsg = "";
     try {
@@ -237,12 +239,25 @@ for (const browserItem of browserList) {
       errMsg = e.message;
     }
     await Sinco.done();
-    console.log(`|${errMsg}|`);
-    assertEquals(
-      errMsg.startsWith(`Expected console to show no errors. Instead got: 
-01`),
-      true,
-    );
+    await server.close();
+    try {
+      assertEquals(
+        errMsg,
+        `Expected console to show no errors. Instead got:
+ReferenceError: callUser is not defined
+    at http://localhost:1447/index.js:1:1
+Failed to load resource: the server responded with a status of 404 (Not Found)`,
+      );
+    } catch (_e) {
+      assertEquals(
+        errMsg,
+        `Expected console to show no errors. Instead got:
+Failed to load resource: the server responded with a status of 404 (Not Found)
+ReferenceError: callUser is not defined
+    at http://localhost:1447/index.js:1:1
+Failed to load resource: the server responded with a status of 404 (Not Found)`,
+      );
+    }
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should not throw when no errors`, async () => {
@@ -253,4 +268,35 @@ for (const browserItem of browserList) {
     await page.assertNoConsoleErrors();
     await Sinco.done();
   });
+
+  Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should exclude messages`, async () => {
+    server.run();
+    const Sinco = await buildFor(browserItem.name);
+    const page = await Sinco.goTo(
+      server.address,
+    );
+    let errMsg = "";
+    try {
+      await page.assertNoConsoleErrors(["callUser"]);
+    } catch (e) {
+      errMsg = e.message;
+    }
+    await server.close();
+    await Sinco.done();
+    try {
+      assertEquals(
+        errMsg,
+        `Expected console to show no errors. Instead got:
+Failed to load resource: the server responded with a status of 404 (Not Found)
+Failed to load resource: the server responded with a status of 404 (Not Found)`,
+      );
+    } catch (_e) {
+      assertEquals(
+        errMsg,
+        `Expected console to show no errors. Instead got:
+Failed to load resource: the server responded with a status of 404 (Not Found)`,
+      );
+    }
+  });
+  break;
 }
