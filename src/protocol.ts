@@ -1,6 +1,7 @@
 import { Deferred, deferred } from "../deps.ts";
 import { existsSync } from "./utility.ts";
 import type { Browsers } from "./types.ts";
+import { Protocol as ProtocolTypes } from "../deps.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -10,7 +11,7 @@ interface MessageResponse { // For when we send an event to get one back, eg run
 
 interface NotificationResponse { // Not entirely sure when, but when we send the `Network.enable` method
   method: string;
-  params: unknown;
+  params: Record<string, unknown>;
 }
 
 export class Protocol {
@@ -57,6 +58,11 @@ export class Protocol {
    * Track if we've closed the sub process, so we dont try close it when it already has been
    */
   public browser_process_closed = false;
+
+  /**
+   * Map of notifications, where the key is the method and the value is an array of the events
+   */
+  public console_errors: string[] = [];
 
   constructor(
     socket: WebSocket,
@@ -197,22 +203,42 @@ export class Protocol {
   ) {
     if ("id" in message) { // message response
       const resolvable = this.resolvables.get(message.id);
-      if (resolvable) {
-        if ("result" in message) { // success response
-          if ("errorText" in message.result!) {
-            const r = this.notification_resolvables.get("Page.loadEventFired");
-            if (r) {
-              r.resolve();
-            }
+      if (!resolvable) {
+        return;
+      }
+      if ("result" in message) { // success response
+        if ("errorText" in message.result!) {
+          const r = this.notification_resolvables.get("Page.loadEventFired");
+          if (r) {
+            r.resolve();
           }
-          resolvable.resolve(message.result);
         }
-        if ("error" in message) { // error response
-          resolvable.resolve(message.error);
-        }
+        resolvable.resolve(message.result);
+      }
+      if ("error" in message) { // error response
+        resolvable.resolve(message.error);
       }
     }
     if ("method" in message) { // Notification response
+      // Store certain methods for if we need to query them later
+      if (message.method === "Runtime.exceptionThrown") {
+        const params = message
+          .params as unknown as ProtocolTypes.Runtime.ExceptionThrownEvent;
+        const errorMessage = params.exceptionDetails.exception?.description;
+        if (errorMessage) {
+          this.console_errors.push(errorMessage);
+        }
+      }
+      if (message.method === "Log.entryAdded") {
+        const params = message
+          .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
+        if (params.entry.level === "error") {
+          const errorMessage = params.entry.text;
+          if (errorMessage) {
+            this.console_errors.push(errorMessage);
+          }
+        }
+      }
       const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {
         resolvable.resolve();

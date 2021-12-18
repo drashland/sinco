@@ -1,4 +1,4 @@
-import { assertEquals, deferred, Protocol } from "../deps.ts";
+import { assertEquals, AssertionError, deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
@@ -183,6 +183,59 @@ export class Page {
       );
     }
     return new Element("document.querySelector", selector, this);
+  }
+
+  /**
+   * Assert that there are no errors in the developer console, such as:
+   *   - 404's (favicon for example)
+   *   - Issues with JavaScript files
+   *   - etc
+   *
+   * @param exceptions - A list of strings that if matched, will be ignored such as ["favicon.ico"] if you want/need to ignore a 404 error for this file
+   *
+   * @throws AssertionError
+   */
+  public async assertNoConsoleErrors(exceptions: string[] = []) {
+    const forMessages = deferred();
+    let notifCount = 0;
+    // deno-lint-ignore no-this-alias
+    const self = this;
+    const interval = setInterval(function () {
+      const notifs = self.#protocol.console_errors;
+      // If stored notifs is greater than what we've got, then
+      // more notifs are being sent to us, so wait again
+      if (notifs.length > notifCount) {
+        notifCount = notifs.length;
+        return;
+      }
+      // Otherwise, we have not gotten anymore notifs in the last .5s
+      clearInterval(interval);
+      forMessages.resolve();
+    }, 1000);
+    await forMessages;
+    const errorNotifs = this.#protocol.console_errors;
+    const filteredNotifs = !exceptions.length
+      ? errorNotifs
+      : errorNotifs.filter((notif) => {
+        const notifCanBeIgnored = exceptions.find((exception) => {
+          if (notif.includes(exception)) {
+            return true;
+          }
+          return false;
+        });
+        if (notifCanBeIgnored) {
+          return false;
+        }
+        return true;
+      });
+    if (!filteredNotifs.length) {
+      return;
+    }
+    await this.#protocol.done();
+    throw new AssertionError(
+      "Expected console to show no errors. Instead got:\n" +
+        filteredNotifs.join("\n"),
+    );
   }
 
   /**
