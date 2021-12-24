@@ -3,16 +3,67 @@ import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
+import { Client } from "./client.ts"
 
 /**
  * A representation of the page the client is on, allowing the client to action
  * on it, such as setting cookies, or selecting elements, or interacting with localstorage etc
  */
 export class Page {
+  /**
+   * The pages specific protocol to communicate on the page
+   */
   readonly #protocol: ProtocolClass;
 
-  constructor(protocol: ProtocolClass) {
+  target_id: string; // also the target id for the page
+
+  #client: Client
+
+  constructor(protocol: ProtocolClass, targetId: string, client: Client) {
     this.#protocol = protocol;
+    this.target_id = targetId;
+    this.#client = client
+  }
+
+  public get socket () {
+    return this.#protocol.socket
+  }
+
+  public async _close() {
+    const p = deferred();
+    this.#protocol.socket.onclose = () => p.resolve();
+    this.#protocol.socket.close();
+    await p;
+  }
+
+  /**
+   * Closes the page. After, you will not be able to interact with it
+   */
+  public async close() {
+    // Delete page
+    const method = "Inspector.detatched";
+    const map = this.#protocol.notification_resolvables.set(method, deferred());
+    const p = map.get(
+      method,
+    );
+    this.#protocol.sendWebSocketMessage("Target.closeTarget", {
+      targetId: this.target_id,
+    });
+    await p;
+
+    // Close socket
+    const p2 = deferred()
+    this.#protocol.socket.onclose = () => p2.resolve()
+    this.#protocol.socket.close()
+    await p2
+    
+    // And remove it from the pages array
+    for (const i in this.#client.pages) {
+      if (this.#client.pages[i].target_id === this.target_id) {
+        delete this.#client.pages[i];
+        break;
+      }
+    }
   }
 
   /**
@@ -61,7 +112,10 @@ export class Page {
         null,
         Protocol.Target.GetTargetsResponse
       >("Target.getTargets");
-      return targets.targetInfos[0].url;
+      const target = targets.targetInfos.find((target) =>
+        target.targetId === this.target_id
+      );
+      return target!.url;
     }
     const method = "Page.loadEventFired";
     this.#protocol.notification_resolvables.set(method, deferred());
@@ -79,7 +133,7 @@ export class Page {
     );
     await notificationPromise;
     if (res.errorText) {
-      await this.#protocol.done(
+      await this.#client.done(
         `${res.errorText}: Error for navigating to page "${newLocation}"`,
       );
     }
@@ -106,6 +160,7 @@ export class Page {
         expression: pageCommand,
         includeCommandLineAPI: true, // supports things like $x
       });
+      console.log(result);
       await this.#checkForErrorResult(result, pageCommand);
       return result.result.value;
     }
@@ -117,7 +172,7 @@ export class Page {
       >(
         "Page.createIsolatedWorld",
         {
-          frameId: this.#protocol.frame_id,
+          frameId: this.target_id,
         },
       );
 
@@ -139,12 +194,15 @@ export class Page {
     }
   }
 
+  expectPageChange() {
+    this.#protocol.notification_resolvables.set('Page.windowOpen', deferred())
+  }
+
   /**
    * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
    */
   async waitForPageChange(): Promise<void> {
     const method = "Page.loadEventFired";
-    this.#protocol.notification_resolvables.set(method, deferred());
     const notificationPromise = this.#protocol.notification_resolvables.get(
       method,
     );
@@ -161,7 +219,7 @@ export class Page {
     const command = `document.body.innerText.includes('${text}')`;
     const exists = await this.evaluate(command);
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
-      await this.#protocol.done();
+      await this.#client.done();
     }
     assertEquals(exists, true);
   }
@@ -174,15 +232,35 @@ export class Page {
    * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
-    const result = await this.evaluate(
-      `document.querySelector('${selector}')`,
-    );
-    if (result === null) {
-      await this.#protocol.done(
+    console.log(`document.querySelector('${selector}')`)
+    const result = await this.#protocol.sendWebSocketMessage<
+      Protocol.Runtime.EvaluateRequest,
+      Protocol.Runtime.EvaluateResponse
+    >("Runtime.evaluate", {
+      expression: `document.querySelector('${selector}')`,
+      includeCommandLineAPI: true,
+    });
+    if (result.result.value === null) {
+      await this.#client.done(
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
-    return new Element("document.querySelector", selector, this);
+    console.log("da queryse result", result);
+    return new Element(
+      "document.querySelector",
+      selector,
+      this,
+      this.#protocol,
+      result.result.objectId,
+    );
+  }
+
+  /**
+   * Only needed if you want this page to be displayed.
+   * Without calling this method, you can still communicate to each page.
+   */
+  public async focus() {
+    await this.#protocol.sendWebSocketMessage("Page.bringToFront");
   }
 
   /**
@@ -231,7 +309,7 @@ export class Page {
     if (!filteredNotifs.length) {
       return;
     }
-    await this.#protocol.done();
+    await this.#client.done();
     throw new AssertionError(
       "Expected console to show no errors. Instead got:\n" +
         filteredNotifs.join("\n"),
@@ -253,7 +331,7 @@ export class Page {
     options?: ScreenshotOptions,
   ): Promise<string> {
     if (!existsSync(path)) {
-      await this.#protocol.done();
+      await this.#client.done();
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
     const ext = options?.format ?? "jpeg";
@@ -273,7 +351,7 @@ export class Page {
     const clip = (options?.selector) ? viewPort : undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
-      await this.#protocol.done(
+      await this.#client.done(
         "A quality value greater than 100 is not allowed.",
       );
     }
@@ -307,7 +385,7 @@ export class Page {
     try {
       Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      await this.#protocol.done();
+      await this.#client.done();
       throw new Error(e.message);
     }
 
@@ -329,16 +407,24 @@ export class Page {
       return;
     }
     if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-      await this.#protocol.done(exceptionDetail.text);
+      await this.#client.done(exceptionDetail.text);
     }
     const errorMessage = exceptionDetail.exception!.description ??
       exceptionDetail.text;
     if (errorMessage.includes("SyntaxError")) { // a syntax error
       const message = errorMessage.replace("SyntaxError: ", "");
-      await this.#protocol.done();
+      await this.#client.done();
       throw new SyntaxError(message + ": `" + commandSent + "`");
     }
     // any others, unsure what they'd be
-    await this.#protocol.done(`${errorMessage}: "${commandSent}"`);
+    await this.#client.done(`${errorMessage}: "${commandSent}"`);
+  }
+
+  public async test() {
+    console.log(
+      await this.#protocol.sendWebSocketMessage("Target.getTargets", {
+        url: "https://google.com",
+      }),
+    );
   }
 }

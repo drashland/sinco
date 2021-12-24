@@ -10,8 +10,8 @@ for (const browserItem of browserList) {
     "takeScreenshot() | Throws an error if provided path doesn't exist",
     async () => {
       let msg = "";
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       try {
         await page.takeScreenshot("eieio");
       } catch (error) {
@@ -28,10 +28,10 @@ for (const browserItem of browserList) {
   Deno.test(
     "takeScreenshot() | Takes a Screenshot with timestamp as filename if filename is not provided",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       const fileName = await page.takeScreenshot(ScreenshotsFolder);
-      await Sinco.done();
+      await browser.done();
       const exists = existsSync(fileName);
       Deno.removeSync(fileName);
       assertEquals(
@@ -44,13 +44,13 @@ for (const browserItem of browserList) {
   Deno.test(
     "takeScreenshot() | Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       const fileName = await page.takeScreenshot(ScreenshotsFolder, {
         selector: "span",
         quality: 50,
       });
-      await Sinco.done();
+      await browser.done();
       const exists = existsSync(fileName);
       Deno.removeSync(fileName);
       assertEquals(
@@ -63,15 +63,15 @@ for (const browserItem of browserList) {
   Deno.test(
     "Throws an error when format passed is jpeg(or default) and quality > than 100",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       let msg = "";
       try {
         await page.takeScreenshot(ScreenshotsFolder, { quality: 999 });
       } catch (error) {
         msg = error.message;
       }
-      //await Sinco.done();
+      //await browser.done();
       assertEquals(
         msg,
         "A quality value greater than 100 is not allowed.",
@@ -80,12 +80,12 @@ for (const browserItem of browserList) {
   );
 
   Deno.test("Saves Screenshot with Given Filename", async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo("https://chromestatus.com");
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://chromestatus.com");
     const filename = await page.takeScreenshot(ScreenshotsFolder, {
       fileName: "Happy",
     });
-    await Sinco.done();
+    await browser.done();
     const exists = existsSync(filename);
     Deno.removeSync(filename);
     assertEquals(
@@ -97,12 +97,12 @@ for (const browserItem of browserList) {
   Deno.test(
     "takeScreenshot() | Saves Screenshot with given format (jpeg | png)",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       const fileName = await page.takeScreenshot(ScreenshotsFolder, {
         format: "png",
       });
-      await Sinco.done();
+      await browser.done();
       const exists = existsSync(fileName);
       assertEquals(
         exists,
@@ -113,15 +113,15 @@ for (const browserItem of browserList) {
   );
 
   Deno.test("takeScreenshot() | Saves Screenshot with all options provided", async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo("https://chromestatus.com");
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://chromestatus.com");
     const filename = await page.takeScreenshot(ScreenshotsFolder, {
       fileName: "AllOpts",
       selector: "span",
       format: "jpeg",
       quality: 100,
     });
-    await Sinco.done();
+    await browser.done();
     const exists = existsSync(filename);
     assertEquals(
       exists,
@@ -136,8 +136,8 @@ for (const browserItem of browserList) {
   Deno.test(
     "waitForPageChange() | Waits for a page to change before continuing",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       assertEquals(
         await page.location(),
         "https://chromestatus.com/features",
@@ -146,24 +146,24 @@ for (const browserItem of browserList) {
       await elem.click();
       await page.waitForPageChange();
       assertEquals(await page.location(), "https://chromestatus.com/roadmap");
-      await Sinco.done();
+      await browser.done();
     },
   );
 
   Deno.test(
     "assertSee() | Assertion should work when text is present on page",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com/features");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com/features");
       await page.assertSee("Chrome Platform Status");
-      await Sinco.done();
+      await browser.done();
     },
   );
   Deno.test(
     "assertSee() | Assertion should NOT work when text is NOT present on page",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       let errorMsg = "";
       // test fails because page is its own instance, so page prop is true, but clients is still false
       try {
@@ -171,7 +171,7 @@ for (const browserItem of browserList) {
       } catch (err) {
         errorMsg = err.message;
       }
-      await Sinco.done();
+      await browser.done();
       const msgArr = errorMsg.split("\n").filter((line) => {
         return !!line === true && line.indexOf(" ") !== 0 &&
           line.indexOf("Values") < 0;
@@ -184,52 +184,52 @@ for (const browserItem of browserList) {
   Deno.test(
     "evaluate() | It should evaluate function on current frame",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://drash.land");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://drash.land");
       const pageTitle = await page.evaluate(() => {
         // deno-lint-ignore no-undef
         return document.title;
       });
-      await Sinco.done();
+      await browser.done();
       assertEquals(pageTitle, "Drash Land");
     },
   );
   Deno.test("evaluate() | It should evaluate string on current frame", async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo("https://chromestatus.com");
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://chromestatus.com");
     const parentConstructor = await page.evaluate(`1 + 2`);
-    await Sinco.done();
+    await browser.done();
     assertEquals(parentConstructor, 3);
   });
 
   Deno.test("location() | Sets and gets the location", async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo("https://google.com");
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://google.com");
     await page.location("https://drash.land");
     const location = await page.location();
-    await Sinco.done();
+    await browser.done();
     assertEquals(location, "https://drash.land/");
   });
 
   Deno.test("cookie() | Sets and gets cookies", async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo("https://drash.land");
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://drash.land");
     await page.cookie({
       name: "user",
       value: "ed",
       "url": "https://drash.land",
     });
     const cookies = await page.cookie();
-    await Sinco.done();
+    await browser.done();
     assertEquals(cookies, browserItem.cookies);
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should throw when errors`, async () => {
     server.run();
-    const Sinco = await buildFor(browserItem.name);
+    const { browser, page } = await buildFor(browserItem.name);
     // I (ed) knows this page shows errors, but if we ever need to change it in the future,
     // can always spin up a drash web app and add errors in the js to produce console errors
-    const page = await Sinco.goTo(
+    await page.location(
       server.address,
     );
     let errMsg = "";
@@ -238,7 +238,7 @@ for (const browserItem of browserList) {
     } catch (e) {
       errMsg = e.message;
     }
-    await Sinco.done();
+    await browser.done();
     await server.close();
     try {
       assertEquals(
@@ -261,18 +261,18 @@ Failed to load resource: the server responded with a status of 404 (Not Found)`,
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should not throw when no errors`, async () => {
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo(
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location(
       "https://drash.land",
     );
     await page.assertNoConsoleErrors();
-    await Sinco.done();
+    await browser.done();
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should exclude messages`, async () => {
     server.run();
-    const Sinco = await buildFor(browserItem.name);
-    const page = await Sinco.goTo(
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location(
       server.address,
     );
     let errMsg = "";
@@ -282,7 +282,7 @@ Failed to load resource: the server responded with a status of 404 (Not Found)`,
       errMsg = e.message;
     }
     await server.close();
-    await Sinco.done();
+    await browser.done();
     try {
       assertEquals(
         errMsg,

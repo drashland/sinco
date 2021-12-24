@@ -1,8 +1,9 @@
 import { Deferred, deferred } from "../deps.ts";
-import { existsSync } from "./utility.ts";
 import type { Browsers } from "./types.ts";
 import { Protocol as ProtocolTypes } from "../deps.ts";
-
+import { Page } from "./page.ts";
+import { Client } from "./client.ts"
+ 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
   result?: Record<string, unknown>; // Present on success, OR for example if we  use goTo and the url doesnt exist (in firefox)
@@ -21,18 +22,6 @@ export class Protocol {
   public socket: WebSocket;
 
   /**
-   * The sub process that runs headless chrome
-   */
-  public browser_process: Deno.Process;
-
-  /**
-   * What browser we running?
-   */
-  public browser: Browsers;
-
-  public frame_id: string;
-
-  /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
   public next_message_id = 1;
@@ -48,93 +37,32 @@ export class Protocol {
   public notification_resolvables: Map<string, Deferred<void>> = new Map();
 
   /**
-   * Only if the browser is firefox, is this present.
-   * This is the path to the directory that firefox uses
-   * to write a profile
-   */
-  public firefox_profile_path: string | undefined = undefined;
-
-  /**
-   * Track if we've closed the sub process, so we dont try close it when it already has been
-   */
-  public browser_process_closed = false;
-
-  /**
    * Map of notifications, where the key is the method and the value is an array of the events
    */
   public console_errors: string[] = [];
 
+  public ws_hostname: string;
+
+  public ws_port: number;
+
+  public client?: Client
+
   constructor(
     socket: WebSocket,
-    browserProcess: Deno.Process,
-    browser: Browsers,
-    frameId: string,
-    firefoxProfilePath: string | undefined,
+    wsHostname: string,
+    wsPort: number,
   ) {
     this.socket = socket;
-    this.browser_process = browserProcess;
-    this.browser = browser;
-    this.frame_id = frameId;
-    this.firefox_profile_path = firefoxProfilePath;
+    this.ws_hostname = wsHostname;
+    this.ws_port = wsPort;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
-      if (data.method === "Page.frameStartedLoading") {
-        this.frame_id = data.params.frameId;
-      }
+      // if (data.method === "Page.frameStartedLoading") {
+      //   this.frame_id = data.params.frameId;
+      // }
       this.#handleSocketMessage(data);
     };
-  }
-
-  /**
-   * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
-   *
-   * @param errMsg - If supplied, will finally throw an error with the message after closing all processes
-   */
-  public async done(errMsg?: string): Promise<void> {
-    // Say a user calls an assertion method, and then calls done(), we make sure that if
-    // the subprocess is already closed, dont try close it again
-    if (this.browser_process_closed === true) {
-      return;
-    }
-    const clientIsClosed = deferred();
-    this.socket.onclose = () => clientIsClosed.resolve();
-    // cloing subprocess will also close the ws endpoint
-    this.browser_process.stderr!.close();
-    this.browser_process.stdout!.close();
-    this.browser_process.close();
-    this.browser_process_closed = true;
-    // Zombie processes is a thing with Windows, the firefox process on windows
-    // will not actually be closed using the above.
-    // Related Deno issue: https://github.com/denoland/deno/issues/7087
-    if (this.browser === "firefox" && Deno.build.os === "windows") {
-      const p = Deno.run({
-        cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
-        stdout: "null",
-        stderr: "null",
-      });
-      await p.status();
-      p.close();
-    }
-    await clientIsClosed; // done AFTER the above conditional because the process is still running, so the client is never closed
-    if (this.firefox_profile_path) {
-      // On windows, this block is annoying. We either get a perm denied or
-      // resource is in use error (classic windows). So what we're doing here is
-      // even if one of those errors are thrown, keep trying because what i've (ed)
-      // found is, it seems to need a couple seconds to realise that the dir
-      // isnt being used anymore. The loop shouldn't be needed for macos/unix though, so
-      // it will likely only run once.
-      while (existsSync(this.firefox_profile_path)) {
-        try {
-          Deno.removeSync(this.firefox_profile_path, { recursive: true });
-        } catch (_e) {
-          // Just try removing again
-        }
-      }
-    }
-    if (errMsg) {
-      throw new Error(errMsg);
-    }
   }
 
   /**
@@ -186,19 +114,21 @@ export class Protocol {
       try {
         const res = await fetch(`http://${hostname}:${port}/json/list`);
         const json = await res.json();
+        console.log(json);
         debugUrl = json[0]["webSocketDebuggerUrl"];
         frameId = json[0]["id"];
       } catch (_err) {
         // do nothing, loop again until the endpoint is ready
       }
     }
+    console.log("got debug url");
     return {
       debugUrl,
       frameId,
     };
   }
 
-  #handleSocketMessage(
+  async #handleSocketMessage(
     message: MessageResponse | NotificationResponse,
   ) {
     if ("id" in message) { // message response
@@ -220,6 +150,7 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
+      console.log(message);
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
         const params = message
@@ -239,10 +170,54 @@ export class Protocol {
           }
         }
       }
+
+      // Support when a new tab opens (eg from clicking a link), it is now a new page in the browser
+      if (
+        message.method === "Page.frameRequestedNavigation" &&
+        message.params.disposition === "newTab"
+      ) {
+        const targets = await this.sendWebSocketMessage<
+          null,
+          ProtocolTypes.Target.GetTargetsResponse
+        >("Target.getTargets");
+        const target = targets.targetInfos.find((target) =>
+          target.url === message.params.url
+        );
+        console.log("found target:", target);
+        const res = await fetch(
+          `http://${this.ws_hostname}:${this.ws_port}/json/list`,
+        );
+        const json = await res.json();
+        console.log("da json", json);
+        const item = json.find((j: any) => j["url"] === message.params.url);
+        console.log("found item:", item);
+        const url = item["webSocketDebuggerUrl"];
+        const ws = new WebSocket(url);
+        const p = deferred();
+        ws.onopen = () => p.resolve();
+        await p;
+        const newProt = new Protocol(
+          ws,
+          this.ws_hostname,
+          this.ws_port,
+        );
+        newProt.client = this.client
+        console.log("enaliongh...");
+        await newProt.sendWebSocketMessage("Page.enable");
+        await newProt.sendWebSocketMessage("Runtime.enable");
+        await newProt.sendWebSocketMessage("Log.enable");
+        this.client!.pages.push(new Page(newProt, target?.targetId as string, this.client as Client));
+        console.log("just added new target", this.client!.pages, target?.targetId);
+        this.notification_resolvables.get("Custom.newPageCreated")?.resolve();
+      }
+
       const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {
         resolvable.resolve();
       }
     }
+  }
+
+  public static async prepareWebsocketProtocol() {
   }
 }

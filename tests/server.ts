@@ -15,9 +15,16 @@ class JSResource extends Drash.Resource {
     response.headers.set("content-type", "application/javascript");
   }
 }
+class PopupsResource extends Drash.Resource {
+  public paths = ["/popups"];
+
+  public GET(r: Drash.Request, res: Drash.Response) {
+    return res.html('<a href="https://drash.land" target="_blank" />');
+  }
+}
 
 export const server = new Drash.Server({
-  resources: [HomeResource, JSResource],
+  resources: [HomeResource, JSResource, PopupsResource],
   protocol: "http",
   port: 1447,
   hostname: "localhost",

@@ -30,8 +30,8 @@ for (const browserItem of browserList) {
   Deno.test(
     browserItem.name + ": Assertion methods cleanup when an assertion fails",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       assertEquals(await page.location(), "https://chromestatus.com/features");
       let gotError = false;
       let errMsg = "";
@@ -52,8 +52,8 @@ for (const browserItem of browserList) {
         "Values are not equal:    [Diff] Actual / Expected-   false+   true",
       );
       // Now we should be able to run tests again without it hanging
-      const Sinco2 = await buildFor(browserItem.name);
-      const page2 = await Sinco2.goTo("https://chromestatus.com");
+      const { browser: browser2, page: page2} = await buildFor(browserItem.name);
+      await page2.location("https://chromestatus.com");
       assertEquals(await page2.location(), "https://chromestatus.com/features");
       try {
         await page2.assertSee("Chrome Versions");

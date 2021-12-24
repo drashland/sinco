@@ -7,13 +7,13 @@ for (const browserItem of browserList) {
     browserItem.name +
       ": Get and set input value - Tutorial for this feature in the docs should work",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://chromestatus.com");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
       const elem = await page.querySelector('input[placeholder="Filter"]');
       await elem.value("hello world");
       const val = await elem.value();
       assertEquals(val, "hello world");
-      await Sinco.done();
+      await browser.done();
     },
   );
 }

@@ -2,6 +2,7 @@ import { Client } from "./src/client.ts";
 import { BuildOptions, Cookie, ScreenshotOptions } from "./src/interfaces.ts";
 import type { Browsers } from "./src/types.ts";
 import { getChromeArgs, getFirefoxArgs } from "./src/utility.ts";
+import { Page } from "./src/page.ts";
 
 export type { BuildOptions, Cookie, ScreenshotOptions };
 
@@ -12,7 +13,10 @@ export async function buildFor(
     debuggerPort: 9292,
     binaryPath: undefined,
   },
-): Promise<Client> {
+): Promise<{
+  browser: Client;
+  page: Page;
+}> {
   if (!options.debuggerPort) options.debuggerPort = 9292;
   if (!options.hostname) options.hostname = "localhost";
   if (browser === "chrome") {

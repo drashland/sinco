@@ -8,15 +8,15 @@ for (const browserItem of browserList) {
     browserItem.name +
       ": Waiting - Tutorial for this feature in the docs should work",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://drash.land");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://drash.land");
       const elem = await page.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );
       await elem.click();
       await page.waitForPageChange();
       const location = await page.location();
-      await Sinco.done();
+      await browser.done();
       assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );

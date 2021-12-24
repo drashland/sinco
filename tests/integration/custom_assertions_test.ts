@@ -7,11 +7,11 @@ for (const browserItem of browserList) {
     browserItem.name +
       ": Assertions - Tutorial for this feature in the docs should work",
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://drash.land");
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://drash.land");
       assertEquals(await page.location(), "https://drash.land/");
       await page.assertSee("Develop With Confidence");
-      await Sinco.done();
+      await browser.done();
     },
   );
 }
