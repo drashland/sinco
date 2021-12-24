@@ -20,7 +20,7 @@ for (const browserItem of browserList) {
       const location = await page.location();
 
       // Once finished, close to clean up any processes
-      await browser.done();
+      await browser.close();
       assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );

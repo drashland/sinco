@@ -20,7 +20,7 @@ for (const browserItem of browserList) {
         fileName: "modules.jpeg",
         selector: 'a[href="https://github.com/drashland"]',
       }); // Will screenshot only the GitHub icon section, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
-      await browser.done();
+      await browser.close();
       Deno.removeSync("./screenshots", { recursive: true });
     },
   );

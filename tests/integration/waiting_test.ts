@@ -16,7 +16,7 @@ for (const browserItem of browserList) {
       await elem.click();
       await page.waitForPageChange();
       const location = await page.location();
-      await browser.done();
+      await browser.close();
       assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );

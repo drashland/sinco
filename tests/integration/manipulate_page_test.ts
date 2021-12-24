@@ -20,7 +20,7 @@ for (const browserItem of browserList) {
     });
     assertEquals(updatedBody, true);
 
-    await browser.done();
+    await browser.close();
   });
 
   Deno.test(
@@ -47,7 +47,7 @@ for (const browserItem of browserList) {
         // deno-lint-ignore no-undef
         return document.body.children.length;
       });
-      await browser.done();
+      await browser.close();
       assertEquals(pageTitle, "Drash Land");
       assertEquals(sum, 11);
       assertEquals(oldBodyLength, 3);

@@ -24,7 +24,7 @@ for (const browserItem of browserList) {
     const cookieVal = await page.evaluate(() => {
       return document.cookie;
     });
-    await browser.done();
+    await browser.close();
     Rhum.asserts.assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
   });
 }

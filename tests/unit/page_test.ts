@@ -31,7 +31,7 @@ for (const browserItem of browserList) {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com");
       const fileName = await page.takeScreenshot(ScreenshotsFolder);
-      await browser.done();
+      await browser.close();
       const exists = existsSync(fileName);
       Deno.removeSync(fileName);
       assertEquals(
@@ -50,7 +50,7 @@ for (const browserItem of browserList) {
         selector: "span",
         quality: 50,
       });
-      await browser.done();
+      await browser.close();
       const exists = existsSync(fileName);
       Deno.removeSync(fileName);
       assertEquals(
@@ -71,7 +71,7 @@ for (const browserItem of browserList) {
       } catch (error) {
         msg = error.message;
       }
-      //await browser.done();
+      //await browser.close();
       assertEquals(
         msg,
         "A quality value greater than 100 is not allowed.",
@@ -85,7 +85,7 @@ for (const browserItem of browserList) {
     const filename = await page.takeScreenshot(ScreenshotsFolder, {
       fileName: "Happy",
     });
-    await browser.done();
+    await browser.close();
     const exists = existsSync(filename);
     Deno.removeSync(filename);
     assertEquals(
@@ -102,7 +102,7 @@ for (const browserItem of browserList) {
       const fileName = await page.takeScreenshot(ScreenshotsFolder, {
         format: "png",
       });
-      await browser.done();
+      await browser.close();
       const exists = existsSync(fileName);
       assertEquals(
         exists,
@@ -121,7 +121,7 @@ for (const browserItem of browserList) {
       format: "jpeg",
       quality: 100,
     });
-    await browser.done();
+    await browser.close();
     const exists = existsSync(filename);
     assertEquals(
       exists,
@@ -146,7 +146,7 @@ for (const browserItem of browserList) {
       await elem.click();
       await page.waitForPageChange();
       assertEquals(await page.location(), "https://chromestatus.com/roadmap");
-      await browser.done();
+      await browser.close();
     },
   );
 
@@ -156,7 +156,7 @@ for (const browserItem of browserList) {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com/features");
       await page.assertSee("Chrome Platform Status");
-      await browser.done();
+      await browser.close();
     },
   );
   Deno.test(
@@ -171,7 +171,7 @@ for (const browserItem of browserList) {
       } catch (err) {
         errorMsg = err.message;
       }
-      await browser.done();
+      await browser.close();
       const msgArr = errorMsg.split("\n").filter((line) => {
         return !!line === true && line.indexOf(" ") !== 0 &&
           line.indexOf("Values") < 0;
@@ -190,7 +190,7 @@ for (const browserItem of browserList) {
         // deno-lint-ignore no-undef
         return document.title;
       });
-      await browser.done();
+      await browser.close();
       assertEquals(pageTitle, "Drash Land");
     },
   );
@@ -198,7 +198,7 @@ for (const browserItem of browserList) {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://chromestatus.com");
     const parentConstructor = await page.evaluate(`1 + 2`);
-    await browser.done();
+    await browser.close();
     assertEquals(parentConstructor, 3);
   });
 
@@ -207,7 +207,7 @@ for (const browserItem of browserList) {
     await page.location("https://google.com");
     await page.location("https://drash.land");
     const location = await page.location();
-    await browser.done();
+    await browser.close();
     assertEquals(location, "https://drash.land/");
   });
 
@@ -220,7 +220,7 @@ for (const browserItem of browserList) {
       "url": "https://drash.land",
     });
     const cookies = await page.cookie();
-    await browser.done();
+    await browser.close();
     assertEquals(cookies, browserItem.cookies);
   });
 
@@ -238,7 +238,7 @@ for (const browserItem of browserList) {
     } catch (e) {
       errMsg = e.message;
     }
-    await browser.done();
+    await browser.close();
     await server.close();
     try {
       assertEquals(
@@ -266,7 +266,7 @@ Failed to load resource: the server responded with a status of 404 (Not Found)`,
       "https://drash.land",
     );
     await page.assertNoConsoleErrors();
-    await browser.done();
+    await browser.close();
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should exclude messages`, async () => {
@@ -282,7 +282,7 @@ Failed to load resource: the server responded with a status of 404 (Not Found)`,
       errMsg = e.message;
     }
     await server.close();
-    await browser.done();
+    await browser.close();
     try {
       assertEquals(
         errMsg,

@@ -20,7 +20,7 @@ for (const browserItem of browserList) {
       console.log(location)
       const page2 = browser.pages[1]
       const page2Location = await page2.location()
-      //await browser.done();
+      //await browser.close();
       assertEquals(
         page2Location,
         "https://discord.com/invite/RFsCSaHRWK",
@@ -32,7 +32,7 @@ for (const browserItem of browserList) {
       // await xElem.click({}, true);
       // const pageLocation = await page.location()
 
-      await browser.done()
+      await browser.close()
       // assertEquals(pageLocation, "https://deno.land/x")
     },
   );

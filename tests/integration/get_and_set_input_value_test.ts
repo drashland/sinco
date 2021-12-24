@@ -13,7 +13,7 @@ for (const browserItem of browserList) {
       await elem.value("hello world");
       const val = await elem.value();
       assertEquals(val, "hello world");
-      await browser.done();
+      await browser.close();
     },
   );
 }

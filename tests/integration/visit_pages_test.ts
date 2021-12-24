@@ -10,7 +10,7 @@ for (const browserItem of browserList) {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://drash.land");
       const location = await page.location();
-      await browser.done();
+      await browser.close();
       assertEquals(location, "https://drash.land/");
     },
   );

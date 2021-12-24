@@ -12,7 +12,7 @@ for (const browserItem of browserList) {
     });
     await page.waitForPageChange();
     await page.assertSee("Roadmap");
-    await browser.done();
+    await browser.close();
   });
 
   Deno.test("value | It should get the value for the given input element", async () => {
@@ -22,7 +22,7 @@ for (const browserItem of browserList) {
     await elem.value("hello world");
     const val = await elem.value();
     assertEquals(val, "hello world");
-    await browser.done();
+    await browser.close();
   });
   Deno.test(
     "value | Should return empty when element is not an input element",
@@ -36,7 +36,7 @@ for (const browserItem of browserList) {
       } catch (e) {
         errMsg = e.message;
       }
-      await browser.done();
+      await browser.close();
       assertEquals(
         errMsg,
         "",
@@ -50,7 +50,7 @@ for (const browserItem of browserList) {
     const elem = await page.querySelector('input[placeholder="Filter"]');
     await elem.value("hello world");
     const val = await elem.value();
-    await browser.done();
+    await browser.close();
     assertEquals(val, "hello world");
   });
 }

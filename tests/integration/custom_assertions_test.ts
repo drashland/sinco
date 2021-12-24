@@ -11,7 +11,7 @@ for (const browserItem of browserList) {
       await page.location("https://drash.land");
       assertEquals(await page.location(), "https://drash.land/");
       await page.assertSee("Develop With Confidence");
-      await browser.done();
+      await browser.close();
     },
   );
 }

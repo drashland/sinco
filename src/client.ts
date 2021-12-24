@@ -83,7 +83,7 @@ export class Client {
   /**
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    */
-  public async done(errMsg?: string) {
+  public async close(errMsg?: string) {
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
@@ -192,7 +192,7 @@ export class Client {
   //   );
   //   await notificationPromise;
   //   if (res.errorText) {
-  //     await this.#protocol.done(
+  //     await this.#protocol.close(
   //       `${res.errorText}: Error for navigating to page "${urlToVisit}"`,
   //     );
   //   }

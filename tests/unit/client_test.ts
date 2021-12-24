@@ -19,7 +19,7 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await browser.done();
+      await browser.close();
     },
   );
   Deno.test(
@@ -40,7 +40,7 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await browser.done();
+      await browser.close();
     },
   );
   Deno.test(
@@ -68,7 +68,7 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await browser.done();
+      await browser.close();
     },
   );
 
@@ -79,7 +79,7 @@ for (const browserItem of browserList) {
   //     await Sinco.type('input[placeholder="Filter"]', "Gday");
   //     await Sinco.waitForAnchorChange();
   //     await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
-  //     await browser.done();
+  //     await browser.close();
   //   });
   // });
 }

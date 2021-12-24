@@ -133,7 +133,7 @@ export class Page {
     );
     await notificationPromise;
     if (res.errorText) {
-      await this.#client.done(
+      await this.#client.close(
         `${res.errorText}: Error for navigating to page "${newLocation}"`,
       );
     }
@@ -219,7 +219,7 @@ export class Page {
     const command = `document.body.innerText.includes('${text}')`;
     const exists = await this.evaluate(command);
     if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
-      await this.#client.done();
+      await this.#client.close();
     }
     assertEquals(exists, true);
   }
@@ -241,7 +241,7 @@ export class Page {
       includeCommandLineAPI: true,
     });
     if (result.result.value === null) {
-      await this.#client.done(
+      await this.#client.close(
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
@@ -309,7 +309,7 @@ export class Page {
     if (!filteredNotifs.length) {
       return;
     }
-    await this.#client.done();
+    await this.#client.close();
     throw new AssertionError(
       "Expected console to show no errors. Instead got:\n" +
         filteredNotifs.join("\n"),
@@ -331,7 +331,7 @@ export class Page {
     options?: ScreenshotOptions,
   ): Promise<string> {
     if (!existsSync(path)) {
-      await this.#client.done();
+      await this.#client.close();
       throw new Error(`The provided folder path - ${path} doesn't exist`);
     }
     const ext = options?.format ?? "jpeg";
@@ -351,7 +351,7 @@ export class Page {
     const clip = (options?.selector) ? viewPort : undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
-      await this.#client.done(
+      await this.#client.close(
         "A quality value greater than 100 is not allowed.",
       );
     }
@@ -385,7 +385,7 @@ export class Page {
     try {
       Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      await this.#client.done();
+      await this.#client.close();
       throw new Error(e.message);
     }
 
@@ -407,17 +407,17 @@ export class Page {
       return;
     }
     if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-      await this.#client.done(exceptionDetail.text);
+      await this.#client.close(exceptionDetail.text);
     }
     const errorMessage = exceptionDetail.exception!.description ??
       exceptionDetail.text;
     if (errorMessage.includes("SyntaxError")) { // a syntax error
       const message = errorMessage.replace("SyntaxError: ", "");
-      await this.#client.done();
+      await this.#client.close();
       throw new SyntaxError(message + ": `" + commandSent + "`");
     }
     // any others, unsure what they'd be
-    await this.#client.done(`${errorMessage}: "${commandSent}"`);
+    await this.#client.close(`${errorMessage}: "${commandSent}"`);
   }
 
   public async test() {
