@@ -4,12 +4,9 @@ import { assertEquals } from "../../deps.ts";
 Deno.test(
   "[chrome] Clicking elements - Tutorial for this feature in the docs should work",
   async () => {
-    console.log("building");
     const { browser, page } = await buildFor("chrome");
     // Clicking an element that will open up a new page (tab)
-    console.log("gon set loc");
     await page.location("https://drash.land");
-    console.log("set loc");
     const githubElem = await page.querySelector(
       "a",
     );
@@ -39,12 +36,9 @@ Deno.test(
 Deno.test(
   "[firefox] Clicking elements - Tutorial for this feature in the docs should work",
   async () => {
-    console.log("building");
     const { browser, page } = await buildFor("firefox");
     // Clicking an element that will open up a new page (tab)
-    console.log("gon set loc");
     await page.location("https://drash.land");
-    console.log("set loc");
 
     // Click an element that will change a pages location
     const discordElem = await page.querySelector(

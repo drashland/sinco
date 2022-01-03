@@ -54,21 +54,17 @@ export class Page {
    */
   public async close() {
     // Delete page
-    console.log("sendin");
     this.#protocol.sendWebSocketMessage<
       Protocol.Target.CloseTargetRequest,
       Protocol.Target.CloseTargetResponse
     >("Target.closeTarget", {
       targetId: this.target_id,
     });
-    console.log("got");
 
     // wait for socket to close (closing page also shuts down connection to debugger url)
-    console.log("gon close socket", this.#protocol.socket.readyState);
     const p2 = deferred();
     this.#protocol.socket.onclose = () => p2.resolve();
     await p2;
-    console.log("closed taregt");
 
     // And remove it from the pages array
     this.client.pages = this.client.pages.filter((page) =>
@@ -170,9 +166,7 @@ export class Page {
         expression: pageCommand,
         includeCommandLineAPI: true, // supports things like $x
       });
-      console.log(result);
-      await this.#checkForErrorResult(result, pageCommand);
-      console.log("Got valuye from eval:", result);
+      await this.#checkForEvaluateErrorResult(result, pageCommand);
       return result.result.value;
     }
 
@@ -201,8 +195,7 @@ export class Page {
           userGesture: true,
         },
       );
-      console.log(this.#target_id, a, res);
-      await this.#checkForErrorResult(res, pageCommand.toString());
+      await this.#checkForEvaluateErrorResult(res, pageCommand.toString());
       return res.result.value;
     }
   }
@@ -215,7 +208,6 @@ export class Page {
    * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
-    console.log(`document.querySelector('${selector}')`);
     const result = await this.#protocol.sendWebSocketMessage<
       Protocol.Runtime.EvaluateRequest,
       Protocol.Runtime.EvaluateResponse
@@ -228,7 +220,6 @@ export class Page {
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
-    console.log("da queryse result", result);
     return new Element(
       "document.querySelector",
       selector,
@@ -363,7 +354,7 @@ export class Page {
    * @param commandSent - The command sent to trigger the result
    */
   // TODO :: Move to protocol class? maybe should do it in the handle message handler
-  async #checkForErrorResult(
+  async #checkForEvaluateErrorResult(
     result: Protocol.Runtime.AwaitPromiseResponse,
     commandSent: string,
   ): Promise<void> {

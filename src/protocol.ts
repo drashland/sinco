@@ -129,7 +129,6 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
-      console.log(message);
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
         const params = message
@@ -163,17 +162,13 @@ export class Protocol {
         const target = targets.targetInfos.find((target) =>
           target.url === message.params.url
         );
-        console.log("found target:", target);
         const res = await fetch(
           `http://${this.#ws_hostname}:${this.#ws_port}/json/list`,
         );
         const json = await res.json() as WebsocketTarget[];
-        console.log("da json", json);
         const item = json.find((j) =>
           j["url"] === message.params.url
         ) as WebsocketTarget;
-        console.log("found item:", item);
-        console.log("all targets andres", json);
         const ws = new WebSocket(item["webSocketDebuggerUrl"]);
         const p = deferred();
         ws.onopen = () => p.resolve();
@@ -184,7 +179,6 @@ export class Protocol {
           this.#ws_port,
         );
         newProt.client = this.client;
-        console.log("enaliongh...");
         const method = "Runtime.executionContextCreated";
         newProt.notification_resolvables.set(method, deferred());
         await newProt.sendWebSocketMessage("Page.enable");
@@ -206,11 +200,6 @@ export class Protocol {
             this.client as Client,
             frameId,
           ),
-        );
-        console.log(
-          "just added new target",
-          this.client!.pages,
-          target?.targetId,
         );
         this.notification_resolvables.get("Custom.newPageCreated")?.resolve();
       }

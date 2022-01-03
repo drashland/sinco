@@ -124,19 +124,14 @@ for (const browserItem of browserList) {
       await (await page.querySelector("a")).click({
         button: "middle",
       });
-      console.log("PAGES", browser.pages);
       const page2 = browser.pages[1];
-      console.log("loc", await page2.location());
       await browser.closeAllPagesExcept(page2);
-      console.log("after closing all pages");
       let errMsg = "";
       try {
         await page.location();
-        console.log();
       } catch (e) {
         errMsg = e.message;
       }
-      console.log("gonna close no");
       const page2location = await page2.location();
       await browser.close();
       assertEquals(errMsg, "readyState not OPEN");

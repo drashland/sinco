@@ -160,8 +160,6 @@ export class Client {
       target.targetId !== page.target_id
     );
     for (const target of pagesToClose) {
-      console.log("inside loop of closeall");
-      console.log("target to close", target);
       // Remove the actual page from the browser
       await this.#protocol.sendWebSocketMessage<
         ProtocolTypes.Target.CloseTargetRequest,
@@ -169,7 +167,6 @@ export class Client {
       >("Target.closeTarget", {
         targetId: target.targetId,
       });
-      console.log(2);
       // Cut all connections we have to tha page
       const page = this.pages.find((page) =>
         page.target_id === target.targetId
@@ -177,13 +174,10 @@ export class Client {
       if (!page) {
         continue;
       }
-      console.log("now cutting page", page, page.socket.readyState);
       const p = deferred();
       page.socket.onclose = () => p.resolve();
       // page.socket.close()
-      console.log(3);
       await p;
-      console.log(4);
       this.pages = this.pages.filter((page) =>
         page.target_id !== target.targetId
       );
@@ -231,13 +225,11 @@ export class Client {
     }
 
     // Run the subprocess
-    console.log("bout t run");
     const browserProcess = Deno.run({
       cmd: buildArgs,
       stderr: "piped",
       stdout: "piped",
     });
-    console.log("ran");
 
     // Get the main ws conn for the client
     let mainWsUrl = "";
@@ -250,11 +242,9 @@ export class Client {
       break;
     }
     const p = deferred();
-    console.log("going to create main ws client: ", mainWsUrl);
     const mainSocket = new WebSocket(mainWsUrl);
     mainSocket.onopen = () => p.resolve();
     await p;
-    console.log("hii");
     const mainProtocol = new ProtocolClass(
       mainSocket,
       wsOptions.hostname,
@@ -264,17 +254,6 @@ export class Client {
     await mainProtocol.sendWebSocketMessage("Runtime.enable");
     await mainProtocol.sendWebSocketMessage("Log.enable");
     await mainProtocol.sendWebSocketMessage("Target.enable");
-    console.log(
-      "but here are all targets after opening client",
-      await mainProtocol.sendWebSocketMessage("Target.getTargets"),
-    );
-    console.log(
-      "and here is result from json: ",
-      await (await fetch(
-        `http://${wsOptions.hostname}:${wsOptions.port}/json/list`,
-      )).json(),
-    );
-    console.log(1);
 
     // Get the connection info for the default page thats opened, that acts as our first page
     const targets = await mainProtocol.sendWebSocketMessage<
@@ -284,7 +263,6 @@ export class Client {
     const target = targets.targetInfos.find((info) =>
       info.type === "page" && info.url === "about:blank"
     ) as ProtocolTypes.Target.TargetInfo;
-    console.log(2, targets);
     const websocket = new WebSocket(
       `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${target
         ?.targetId}`,
@@ -292,7 +270,6 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
-    console.log(3);
     const protocol = new ProtocolClass(
       websocket,
       wsOptions.hostname,
@@ -303,7 +280,6 @@ export class Client {
     await protocol.sendWebSocketMessage("Page.enable");
     await protocol.sendWebSocketMessage("Runtime.enable");
     await protocol.sendWebSocketMessage("Log.enable");
-    console.log(4);
     const notificationData =
       (await protocol.notification_resolvables.get(method)) as {
         context: {
@@ -313,7 +289,6 @@ export class Client {
         };
       };
     const { frameId } = notificationData.context.auxData;
-    console.log("DA FRAME ID", frameId);
 
     // Return a client and page instance for the user to interact with
     const client = new Client(

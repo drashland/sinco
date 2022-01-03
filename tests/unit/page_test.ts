@@ -183,7 +183,6 @@ for (const browserItem of browserList) {
     }
     await server.close();
     await browser.close();
-    console.log("err msg |", errMsg, "|");
     assertEquals(
       errMsg.startsWith("Expected console to show no errors. Instead got"),
       true,
@@ -194,20 +193,15 @@ for (const browserItem of browserList) {
 
   Deno.test(`[${browserItem.name}] close() | Closes the page`, async () => {
     const { browser, page } = await buildFor(browserItem.name);
-    console.log(browser.pages);
     await page.location("https://drash.land");
     await page.close();
     let errMsg = "";
     try {
       await page.location();
-      console.log();
     } catch (e) {
       errMsg = e.message;
     }
-    console.log("gon");
-    console.log(browser.pages);
     await browser.close();
-    console.log(2);
     assertEquals(errMsg, "readyState not OPEN");
     assertEquals(browser.pages.length, 0);
     assertEquals(page.socket.readyState, page.socket.CLOSED);

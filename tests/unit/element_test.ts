@@ -5,31 +5,14 @@ const ScreenshotsFolder = "./Screenshots";
 import { existsSync } from "../../src/utility.ts";
 
 for (const browserItem of browserList) {
-  // if (browserItem.name === "firefox") {
-  //   Deno.test("click() | It should allow clicking of elements and update location", async () => {
-  //     const { browser, page } = await buildFor(browserItem.name);
-  //     await page.location("https://drash.land");
-  //       const elem = await page.querySelector('a[href="https://discord.gg/RFsCSaHRWK"]');
-  //       console.log('clicikng')
-  //       await elem.click({}, true);
-  //       console.log('clciked')
-  //       const page1Location = await page.location()
-  //       console.log('gotloc')
-  //       await browser.close()
-  //       assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK")
-  //   });
-  // }
   Deno.test("click() | It should allow clicking of elements and update location", async () => {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://drash.land");
     const elem = await page.querySelector(
       'a[href="https://discord.gg/RFsCSaHRWK"]',
     );
-    console.log("clicikng");
     await elem.click({}, true);
-    console.log("clciked");
     const page1Location = await page.location();
-    console.log("gotloc");
     await browser.close();
     assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
   });

@@ -168,6 +168,7 @@ export class Element {
     }
 
     if (!options.button) options.button = "left";
+
     // Scroll into view
     await this.#page.evaluate(
       `${this.#method}('${this.#selector}').scrollIntoView({
@@ -223,24 +224,20 @@ export class Element {
     }
     x = x / 4;
     y = y / 4;
-    console.log(quad);
     const buttonsMap = {
       left: 1,
       right: 2,
       middle: 4,
     };
-    console.log(
-      await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
-        type: "mouseMoved",
-        button: options.button,
-        modifiers: 0,
-        clickCount: 1,
-        x: x + (x - x) * (1 / 1),
-        y,
-        buttons: buttonsMap[options.button],
-      }),
-    );
-    console.log(
+    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      button: options.button,
+      modifiers: 0,
+      clickCount: 1,
+      x: x + (x - x) * (1 / 1),
+      y,
+      buttons: buttonsMap[options.button],
+    }),
       await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
         type: "mousePressed",
         button: options.button,
@@ -250,8 +247,6 @@ export class Element {
         y,
         buttons: buttonsMap[options.button],
       }),
-    );
-    console.log(
       await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
         type: "mouseReleased",
         button: options.button,
@@ -260,8 +255,8 @@ export class Element {
         x,
         y,
         buttons: buttonsMap[options.button],
-      }),
-    );
+      });
+
     if (options.button === "middle") {
       const method = "Custom.newPageCreated";
       const map = this.#protocol.notification_resolvables.set(
