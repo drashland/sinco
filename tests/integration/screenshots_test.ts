@@ -16,9 +16,11 @@ for (const browserItem of browserList) {
         fileName: "drash_land.png",
         format: "png",
       }); // Specify filename and format. Will be saved as `./screenshots/drash_land.png`
-      await page.takeScreenshot(screenshotsFolder, {
+      const anchor = await page.querySelector(
+        'a[href="https://github.com/drashland"]',
+      );
+      await anchor.takeScreenshot(screenshotsFolder, {
         fileName: "modules.jpeg",
-        selector: 'a[href="https://github.com/drashland"]',
       }); // Will screenshot only the GitHub icon section, and write it to `./screenshots/dd_mm_yyyy_hh_mm_ss.jpeg`
       await browser.close();
       Deno.removeSync("./screenshots", { recursive: true });

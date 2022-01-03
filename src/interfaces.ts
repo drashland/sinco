@@ -8,8 +8,6 @@ export interface BuildOptions {
 }
 
 export interface ScreenshotOptions {
-  /** Name to be given to the screenshot. Optional */
-  selector?: string;
   /** Screenshot the given selector instead of the full page. Optional */
   fileName?: string;
   /** The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional */

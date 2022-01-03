@@ -1,6 +1,8 @@
 import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { browserList } from "../browser_list.ts";
+const ScreenshotsFolder = "./Screenshots";
+import { existsSync } from "../../src/utility.ts";
 
 for (const browserItem of browserList) {
   // if (browserItem.name === "firefox") {
@@ -59,6 +61,43 @@ for (const browserItem of browserList) {
     await browser.close();
     assertEquals(page1Location, "https://drash.land/");
     assertEquals(page2location, "https://github.com/drashland");
+  });
+
+  Deno.test(
+    "takeScreenshot() | Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
+    async () => {
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://chromestatus.com");
+      const span = await page.querySelector("span");
+      const fileName = await span.takeScreenshot(ScreenshotsFolder, {
+        quality: 50,
+      });
+      await browser.close();
+      const exists = existsSync(fileName);
+      Deno.removeSync(fileName);
+      assertEquals(
+        exists,
+        true,
+      );
+    },
+  );
+
+  Deno.test("takeScreenshot() | Saves Screenshot with all options provided", async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://chromestatus.com");
+    const span = await page.querySelector("span");
+    const filename = await span.takeScreenshot(ScreenshotsFolder, {
+      fileName: "AllOpts",
+      format: "jpeg",
+      quality: 100,
+    });
+    await browser.close();
+    const exists = existsSync(filename);
+    assertEquals(
+      exists,
+      true,
+    );
+    Deno.removeSync(filename);
   });
 
   Deno.test("value | It should get the value for the given input element", async () => {

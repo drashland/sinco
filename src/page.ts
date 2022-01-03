@@ -312,20 +312,7 @@ export class Page {
       );
     }
     const ext = options?.format ?? "jpeg";
-    const rawViewportResult = options?.selector
-      ? await this.evaluate(
-        `JSON.stringify(document.querySelector('${options.selector}').getBoundingClientRect())`,
-      )
-      : "{}";
-    const jsonViewportResult = JSON.parse(rawViewportResult);
-    const viewPort = {
-      x: jsonViewportResult.x,
-      y: jsonViewportResult.y,
-      width: jsonViewportResult.width,
-      height: jsonViewportResult.height,
-      scale: 2,
-    };
-    const clip = (options?.selector) ? viewPort : undefined;
+    const clip = undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
       await this.client.close(

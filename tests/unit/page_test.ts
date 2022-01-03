@@ -42,25 +42,6 @@ for (const browserItem of browserList) {
   );
 
   Deno.test(
-    "takeScreenshot() | Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
-    async () => {
-      const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
-      const fileName = await page.takeScreenshot(ScreenshotsFolder, {
-        selector: "span",
-        quality: 50,
-      });
-      await browser.close();
-      const exists = existsSync(fileName);
-      Deno.removeSync(fileName);
-      assertEquals(
-        exists,
-        true,
-      );
-    },
-  );
-
-  Deno.test(
     "Throws an error when format passed is jpeg(or default) and quality > than 100",
     async () => {
       const { page } = await buildFor(browserItem.name);
@@ -111,24 +92,6 @@ for (const browserItem of browserList) {
       Deno.removeSync(fileName);
     },
   );
-
-  Deno.test("takeScreenshot() | Saves Screenshot with all options provided", async () => {
-    const { browser, page } = await buildFor(browserItem.name);
-    await page.location("https://chromestatus.com");
-    const filename = await page.takeScreenshot(ScreenshotsFolder, {
-      fileName: "AllOpts",
-      selector: "span",
-      format: "jpeg",
-      quality: 100,
-    });
-    await browser.close();
-    const exists = existsSync(filename);
-    assertEquals(
-      exists,
-      true,
-    );
-    Deno.removeSync(filename);
-  });
 
   Deno.test(
     "evaluate() | It should evaluate function on current frame",

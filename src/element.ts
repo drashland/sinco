@@ -1,6 +1,8 @@
 import { Page } from "./page.ts";
 import { Protocol } from "./protocol.ts";
 import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
+import { existsSync, generateTimestamp } from "./utility.ts";
+import { ScreenshotOptions } from "./interfaces.ts";
 /**
  * A class to represent an element on the page, providing methods
  * to action on that element
@@ -61,6 +63,78 @@ export class Element {
     await this.#page.evaluate(
       `${this.#method}('${this.#selector}').value = \`${newValue}\``,
     );
+  }
+
+  /**
+   * Take a screenshot of the element and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+   *
+   * @param path - The path of where to save the screenshot to
+   * @param options
+   *
+   * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
+   */
+  async takeScreenshot(
+    path: string,
+    options?: ScreenshotOptions,
+  ): Promise<string> {
+    if (!existsSync(path)) {
+      await this.#page.client.close(
+        `The provided folder path - ${path} doesn't exist`,
+      );
+    }
+    const ext = options?.format ?? "jpeg";
+    const rawViewportResult = await this.#page.evaluate(
+      `JSON.stringify(${this.#method}('${this.#selector}').getBoundingClientRect())`,
+    );
+    const jsonViewportResult = JSON.parse(rawViewportResult);
+    const clip = {
+      x: jsonViewportResult.x,
+      y: jsonViewportResult.y,
+      width: jsonViewportResult.width,
+      height: jsonViewportResult.height,
+      scale: 2,
+    };
+
+    if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
+      await this.#page.client.close(
+        "A quality value greater than 100 is not allowed.",
+      );
+    }
+
+    //Quality should defined only if format is jpeg
+    const quality = (ext == "jpeg")
+      ? ((options?.quality) ? Math.abs(options.quality) : 80)
+      : undefined;
+
+    const res = await this.#protocol.sendWebSocketMessage<
+      ProtocolTypes.Page.CaptureScreenshotRequest,
+      ProtocolTypes.Page.CaptureScreenshotResponse
+    >(
+      "Page.captureScreenshot",
+      {
+        format: ext,
+        quality: quality,
+        clip: clip,
+      },
+    ) as {
+      data: string;
+    };
+
+    //Writing the Obtained Base64 encoded string to image file
+    const fName = `${path}/${
+      options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
+        generateTimestamp()
+    }.${ext}`;
+    const B64str = res.data;
+    const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
+    try {
+      Deno.writeFileSync(fName, u8Arr);
+    } catch (e) {
+      await this.#page.client.close();
+      throw new Error(e.message);
+    }
+
+    return fName;
   }
 
   /**
