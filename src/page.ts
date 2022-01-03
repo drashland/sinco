@@ -1,9 +1,9 @@
-import { assertEquals, AssertionError, deferred, Protocol } from "../deps.ts";
+import { AssertionError, deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
-import { Client } from "./client.ts"
+import { Client } from "./client.ts";
 
 /**
  * A representation of the page the client is on, allowing the client to action
@@ -15,25 +15,38 @@ export class Page {
    */
   readonly #protocol: ProtocolClass;
 
-  target_id: string; // also the target id for the page
+  /**
+   * If chrome, will look like 4174549611B216287286CA10AA78BF56
+   * If firefox, will look like 41745-49611-B2162-87286 (eg like a uuid)
+   */
+  readonly #target_id: string;
 
-  #client: Client
+  /**
+   * If chrome, ends up being what target id is
+   * If firefox, will be something like "26"
+   */
+  readonly #frame_id: string;
 
-  constructor(protocol: ProtocolClass, targetId: string, client: Client) {
+  readonly client: Client;
+
+  constructor(
+    protocol: ProtocolClass,
+    targetId: string,
+    client: Client,
+    frameId: string,
+  ) {
     this.#protocol = protocol;
-    this.target_id = targetId;
-    this.#client = client
+    this.#target_id = targetId;
+    this.client = client;
+    this.#frame_id = frameId;
   }
 
-  public get socket () {
-    return this.#protocol.socket
+  public get socket() {
+    return this.#protocol.socket;
   }
 
-  public async _close() {
-    const p = deferred();
-    this.#protocol.socket.onclose = () => p.resolve();
-    this.#protocol.socket.close();
-    await p;
+  public get target_id() {
+    return this.#target_id;
   }
 
   /**
@@ -41,29 +54,26 @@ export class Page {
    */
   public async close() {
     // Delete page
-    const method = "Inspector.detatched";
-    const map = this.#protocol.notification_resolvables.set(method, deferred());
-    const p = map.get(
-      method,
-    );
-    this.#protocol.sendWebSocketMessage("Target.closeTarget", {
+    console.log("sendin");
+    this.#protocol.sendWebSocketMessage<
+      Protocol.Target.CloseTargetRequest,
+      Protocol.Target.CloseTargetResponse
+    >("Target.closeTarget", {
       targetId: this.target_id,
     });
-    await p;
+    console.log("got");
 
-    // Close socket
-    const p2 = deferred()
-    this.#protocol.socket.onclose = () => p2.resolve()
-    this.#protocol.socket.close()
-    await p2
-    
+    // wait for socket to close (closing page also shuts down connection to debugger url)
+    console.log("gon close socket", this.#protocol.socket.readyState);
+    const p2 = deferred();
+    this.#protocol.socket.onclose = () => p2.resolve();
+    await p2;
+    console.log("closed taregt");
+
     // And remove it from the pages array
-    for (const i in this.#client.pages) {
-      if (this.#client.pages[i].target_id === this.target_id) {
-        delete this.#client.pages[i];
-        break;
-      }
-    }
+    this.client.pages = this.client.pages.filter((page) =>
+      page.target_id !== this.target_id
+    );
   }
 
   /**
@@ -133,7 +143,7 @@ export class Page {
     );
     await notificationPromise;
     if (res.errorText) {
-      await this.#client.close(
+      await this.client.close(
         `${res.errorText}: Error for navigating to page "${newLocation}"`,
       );
     }
@@ -162,19 +172,21 @@ export class Page {
       });
       console.log(result);
       await this.#checkForErrorResult(result, pageCommand);
+      console.log("Got valuye from eval:", result);
       return result.result.value;
     }
 
     if (typeof pageCommand === "function") {
-      const { executionContextId } = await this.#protocol.sendWebSocketMessage<
+      const a = await this.#protocol.sendWebSocketMessage<
         Protocol.Page.CreateIsolatedWorldRequest,
         Protocol.Page.CreateIsolatedWorldResponse
       >(
         "Page.createIsolatedWorld",
         {
-          frameId: this.target_id,
+          frameId: this.#frame_id,
         },
       );
+      const { executionContextId } = a;
 
       const res = await this.#protocol.sendWebSocketMessage<
         Protocol.Runtime.CallFunctionOnRequest,
@@ -189,39 +201,10 @@ export class Page {
           userGesture: true,
         },
       );
+      console.log(this.#target_id, a, res);
       await this.#checkForErrorResult(res, pageCommand.toString());
       return res.result.value;
     }
-  }
-
-  expectPageChange() {
-    this.#protocol.notification_resolvables.set('Page.windowOpen', deferred())
-  }
-
-  /**
-   * Wait for the page to change. Can be used with `click()` if clicking a button or anchor tag that redirects the user
-   */
-  async waitForPageChange(): Promise<void> {
-    const method = "Page.loadEventFired";
-    const notificationPromise = this.#protocol.notification_resolvables.get(
-      method,
-    );
-    await notificationPromise;
-    this.#protocol.notification_resolvables.delete(method);
-  }
-
-  /**
-   * Check if the given text exists on the DOM
-   *
-   * @param text - The text to check for
-   */
-  async assertSee(text: string): Promise<void> {
-    const command = `document.body.innerText.includes('${text}')`;
-    const exists = await this.evaluate(command);
-    if (exists !== true) { // We know it's going to fail, so before an assertion error is thrown, cleanupup
-      await this.#client.close();
-    }
-    assertEquals(exists, true);
   }
 
   /**
@@ -232,7 +215,7 @@ export class Page {
    * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
-    console.log(`document.querySelector('${selector}')`)
+    console.log(`document.querySelector('${selector}')`);
     const result = await this.#protocol.sendWebSocketMessage<
       Protocol.Runtime.EvaluateRequest,
       Protocol.Runtime.EvaluateResponse
@@ -241,7 +224,7 @@ export class Page {
       includeCommandLineAPI: true,
     });
     if (result.result.value === null) {
-      await this.#client.close(
+      await this.client.close(
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
@@ -253,14 +236,6 @@ export class Page {
       this.#protocol,
       result.result.objectId,
     );
-  }
-
-  /**
-   * Only needed if you want this page to be displayed.
-   * Without calling this method, you can still communicate to each page.
-   */
-  public async focus() {
-    await this.#protocol.sendWebSocketMessage("Page.bringToFront");
   }
 
   /**
@@ -309,7 +284,7 @@ export class Page {
     if (!filteredNotifs.length) {
       return;
     }
-    await this.#client.close();
+    await this.client.close();
     throw new AssertionError(
       "Expected console to show no errors. Instead got:\n" +
         filteredNotifs.join("\n"),
@@ -326,13 +301,15 @@ export class Page {
    *
    * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
    */
+  // TODO :: For the logic that takes a screenshot of an element (selector), move that into the element class
   async takeScreenshot(
     path: string,
     options?: ScreenshotOptions,
   ): Promise<string> {
     if (!existsSync(path)) {
-      await this.#client.close();
-      throw new Error(`The provided folder path - ${path} doesn't exist`);
+      await this.client.close(
+        `The provided folder path - ${path} doesn't exist`,
+      );
     }
     const ext = options?.format ?? "jpeg";
     const rawViewportResult = options?.selector
@@ -351,7 +328,7 @@ export class Page {
     const clip = (options?.selector) ? viewPort : undefined;
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
-      await this.#client.close(
+      await this.client.close(
         "A quality value greater than 100 is not allowed.",
       );
     }
@@ -385,7 +362,7 @@ export class Page {
     try {
       Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      await this.#client.close();
+      await this.client.close();
       throw new Error(e.message);
     }
 
@@ -398,6 +375,7 @@ export class Page {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
+  // TODO :: Move to protocol class? maybe should do it in the handle message handler
   async #checkForErrorResult(
     result: Protocol.Runtime.AwaitPromiseResponse,
     commandSent: string,
@@ -407,24 +385,16 @@ export class Page {
       return;
     }
     if (exceptionDetail.text && !exceptionDetail.exception) { // specific for firefox
-      await this.#client.close(exceptionDetail.text);
+      await this.client.close(exceptionDetail.text);
     }
     const errorMessage = exceptionDetail.exception!.description ??
       exceptionDetail.text;
     if (errorMessage.includes("SyntaxError")) { // a syntax error
       const message = errorMessage.replace("SyntaxError: ", "");
-      await this.#client.close();
+      await this.client.close();
       throw new SyntaxError(message + ": `" + commandSent + "`");
     }
     // any others, unsure what they'd be
-    await this.#client.close(`${errorMessage}: "${commandSent}"`);
-  }
-
-  public async test() {
-    console.log(
-      await this.#protocol.sendWebSocketMessage("Target.getTargets", {
-        url: "https://google.com",
-      }),
-    );
+    await this.client.close(`${errorMessage}: "${commandSent}"`);
   }
 }

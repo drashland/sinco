@@ -67,7 +67,9 @@ export function getChromeArgs(port: number, binaryPath?: string): string[] {
     binaryPath || getChromePath(),
     "--remote-debugging-port=" + port,
     "--disable-gpu",
+    "--headless",
     "--no-sandbox",
+    "about:blank",
   ];
 }
 
@@ -95,13 +97,12 @@ export function getFirefoxArgs(
 ): string[] {
   return [
     binaryPath || getFirefoxPath(),
-    "--start-debugger-server",
-    port.toString(),
-    "-headless",
     "--remote-debugging-port",
     port.toString(),
     "-profile",
     tmpDirName,
+    "-headless",
+    "-url",
     "about:blank",
   ];
 }

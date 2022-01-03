@@ -18,7 +18,7 @@ class JSResource extends Drash.Resource {
 class PopupsResource extends Drash.Resource {
   public paths = ["/popups"];
 
-  public GET(r: Drash.Request, res: Drash.Response) {
+  public GET(_r: Drash.Request, res: Drash.Response) {
     return res.html('<a href="https://drash.land" target="_blank" />');
   }
 }

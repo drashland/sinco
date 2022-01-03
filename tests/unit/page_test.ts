@@ -10,8 +10,8 @@ for (const browserItem of browserList) {
     "takeScreenshot() | Throws an error if provided path doesn't exist",
     async () => {
       let msg = "";
-      const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
+      const { page } = await buildFor(browserItem.name);
+      await page.location("https://drash.land");
       try {
         await page.takeScreenshot("eieio");
       } catch (error) {
@@ -29,7 +29,7 @@ for (const browserItem of browserList) {
     "takeScreenshot() | Takes a Screenshot with timestamp as filename if filename is not provided",
     async () => {
       const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
+      await page.location("https://drash.land");
       const fileName = await page.takeScreenshot(ScreenshotsFolder);
       await browser.close();
       const exists = existsSync(fileName);
@@ -63,7 +63,7 @@ for (const browserItem of browserList) {
   Deno.test(
     "Throws an error when format passed is jpeg(or default) and quality > than 100",
     async () => {
-      const { browser, page } = await buildFor(browserItem.name);
+      const { page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com");
       let msg = "";
       try {
@@ -130,57 +130,6 @@ for (const browserItem of browserList) {
     Deno.removeSync(filename);
   });
 
-  Deno.test("click() | It should allow clicking of elements", async () => {
-  });
-
-  Deno.test(
-    "waitForPageChange() | Waits for a page to change before continuing",
-    async () => {
-      const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
-      assertEquals(
-        await page.location(),
-        "https://chromestatus.com/features",
-      );
-      const elem = await page.querySelector('a[href="/roadmap"]');
-      await elem.click();
-      await page.waitForPageChange();
-      assertEquals(await page.location(), "https://chromestatus.com/roadmap");
-      await browser.close();
-    },
-  );
-
-  Deno.test(
-    "assertSee() | Assertion should work when text is present on page",
-    async () => {
-      const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com/features");
-      await page.assertSee("Chrome Platform Status");
-      await browser.close();
-    },
-  );
-  Deno.test(
-    "assertSee() | Assertion should NOT work when text is NOT present on page",
-    async () => {
-      const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
-      let errorMsg = "";
-      // test fails because page is its own instance, so page prop is true, but clients is still false
-      try {
-        await page.assertSee("Crumpets and tea init?");
-      } catch (err) {
-        errorMsg = err.message;
-      }
-      await browser.close();
-      const msgArr = errorMsg.split("\n").filter((line) => {
-        return !!line === true && line.indexOf(" ") !== 0 &&
-          line.indexOf("Values") < 0;
-      });
-      assertEquals(msgArr[0].indexOf("-   false") > -1, true);
-      assertEquals(msgArr[1].indexOf("+   true") > -1, true);
-    },
-  );
-
   Deno.test(
     "evaluate() | It should evaluate function on current frame",
     async () => {
@@ -240,24 +189,12 @@ for (const browserItem of browserList) {
     }
     await browser.close();
     await server.close();
-    try {
-      assertEquals(
-        errMsg,
-        `Expected console to show no errors. Instead got:
-ReferenceError: callUser is not defined
-    at http://localhost:1447/index.js:1:1
-Failed to load resource: the server responded with a status of 404 (Not Found)`,
-      );
-    } catch (_e) {
-      assertEquals(
-        errMsg,
-        `Expected console to show no errors. Instead got:
-Failed to load resource: the server responded with a status of 404 (Not Found)
-ReferenceError: callUser is not defined
-    at http://localhost:1447/index.js:1:1
-Failed to load resource: the server responded with a status of 404 (Not Found)`,
-      );
-    }
+    assertEquals(
+      errMsg.startsWith(`Expected console to show no errors. Instead got:\n`),
+      true,
+    );
+    assertEquals(errMsg.includes("Not Found"), true);
+    assertEquals(errMsg.includes("callUser"), true);
   });
 
   Deno.test(`[${browserItem.name}] assertNoConsoleErrors() | Should not throw when no errors`, async () => {
@@ -283,20 +220,33 @@ Failed to load resource: the server responded with a status of 404 (Not Found)`,
     }
     await server.close();
     await browser.close();
-    try {
-      assertEquals(
-        errMsg,
-        `Expected console to show no errors. Instead got:
-Failed to load resource: the server responded with a status of 404 (Not Found)
-Failed to load resource: the server responded with a status of 404 (Not Found)`,
-      );
-    } catch (_e) {
-      assertEquals(
-        errMsg,
-        `Expected console to show no errors. Instead got:
-Failed to load resource: the server responded with a status of 404 (Not Found)`,
-      );
-    }
+    console.log("err msg |", errMsg, "|");
+    assertEquals(
+      errMsg.startsWith("Expected console to show no errors. Instead got"),
+      true,
+    );
+    assertEquals(errMsg.includes("Not Found"), true);
+    assertEquals(errMsg.includes("callUser"), false);
   });
-  break;
+
+  Deno.test(`[${browserItem.name}] close() | Closes the page`, async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    console.log(browser.pages);
+    await page.location("https://drash.land");
+    await page.close();
+    let errMsg = "";
+    try {
+      await page.location();
+      console.log();
+    } catch (e) {
+      errMsg = e.message;
+    }
+    console.log("gon");
+    console.log(browser.pages);
+    await browser.close();
+    console.log(2);
+    assertEquals(errMsg, "readyState not OPEN");
+    assertEquals(browser.pages.length, 0);
+    assertEquals(page.socket.readyState, page.socket.CLOSED);
+  });
 }
