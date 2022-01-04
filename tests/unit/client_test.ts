@@ -124,7 +124,7 @@ for (const browserItem of browserList) {
       await (await page.querySelector("a")).click({
         button: "middle",
       });
-      const page2 = browser.pages[1];
+      const page2 = await browser.page(2);
       await browser.closeAllPagesExcept(page2);
       let errMsg = "";
       try {
@@ -135,10 +135,30 @@ for (const browserItem of browserList) {
       const page2location = await page2.location();
       await browser.close();
       assertEquals(errMsg, "readyState not OPEN");
-      assertEquals(browser.pages.length, 1);
       assertEquals(page2location, "https://github.com/drashland");
     });
   }
+
+  Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    try {
+      assertEquals((await browser.page(1)).target_id, page.target_id)
+    } catch (e) {
+      await browser.close()
+      throw e
+    }
+  })
+
+  Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
+    const { browser } = await buildFor(browserItem.name);
+    try {
+      await browser.page(2)
+      // It SHOULD have failed above, so if it didnt, we need to know
+      assertEquals(true, false)
+    } catch (_e) {
+      // As expected :)
+    }
+  })
 
   // Rhum.testSuite("waitForAnchorChange()", () => {
   //   Rhum.testCase("Waits for any anchor changes after an action", async () => {

@@ -17,7 +17,7 @@ Deno.test(
       button: "middle", // Make sure when clicking an element that will open a new page, "middle" is used
     });
     console.log('clicked')
-    const page2 = browser.pages[1];
+    const page2 = await browser.page(2);
     const page2Location = await page2.location();
     console.log('got loc')
 

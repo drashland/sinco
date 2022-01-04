@@ -67,9 +67,7 @@ export class Page {
     await p2;
 
     // And remove it from the pages array
-    this.client.pages = this.client.pages.filter((page) =>
-      page.target_id !== this.target_id
-    );
+    this.client._popPage(this.#target_id)
   }
 
   /**

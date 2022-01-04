@@ -64,7 +64,7 @@ export class Client {
    */
   readonly browser: Browsers;
 
-  pages: Page[] = [];
+  #pages: Page[] = [];
 
   /**
    * Only if the browser is firefox, is this present.
@@ -86,6 +86,47 @@ export class Client {
   }
 
   /**
+   * Only for internal use. No documentation or help
+   * will be provided to users regarding this method
+   * 
+   * This was only created so we could make `pages` property private,
+   * but still allow the Page class to remove a page from the list
+   * 
+   * @param page 
+   */
+  public _popPage(pageTargetId: string) {
+    this.#pages = this.#pages.filter(page =>
+      page.target_id !== pageTargetId
+    );
+  }
+
+  /**
+   * A way to get a page. Useful if a new tab/page has opened
+   * 
+   * @example
+   * ```js
+   * const { browser, page } = await buildFor("chrome");
+   * console.log(await browser.page(1)); // Your initial page, exactly what `page` above is
+   * // You middle click an element
+   * console.log(await browser.page(2)); // will return a Page representation of the newly opened page
+   * ```
+   * 
+   * @param i 
+   * @returns 
+   */
+  public async page(pageNumber: number): Promise<Page> {
+    // `i` is given to us in a way that makes the user understand exactly what page they want.
+    // If 1, they want the first page, so we will get the 0th index
+    const index = pageNumber - 1
+
+    if (!this.#pages[index]) {
+      await this.close()
+      throw new RangeError('You have request to get page number ' + pageNumber + ', but only ' + this.#pages.length + ' pages are opened. If the issue persists, please submit an issue.')
+    }
+    return this.#pages[index]
+  }
+
+  /**
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    *
    * @param errMsg - If provided, after closing, will throw an error with the message. Useful for throwing errors but making sure all resources are closed beforehand
@@ -98,12 +139,12 @@ export class Client {
     }
     // Create promises for each ws conn
     const pList: Deferred<void>[] = [];
-    for (const _page of this.pages) {
+    for (const _page of this.#pages) {
       pList.push(deferred());
     }
     pList.push(deferred());
-    for (const i in this.pages) {
-      this.pages[i].socket.onclose = () => pList[i].resolve();
+    for (const i in this.#pages) {
+      this.#pages[i].socket.onclose = () => pList[i].resolve();
     }
     this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
     this.#browser_process.stderr!.close();
@@ -168,7 +209,7 @@ export class Client {
         targetId: target.targetId,
       });
       // Cut all connections we have to tha page
-      const page = this.pages.find((page) =>
+      const page = this.#pages.find(page =>
         page.target_id === target.targetId
       );
       if (!page) {
@@ -178,7 +219,7 @@ export class Client {
       page.socket.onclose = () => p.resolve();
       // page.socket.close()
       await p;
-      this.pages = this.pages.filter((page) =>
+      this.#pages = this.#pages.filter(page =>
         page.target_id !== target.targetId
       );
     }
@@ -300,7 +341,7 @@ export class Client {
     mainProtocol.client = client;
     protocol.client = client;
     const page = new Page(protocol, target.targetId, client, frameId);
-    client.pages.push(page);
+    client.#pages.push(page);
     return {
       browser: client,
       page,

@@ -40,7 +40,8 @@ for (const browserItem of browserList) {
       button: "middle",
     });
     const page1Location = await page.location();
-    const page2location = await browser.pages[1].location();
+    const page2 = await browser.page(2)
+    const page2location = await page2.location();
     await browser.close();
     assertEquals(page1Location, "https://drash.land/");
     assertEquals(page2location, "https://github.com/drashland");
