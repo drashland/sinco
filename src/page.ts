@@ -292,7 +292,6 @@ export class Page {
    *
    * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
    */
-  // TODO :: For the logic that takes a screenshot of an element (selector), move that into the element class
   async takeScreenshot(
     path: string,
     options?: ScreenshotOptions,
@@ -353,7 +352,6 @@ export class Page {
    * @param result - The DOM result response, after writing to stdin and getting by stdout of the process
    * @param commandSent - The command sent to trigger the result
    */
-  // TODO :: Move to protocol class? maybe should do it in the handle message handler
   async #checkForEvaluateErrorResult(
     result: Protocol.Runtime.AwaitPromiseResponse,
     commandSent: string,

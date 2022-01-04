@@ -129,6 +129,7 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
+      console.log('got notification', message)
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
         const params = message
@@ -155,6 +156,11 @@ export class Protocol {
         message.method === "Page.frameRequestedNavigation" &&
         message.params.disposition === "newTab"
       ) {
+        // Whilst the new page may have opened, it may not be immediently present on the ws endpoint
+        const item = await this.#waitForItemOnWSEndpoint(message.params.url as string)
+
+        // TODO :: Don't think we actually need this target var. The item should hold an id that should be
+        // the same as target.targetId for chrome and firefox, but check before removing
         const targets = await this.sendWebSocketMessage<
           null,
           ProtocolTypes.Target.GetTargetsResponse
@@ -162,14 +168,8 @@ export class Protocol {
         const target = targets.targetInfos.find((target) =>
           target.url === message.params.url
         );
-        const res = await fetch(
-          `http://${this.#ws_hostname}:${this.#ws_port}/json/list`,
-        );
-        const json = await res.json() as WebsocketTarget[];
-        const item = json.find((j) =>
-          j["url"] === message.params.url
-        ) as WebsocketTarget;
-        const ws = new WebSocket(item["webSocketDebuggerUrl"]);
+
+        const ws = new WebSocket(item.webSocketDebuggerUrl);
         const p = deferred();
         ws.onopen = () => p.resolve();
         await p;
@@ -209,5 +209,19 @@ export class Protocol {
         resolvable.resolve(message.params);
       }
     }
+  }
+
+  async #waitForItemOnWSEndpoint(url: string): Promise<WebsocketTarget> {
+    const res = await fetch(
+      `http://${this.#ws_hostname}:${this.#ws_port}/json/list`,
+    );
+    const json = await res.json() as WebsocketTarget[];
+    const item = json.find((j) =>
+      j["url"] === url
+    );
+    if (!item) {
+      return await this.#waitForItemOnWSEndpoint(url)
+    }
+    return item
   }
 }
