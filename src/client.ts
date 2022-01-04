@@ -8,6 +8,7 @@ import {
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 import { existsSync } from "./utility.ts";
+import { WebsocketTarget } from "./interfaces.ts";
 
 // https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
 // FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
@@ -73,36 +74,94 @@ export class Client {
    */
   readonly #firefox_profile_path?: string;
 
+  readonly #wsOptions: {
+    hostname: string;
+    port: number;
+  };
+
   constructor(
     protocol: ProtocolClass,
     browserProcess: Deno.Process,
     browser: Browsers,
+    wsOptions: {
+      hostname: string;
+      port: number;
+    },
     firefoxProfilePath?: string,
   ) {
     this.#protocol = protocol;
     this.#browser_process = browserProcess;
     this.browser = browser;
+    this.#wsOptions = wsOptions;
     this.#firefox_profile_path = firefoxProfilePath;
   }
 
   /**
    * Only for internal use. No documentation or help
    * will be provided to users regarding this method
-   * 
+   *
    * This was only created so we could make `pages` property private,
    * but still allow the Page class to remove a page from the list
-   * 
-   * @param page 
+   *
+   * @param page
    */
   public _popPage(pageTargetId: string) {
-    this.#pages = this.#pages.filter(page =>
-      page.target_id !== pageTargetId
+    this.#pages = this.#pages.filter((page) => page.target_id !== pageTargetId);
+  }
+
+  public async _pushPage(
+    params: ProtocolTypes.Page.FrameRequestedNavigationEvent,
+  ): Promise<void> {
+    let item: WebsocketTarget | undefined = undefined;
+    while (!item) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
+      const res = await fetch(
+        `http://${this.#wsOptions.hostname}:${this.#wsOptions.port}/json/list`,
+      );
+      const json = await res.json() as WebsocketTarget[];
+      item = json.find((j) => j["url"] === params.url);
+    }
+    const ws = new WebSocket(item.webSocketDebuggerUrl);
+    const p = deferred();
+    ws.onopen = () => p.resolve();
+    await p;
+    const newProt = new ProtocolClass(
+      ws,
+    );
+    newProt.client = this;
+    const method = "Runtime.executionContextCreated";
+    newProt.notification_resolvables.set(method, deferred());
+    await newProt.sendWebSocketMessage("Page.enable");
+    await newProt.sendWebSocketMessage("Runtime.enable");
+    await newProt.sendWebSocketMessage("Log.enable");
+    const notificationData =
+      (await newProt.notification_resolvables.get(method)) as {
+        context: {
+          auxData: {
+            frameId: string;
+          };
+        };
+      };
+    const { frameId } = notificationData.context.auxData;
+    const targets = await this.#protocol.sendWebSocketMessage<
+      null,
+      ProtocolTypes.Target.GetTargetsResponse
+    >("Target.getTargets");
+    const target = targets.targetInfos.find((target) =>
+      target.url === params.url
+    );
+    this.#pages.push(
+      new Page(
+        newProt,
+        target?.targetId as string,
+        this,
+        frameId,
+      ),
     );
   }
 
   /**
    * A way to get a page. Useful if a new tab/page has opened
-   * 
+   *
    * @example
    * ```js
    * const { browser, page } = await buildFor("chrome");
@@ -110,20 +169,24 @@ export class Client {
    * // You middle click an element
    * console.log(await browser.page(2)); // will return a Page representation of the newly opened page
    * ```
-   * 
-   * @param i 
-   * @returns 
+   *
+   * @param i
+   * @returns
    */
   public async page(pageNumber: number): Promise<Page> {
     // `i` is given to us in a way that makes the user understand exactly what page they want.
     // If 1, they want the first page, so we will get the 0th index
-    const index = pageNumber - 1
+    const index = pageNumber - 1;
 
     if (!this.#pages[index]) {
-      await this.close()
-      throw new RangeError('You have request to get page number ' + pageNumber + ', but only ' + this.#pages.length + ' pages are opened. If the issue persists, please submit an issue.')
+      await this.close();
+      throw new RangeError(
+        "You have request to get page number " + pageNumber + ", but only " +
+          this.#pages.length +
+          " pages are opened. If the issue persists, please submit an issue.",
+      );
     }
-    return this.#pages[index]
+    return this.#pages[index];
   }
 
   /**
@@ -209,7 +272,7 @@ export class Client {
         targetId: target.targetId,
       });
       // Cut all connections we have to tha page
-      const page = this.#pages.find(page =>
+      const page = this.#pages.find((page) =>
         page.target_id === target.targetId
       );
       if (!page) {
@@ -219,7 +282,7 @@ export class Client {
       page.socket.onclose = () => p.resolve();
       // page.socket.close()
       await p;
-      this.#pages = this.#pages.filter(page =>
+      this.#pages = this.#pages.filter((page) =>
         page.target_id !== target.targetId
       );
     }
@@ -288,8 +351,6 @@ export class Client {
     await p;
     const mainProtocol = new ProtocolClass(
       mainSocket,
-      wsOptions.hostname,
-      wsOptions.port,
     );
     await mainProtocol.sendWebSocketMessage("Page.enable");
     await mainProtocol.sendWebSocketMessage("Runtime.enable");
@@ -313,8 +374,6 @@ export class Client {
     await promise;
     const protocol = new ProtocolClass(
       websocket,
-      wsOptions.hostname,
-      wsOptions.port,
     );
     const method = "Runtime.executionContextCreated";
     protocol.notification_resolvables.set(method, deferred());
@@ -336,6 +395,10 @@ export class Client {
       mainProtocol,
       browserProcess,
       browser,
+      {
+        hostname: wsOptions.hostname,
+        port: wsOptions.port,
+      },
       firefoxProfilePath,
     );
     mainProtocol.client = client;

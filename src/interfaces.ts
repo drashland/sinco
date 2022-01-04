@@ -16,6 +16,16 @@ export interface ScreenshotOptions {
   quality?: number;
 }
 
+export interface WebsocketTarget {
+  description: string;
+  devtoolsFrontendUrl: string;
+  id: string;
+  title: string;
+  type: "page" | "browser";
+  url: string;
+  webSocketDebuggerUrl: string;
+}
+
 export type Cookie = {
   /** The name of the cookie */
   name: string;

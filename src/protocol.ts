@@ -1,17 +1,6 @@
 import { Deferred, deferred } from "../deps.ts";
 import { Protocol as ProtocolTypes } from "../deps.ts";
-import { Page } from "./page.ts";
 import { Client } from "./client.ts";
-
-interface WebsocketTarget {
-  description: string;
-  devtoolsFrontendUrl: string;
-  id: string;
-  title: string;
-  type: "page" | "browser";
-  url: string;
-  webSocketDebuggerUrl: string;
-}
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -53,26 +42,15 @@ export class Protocol {
    */
   public console_errors: string[] = [];
 
-  #ws_hostname: string;
-
-  #ws_port: number;
-
   client?: Client;
 
   constructor(
     socket: WebSocket,
-    wsHostname: string,
-    wsPort: number,
   ) {
     this.socket = socket;
-    this.#ws_hostname = wsHostname;
-    this.#ws_port = wsPort;
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
-      // if (data.method === "Page.frameStartedLoading") {
-      //   this.frame_id = data.params.frameId;
-      // }
       this.#handleSocketMessage(data);
     };
   }
@@ -106,7 +84,7 @@ export class Protocol {
     return result;
   }
 
-  async #handleSocketMessage(
+  #handleSocketMessage(
     message: MessageResponse | NotificationResponse,
   ) {
     if ("id" in message) { // message response
@@ -129,7 +107,7 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
-      console.log('got notification', message)
+      console.log("got notification", message);
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
         const params = message
@@ -151,77 +129,10 @@ export class Protocol {
         }
       }
 
-      // Support when a new tab opens (eg from clicking a link), it is now a new page in the browser
-      if (
-        message.method === "Page.frameRequestedNavigation" &&
-        message.params.disposition === "newTab"
-      ) {
-        // Whilst the new page may have opened, it may not be immediently present on the ws endpoint
-        const item = await this.#waitForItemOnWSEndpoint(message.params.url as string)
-
-        // TODO :: Don't think we actually need this target var. The item should hold an id that should be
-        // the same as target.targetId for chrome and firefox, but check before removing
-        const targets = await this.sendWebSocketMessage<
-          null,
-          ProtocolTypes.Target.GetTargetsResponse
-        >("Target.getTargets");
-        const target = targets.targetInfos.find((target) =>
-          target.url === message.params.url
-        );
-
-        const ws = new WebSocket(item.webSocketDebuggerUrl);
-        const p = deferred();
-        ws.onopen = () => p.resolve();
-        await p;
-        const newProt = new Protocol(
-          ws,
-          this.#ws_hostname,
-          this.#ws_port,
-        );
-        newProt.client = this.client;
-        const method = "Runtime.executionContextCreated";
-        newProt.notification_resolvables.set(method, deferred());
-        await newProt.sendWebSocketMessage("Page.enable");
-        await newProt.sendWebSocketMessage("Runtime.enable");
-        await newProt.sendWebSocketMessage("Log.enable");
-        const notificationData =
-          (await newProt.notification_resolvables.get(method)) as {
-            context: {
-              auxData: {
-                frameId: string;
-              };
-            };
-          };
-        const { frameId } = notificationData.context.auxData;
-        this.client!.pages.push(
-          new Page(
-            newProt,
-            target?.targetId as string,
-            this.client as Client,
-            frameId,
-          ),
-        );
-        this.notification_resolvables.get("Custom.newPageCreated")?.resolve();
-      }
-
       const resolvable = this.notification_resolvables.get(message.method);
       if (resolvable) {
         resolvable.resolve(message.params);
       }
     }
-  }
-
-  async #waitForItemOnWSEndpoint(url: string): Promise<WebsocketTarget> {
-    const res = await fetch(
-      `http://${this.#ws_hostname}:${this.#ws_port}/json/list`,
-    );
-    const json = await res.json() as WebsocketTarget[];
-    const item = json.find((j) =>
-      j["url"] === url
-    );
-    if (!item) {
-      return await this.#waitForItemOnWSEndpoint(url)
-    }
-    return item
   }
 }

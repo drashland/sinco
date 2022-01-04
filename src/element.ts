@@ -148,7 +148,7 @@ export class Element {
    *
    * @param options
    * @param options.button - If you should left, mdidle, or right click the element
-   * @param waitForNavigation - If clicking an element that will change the page location, set to true. Will wait for the new location to load
+   * @param waitForNavigation - If clicking an element that will change the page location, set to true and set `options` to `{}`. Will wait for the new location to load
    */
   public async click(options: {
     button?: "left" | "middle" | "right";
@@ -237,35 +237,52 @@ export class Element {
       x: x + (x - x) * (1 / 1),
       y,
       buttons: buttonsMap[options.button],
-    }),
-      await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
-        type: "mousePressed",
-        button: options.button,
-        modifiers: 0,
-        clickCount: 1,
-        x,
-        y,
-        buttons: buttonsMap[options.button],
-      }),
-      await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
-        type: "mouseReleased",
-        button: options.button,
-        modifiers: 0,
-        clickCount: 1,
-        x,
-        y,
-        buttons: buttonsMap[options.button],
-      });
+    });
 
-    if (options.button === "middle") {
-      const method = "Custom.newPageCreated";
-      const map = this.#protocol.notification_resolvables.set(
-        method,
+    // Creating this here because by the time we send the below events, and try wait for the notification, the protocol may have already got the message and discarded it
+    const middleClickPromiseHandler = options.button === "middle"
+      ? deferred()
+      : null;
+    const middleClickMethodToWaitFor = options.button === "middle"
+      ? "Page.frameRequestedNavigation"
+      : null;
+    if (middleClickPromiseHandler && middleClickMethodToWaitFor) {
+      this.#protocol.notification_resolvables.set(
+        middleClickMethodToWaitFor,
         deferred(),
       );
-      const p = map.get(method);
-      await p;
-      this.#protocol.notification_resolvables.delete(method);
+    }
+
+    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      button: options.button,
+      modifiers: 0,
+      clickCount: 1,
+      x,
+      y,
+      buttons: buttonsMap[options.button],
+    });
+    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      button: options.button,
+      modifiers: 0,
+      clickCount: 1,
+      x,
+      y,
+      buttons: buttonsMap[options.button],
+    });
+
+    if (options.button === "middle") {
+      const p = this.#protocol.notification_resolvables.get(
+        middleClickMethodToWaitFor as string,
+      );
+      const params = await p;
+      this.#protocol.notification_resolvables.delete(
+        middleClickMethodToWaitFor as string,
+      );
+      await this.#page.client._pushPage(
+        params as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent,
+      );
     } else if (waitForNavigation) {
       const method2 = "Page.frameStoppedLoading";
       this.#protocol.notification_resolvables.set(
