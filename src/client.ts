@@ -112,6 +112,7 @@ export class Client {
   public async _pushPage(
     params: ProtocolTypes.Page.FrameRequestedNavigationEvent,
   ): Promise<void> {
+    console.log('[pushPage]')
     let item: WebsocketTarget | undefined = undefined;
     while (!item) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
       const res = await fetch(
@@ -120,6 +121,7 @@ export class Client {
       const json = await res.json() as WebsocketTarget[];
       item = json.find((j) => j["url"] === params.url);
     }
+    console.log('got json item')
     const ws = new WebSocket(item.webSocketDebuggerUrl);
     const p = deferred();
     ws.onopen = () => p.resolve();
@@ -149,6 +151,7 @@ export class Client {
     const target = targets.targetInfos.find((target) =>
       target.url === params.url
     );
+    console.log('[pushPage] pushing new page')
     this.#pages.push(
       new Page(
         newProt,

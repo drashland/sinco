@@ -271,6 +271,7 @@ export class Element {
       y,
       buttons: buttonsMap[options.button],
     });
+    console.log('[click] did all click actions')
 
     if (options.button === "middle") {
       const p = this.#protocol.notification_resolvables.get(

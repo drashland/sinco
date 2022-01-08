@@ -116,6 +116,7 @@ export class Page {
         null,
         Protocol.Target.GetTargetsResponse
       >("Target.getTargets");
+      console.log('[locattion] here are targets', targets)
       const target = targets.targetInfos.find((target) =>
         target.targetId === this.target_id
       );
