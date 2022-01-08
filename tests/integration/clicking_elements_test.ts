@@ -1,5 +1,6 @@
 import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
+import { delay } from "https://deno.land/std/async/delay.ts"
 
 Deno.test(
   "[chrome] Clicking elements - Tutorial for this feature in the docs should work",
@@ -16,6 +17,7 @@ Deno.test(
     await githubElem.click({
       button: "middle", // Make sure when clicking an element that will open a new page, "middle" is used
     });
+    await delay(1000)
     console.log("clicked");
     const page2 = await browser.page(2);
     const page2Location = await page2.location();
