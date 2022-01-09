@@ -203,7 +203,12 @@ for (const browserItem of browserList) {
     }
     await browser.close();
     assertEquals(errMsg, "readyState not OPEN");
-    assertEquals(browser.pages.length, 0);
+    try {
+      await browser.page(1)
+      assertEquals(true, false)
+    } catch (_e) {
+      // do nothing, error should be thrown
+    }
     assertEquals(page.socket.readyState, page.socket.CLOSED);
   });
 }
