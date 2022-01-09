@@ -135,6 +135,7 @@ export class Client {
     await newProt.sendWebSocketMessage("Page.enable");
     await newProt.sendWebSocketMessage("Runtime.enable");
     await newProt.sendWebSocketMessage("Log.enable");
+    await newProt.sendWebSocketMessage("Target.enable");
     const notificationData =
       (await newProt.notification_resolvables.get(method)) as {
         context: {
@@ -151,7 +152,7 @@ export class Client {
     const target = targets.targetInfos.find((target) =>
       target.url === params.url
     );
-    console.log('[pushPage] pushing new page')
+    console.log('[pushPage] pushing new page. here is following ata: current page len, target id,frame id', this.#pages.length, target?.targetId, frameId)
     this.#pages.push(
       new Page(
         newProt,
