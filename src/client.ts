@@ -145,18 +145,11 @@ export class Client {
         };
       };
     const { frameId } = notificationData.context.auxData;
-    const targets = await this.#protocol.sendWebSocketMessage<
-      null,
-      ProtocolTypes.Target.GetTargetsResponse
-    >("Target.getTargets");
-    const target = targets.targetInfos.find((target) =>
-      target.url === params.url
-    );
-    console.log('[pushPage] pushing new page. here is following ata: current page len, target id,frame id', this.#pages.length, target?.targetId, frameId)
+    console.log('[pushPage] pushing new page. here is following ata: current page len, target id,frame id', this.#pages.length, item.id, frameId)
     this.#pages.push(
       new Page(
         newProt,
-        target?.targetId as string,
+        item.id,
         this,
         frameId,
       ),
