@@ -261,6 +261,7 @@ export class Client {
       target.targetId !== page.target_id
     );
     for (const target of pagesToClose) {
+      console.log('inside loop of closing page')
       // Remove the actual page from the browser
       await this.#protocol.sendWebSocketMessage<
         ProtocolTypes.Target.CloseTargetRequest,
@@ -277,8 +278,10 @@ export class Client {
       }
       const p = deferred();
       page.socket.onclose = () => p.resolve();
+      page.socket.onerror = () => console.log('hmmm')
       // page.socket.close()
       await p;
+      console.log('closed page')
       this.#pages = this.#pages.filter((page) =>
         page.target_id !== target.targetId
       );
@@ -338,8 +341,6 @@ export class Client {
     console.log('getting ws url for client')
     let mainWsUrl = "";
     for await (const line of readLines(browserProcess.stderr)) { // Loop also needed before json endpoint is up
-      // Message 
-
       console.log(line)
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
       if (!match) {
@@ -348,10 +349,23 @@ export class Client {
       mainWsUrl = line.split("on ")[1];
       break;
     }
-    console.log('creating ws conn')
+    // On firefox, the ws url in the sterr isnt correct
+    if (browser === "firefox") {
+      const list = await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json() as {
+        type: "page" | "browser",
+        webSocketDebuggerUrl: string
+      }[]
+      const browserTarget = list.find(l => l.type === "browser")
+      mainWsUrl = browserTarget?.webSocketDebuggerUrl  ?? ""
+    }
+    console.log('creating ws conn with url ', mainWsUrl)
     const p = deferred();
     const mainSocket = new WebSocket(mainWsUrl);
-    mainSocket.onopen = () => p.resolve();
+    mainSocket.onopen = () => {
+      console.log('open')
+      p.resolve();
+    }
+    mainSocket.onerror = (e) => console.log(e)
     await p;
     console.log('sending startin msgs')
     const mainProtocol = new ProtocolClass(

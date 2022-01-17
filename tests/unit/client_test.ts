@@ -93,7 +93,7 @@ for (const browserItem of browserList) {
     listener.close();
     assertEquals(
       errMsg,
-      "Unable to create address localhost:9292 because a process is already listening on it.",
+      "Unable to listen on address localhost:9292 because a process is already listening on it.",
     );
   });
 
@@ -148,22 +148,23 @@ for (const browserItem of browserList) {
 
   Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
     const { browser, page } = await buildFor(browserItem.name);
-    try {
-      assertEquals((await browser.page(1)).target_id, page.target_id);
-    } catch (e) {
-      await browser.close();
-      throw e;
-    }
+      console.log('asserting')
+      const mainPage = await browser.page(1)
+      await browser.close()
+      assertEquals(page.target_id, mainPage.target_id);
   });
 
   Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
     const { browser } = await buildFor(browserItem.name);
+    let threw = false
     try {
       await browser.page(2);
-      // It SHOULD have failed above, so if it didnt, we need to know
-      assertEquals(true, false);
     } catch (_e) {
       // As expected :)
+      threw = true
+    } finally {
+      await browser.close()
+      assertEquals(threw, true)
     }
   });
 
