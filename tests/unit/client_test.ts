@@ -25,21 +25,28 @@ for (const browserItem of browserList) {
   Deno.test(
     "create() | Uses the port when passed in to the parameters",
     async () => {
+      console.log('gonna bui ld')
       const { browser } = await buildFor(browserItem.name, {
         debuggerPort: 9999,
       });
+      console.log('built')
       const res = await fetch("http://localhost:9999/json/list");
       const json = await res.json();
       // Our ws client should be able to connect if the browser is running
+      console.log(json[0])
       const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
       const promise = deferred();
       client.onopen = function () {
+        console.log('client opened')
         client.close();
       };
       client.onclose = function () {
+        console.log('client closed')
         promise.resolve();
       };
+      console.log('waiting for client')
       await promise;
+      console.log('waiting for browser')
       await browser.close();
     },
   );

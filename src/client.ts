@@ -309,7 +309,8 @@ export class Client {
     page: Page;
   }> {
     // Check port is available first because we'll only know when we run the subprocess
-    // as it will show in the stderr, but will just hang
+    // as it will show in the stderr, but will just hang. This way its easier because
+    // we can simply throw an error
     try {
       const listener = Deno.listen({
         hostname: wsOptions.hostname,
@@ -318,14 +319,15 @@ export class Client {
       listener.close();
     } catch (e) {
       if (e instanceof Deno.errors.AddrInUse) {
-        throw new Error(
-          `Unable to create address ${wsOptions.hostname}:${wsOptions.port} because a process is already listening on it.`,
+        throw new Deno.errors.AddrInUse(
+          `Unable to listen on address ${wsOptions.hostname}:${wsOptions.port} because a process is already listening on it.`,
         );
       }
       throw e;
     }
 
     // Run the subprocess
+    console.log('running subprocess')
     const browserProcess = Deno.run({
       cmd: buildArgs,
       stderr: "piped",
@@ -333,8 +335,12 @@ export class Client {
     });
 
     // Get the main ws conn for the client
+    console.log('getting ws url for client')
     let mainWsUrl = "";
     for await (const line of readLines(browserProcess.stderr)) { // Loop also needed before json endpoint is up
+      // Message 
+
+      console.log(line)
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
       if (!match) {
         continue;
@@ -342,10 +348,12 @@ export class Client {
       mainWsUrl = line.split("on ")[1];
       break;
     }
+    console.log('creating ws conn')
     const p = deferred();
     const mainSocket = new WebSocket(mainWsUrl);
     mainSocket.onopen = () => p.resolve();
     await p;
+    console.log('sending startin msgs')
     const mainProtocol = new ProtocolClass(
       mainSocket,
     );
@@ -355,13 +363,26 @@ export class Client {
     await mainProtocol.sendWebSocketMessage("Target.enable");
 
     // Get the connection info for the default page thats opened, that acts as our first page
-    const targets = await mainProtocol.sendWebSocketMessage<
-      null,
-      ProtocolTypes.Target.GetTargetsResponse
-    >("Target.getTargets");
-    const target = targets.targetInfos.find((info) =>
-      info.type === "page" && info.url === "about:blank"
-    ) as ProtocolTypes.Target.TargetInfo;
+    // Sometimes, it isn't immediently available, so poll until it refreshes with the page
+    console.log('getting info for page')
+    async function getInitialPage() {
+      const targets = await mainProtocol.sendWebSocketMessage<
+        null,
+        ProtocolTypes.Target.GetTargetsResponse
+      >("Target.getTargets");
+      console.log('all targets for getting the page:', targets)
+      const target = targets.targetInfos.find((info) =>
+        info.type === "page" && info.url === "about:blank"
+      ) as ProtocolTypes.Target.TargetInfo;
+      return target
+    }
+    let target: ProtocolTypes.Target.TargetInfo | null = null
+    while (!target) {
+      target = await getInitialPage()
+    }
+
+    console.log('json res for list', await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json())
+    console.log('creating page conn')
     const websocket = new WebSocket(
       `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${target
         ?.targetId}`,
@@ -369,6 +390,7 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
+    console.log('sending starting messages for page')
     const protocol = new ProtocolClass(
       websocket,
     );
