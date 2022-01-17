@@ -240,15 +240,21 @@ export class Element {
     });
 
     // Creating this here because by the time we send the below events, and try wait for the notification, the protocol may have already got the message and discarded it
-    const middleClickPromiseHandler = options.button === "middle"
-      ? deferred()
-      : null;
-    const middleClickMethodToWaitFor = options.button === "middle"
-      ? "Page.frameRequestedNavigation"
-      : null;
-    if (middleClickPromiseHandler && middleClickMethodToWaitFor) {
+    const middleClickHandlers = options.button === "middle" ? {
+      requested: {
+        method: "Page.frameRequestedNavigation",
+      },
+      navigated: {
+        method: "Page.frameClearedScheduledNavigation",
+      }
+    } : null
+    if (middleClickHandlers) {
       this.#protocol.notification_resolvables.set(
-        middleClickMethodToWaitFor,
+        middleClickHandlers.requested.method,
+        deferred(),
+      );
+      this.#protocol.notification_resolvables.set(
+        middleClickHandlers.navigated.method,
         deferred(),
       );
     }
@@ -273,14 +279,19 @@ export class Element {
     });
     console.log('[click] did all click actions')
 
-    if (options.button === "middle") {
-      const p = this.#protocol.notification_resolvables.get(
-        middleClickMethodToWaitFor as string,
+    if (options.button === "middle" && middleClickHandlers) {
+      const p1 = this.#protocol.notification_resolvables.get(
+        middleClickHandlers.requested.method,
       );
-      const params = await p;
+      const params = await p1;
       this.#protocol.notification_resolvables.delete(
-        middleClickMethodToWaitFor as string,
+        middleClickHandlers.requested.method as string,
       );
+      const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
+      console.log('waiting for naigated')
+      await p2
+      console.log('waited')
+      this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
       await this.#page.client._pushPage(
         params as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent,
       );

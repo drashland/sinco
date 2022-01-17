@@ -121,8 +121,8 @@ export class Client {
       const json = await res.json() as WebsocketTarget[];
       item = json.find((j) => j["url"] === params.url);
     }
-    console.log('got json item')
-    const ws = new WebSocket(item.webSocketDebuggerUrl);
+    console.log('got json item', item)
+    const ws = new WebSocket(`ws://${this.#wsOptions.hostname}:${this.#wsOptions.port}/devtools/page/${item.id}`);
     const p = deferred();
     ws.onopen = () => p.resolve();
     await p;
@@ -279,7 +279,11 @@ export class Client {
       const p = deferred();
       page.socket.onclose = () => p.resolve();
       page.socket.onerror = () => console.log('hmmm')
-      // page.socket.close()
+      try {
+      page.socket.close()
+      } catch (_e) {
+        // probably already closed
+      }
       await p;
       console.log('closed page')
       this.#pages = this.#pages.filter((page) =>

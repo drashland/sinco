@@ -53,6 +53,7 @@ for (const browserItem of browserList) {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com");
       const span = await page.querySelector("span");
+      Deno.mkdirSync(ScreenshotsFolder)
       const fileName = await span.takeScreenshot(ScreenshotsFolder, {
         quality: 50,
       });
@@ -70,6 +71,7 @@ for (const browserItem of browserList) {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://chromestatus.com");
     const span = await page.querySelector("span");
+    Deno.mkdirSync(ScreenshotsFolder)
     const filename = await span.takeScreenshot(ScreenshotsFolder, {
       fileName: "AllOpts",
       format: "jpeg",

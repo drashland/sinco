@@ -154,7 +154,7 @@ for (const browserItem of browserList) {
       assertEquals(page.target_id, mainPage.target_id);
   });
 
-  Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
+  Deno.test(`[${browserItem.name}] page() | Should throw out of bounds if index doesnt exist`, async () => {
     const { browser } = await buildFor(browserItem.name);
     let threw = false
     try {
