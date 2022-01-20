@@ -64,7 +64,9 @@ export class Page {
     // wait for socket to close (closing page also shuts down connection to debugger url)
     const p2 = deferred();
     this.#protocol.socket.onclose = () => p2.resolve();
+    console.log('waiting to close page')
     await p2;
+    console.log('closedp age')
 
     // And remove it from the pages array
     this.client._popPage(this.#target_id);

@@ -50,6 +50,13 @@ for (const browserItem of browserList) {
   Deno.test(
     "takeScreenshot() | Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
     async () => {
+      try {
+      Deno.removeSync(ScreenshotsFolder, {
+        recursive: true
+      })
+    } catch (_e) {
+      // if doesnt exist, no problamo
+    }
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com");
       const span = await page.querySelector("span");
@@ -59,7 +66,9 @@ for (const browserItem of browserList) {
       });
       await browser.close();
       const exists = existsSync(fileName);
-      Deno.removeSync(fileName);
+      Deno.removeSync(ScreenshotsFolder, {
+        recursive: true
+      });
       assertEquals(
         exists,
         true,
@@ -79,11 +88,13 @@ for (const browserItem of browserList) {
     });
     await browser.close();
     const exists = existsSync(filename);
+    Deno.removeSync(ScreenshotsFolder, {
+      recursive: true
+    });
     assertEquals(
       exists,
       true,
     );
-    Deno.removeSync(filename);
   });
 
   Deno.test("value | It should get the value for the given input element", async () => {

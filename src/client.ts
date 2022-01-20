@@ -122,10 +122,12 @@ export class Client {
       item = json.find((j) => j["url"] === params.url);
     }
     console.log('got json item', item)
+    const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
     const ws = new WebSocket(`ws://${this.#wsOptions.hostname}:${this.#wsOptions.port}/devtools/page/${item.id}`);
     const p = deferred();
     ws.onopen = () => p.resolve();
     await p;
+   
     const newProt = new ProtocolClass(
       ws,
     );
@@ -136,6 +138,10 @@ export class Client {
     await newProt.sendWebSocketMessage("Runtime.enable");
     await newProt.sendWebSocketMessage("Log.enable");
     await newProt.sendWebSocketMessage("Target.enable");
+    console.log('waitin for load')
+    const loadPromise = notifs.get('Page.frameStoppedLoading')
+    await loadPromise
+    console.log('waited')
     const notificationData =
       (await newProt.notification_resolvables.get(method)) as {
         context: {
@@ -253,43 +259,36 @@ export class Client {
    * @param page - The page to not close
    */
   public async closeAllPagesExcept(page: Page) {
-    const targets = await this.#protocol.sendWebSocketMessage<
-      null,
-      ProtocolTypes.Target.GetTargetsResponse
-    >("Target.getTargets");
-    const pagesToClose = targets.targetInfos.filter((target) =>
-      target.targetId !== page.target_id
-    );
-    for (const target of pagesToClose) {
-      console.log('inside loop of closing page')
-      // Remove the actual page from the browser
-      await this.#protocol.sendWebSocketMessage<
-        ProtocolTypes.Target.CloseTargetRequest,
-        ProtocolTypes.Target.CloseTargetResponse
-      >("Target.closeTarget", {
-        targetId: target.targetId,
-      });
-      // Cut all connections we have to tha page
-      const page = this.#pages.find((page) =>
-        page.target_id === target.targetId
-      );
-      if (!page) {
-        continue;
-      }
-      const p = deferred();
-      page.socket.onclose = () => p.resolve();
-      page.socket.onerror = () => console.log('hmmm')
-      try {
-      page.socket.close()
-      } catch (_e) {
-        // probably already closed
-      }
-      await p;
-      console.log('closed page')
-      this.#pages = this.#pages.filter((page) =>
-        page.target_id !== target.targetId
-      );
+
+    const pages = this.#pages.filter(p => p.target_id !== page.target_id)
+    for (const page of pages) {
+      await page.close()
     }
+
+    // const targets = await this.#protocol.sendWebSocketMessage<
+    //   null,
+    //   ProtocolTypes.Target.GetTargetsResponse
+    // >("Target.getTargets");
+    // console.log('all targets:', targets)
+    // console.log('and the page we wont be closing:', page.target_id)
+    // const pagesToClose = targets.targetInfos.filter((target) =>
+    //   target.targetId !== page.target_id
+    // );
+    // for (const target of pagesToClose) {
+    //   console.log('inside loop of closing page, looking at', target.targetId)
+    //   const page = this.#pages.find(p => p.target_id === target.targetId)
+    //   if (page) {
+    //     await page.close()
+    //   } else {
+    //     // Popup or something the user wasn't expecting
+    //     await this.#protocol.sendWebSocketMessage<
+    //       ProtocolTypes.Target.CloseTargetRequest,
+    //       ProtocolTypes.Target.CloseTargetResponse
+    //     >("Target.closeTarget", {
+    //       targetId: target.targetId,
+    //     });
+    //   }
+    // }
   }
 
   /**

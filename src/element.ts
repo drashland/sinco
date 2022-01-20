@@ -246,7 +246,7 @@ export class Element {
       },
       navigated: {
         method: "Page.frameClearedScheduledNavigation",
-      }
+      },
     } : null
     if (middleClickHandlers) {
       this.#protocol.notification_resolvables.set(
