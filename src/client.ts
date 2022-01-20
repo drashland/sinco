@@ -113,6 +113,7 @@ export class Client {
     params: ProtocolTypes.Page.FrameRequestedNavigationEvent,
   ): Promise<void> {
     console.log('[pushPage]')
+    // wait until th
     let item: WebsocketTarget | undefined = undefined;
     while (!item) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
       const res = await fetch(
@@ -121,6 +122,13 @@ export class Client {
       const json = await res.json() as WebsocketTarget[];
       item = json.find((j) => j["url"] === params.url);
     }
+    // and the page may not be properly loaded
+    console.log('waiting until target on pysh page isnt about blank')
+    let target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.TargetInfo[]>('Target.getTargets')).find(t => t.targetId === item?.id)
+    while (target?.url === "about:blank") {
+      target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.TargetInfo[]>('Target.getTargets')).find(t => t.targetId === item?.id)
+    }
+    console.log('waited')
     console.log('got json item', item)
     const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
     const ws = new WebSocket(`ws://${this.#wsOptions.hostname}:${this.#wsOptions.port}/devtools/page/${item.id}`);
