@@ -124,9 +124,9 @@ export class Client {
     }
     // and the page may not be properly loaded
     console.log('waiting until target on pysh page isnt about blank')
-    let target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.TargetInfo[]>('Target.getTargets')).find(t => t.targetId === item?.id)
+    let target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')).targetInfos.find(t => t.targetId === item?.id)
     while (target?.url === "about:blank") {
-      target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.TargetInfo[]>('Target.getTargets')).find(t => t.targetId === item?.id)
+      target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')).targetInfos.find(t => t.targetId === item?.id)
     }
     console.log('waited')
     console.log('got json item', item)
