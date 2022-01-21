@@ -128,10 +128,12 @@ for (const browserItem of browserList) {
     Deno.test(`[${browserItem.name}] closeAllPagesExcept() | Should close all pages except the one passed in`, async () => {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://drash.land");
-      await (await page.querySelector("a")).click({
+      const elem = await page.querySelector('a')
+      await elem.click({
         button: "middle",
       });
       const page2 = await browser.page(2);
+      console.log('PAGE 2 LOC', await page2.location());
       await browser.closeAllPagesExcept(page2);
       let errMsg = "";
       try {

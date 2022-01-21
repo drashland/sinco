@@ -291,9 +291,13 @@ export class Element {
       console.log('waiting for naigated')
       await p2
       console.log('waited')
+      console.log('going to query endpoint and targets')
+      console.log(await this.#protocol.sendWebSocketMessage('Target.getTargets'))
+      console.log( await (await fetch('http://localhost:9292/json/list')).json())
       this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
       await this.#page.client._pushPage(
         params as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent,
+        this.#protocol
       );
     } else if (waitForNavigation) {
       const method2 = "Page.frameStoppedLoading";
