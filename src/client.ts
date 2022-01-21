@@ -369,9 +369,11 @@ export class Client {
       console.log(line)
       const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
       if (!match) {
+        console.log('continuing')
         continue;
       }
       mainWsUrl = line.split("on ")[1];
+      console.log('breaking')
       break;
     }
     // On firefox, the ws url in the sterr isnt correct
