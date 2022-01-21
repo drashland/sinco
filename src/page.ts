@@ -122,7 +122,7 @@ export class Page {
       const target = targets.targetInfos.find((target) =>
         target.targetId === this.target_id
       );
-      return target!.url;
+      return await this.evaluate(`window.location.href`);
     }
     const method = "Page.loadEventFired";
     this.#protocol.notification_resolvables.set(method, deferred());

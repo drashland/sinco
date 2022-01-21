@@ -38,8 +38,7 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          deno test -A tests/integration/clicking_elements_test.ts --no-check=remote --config tsconfig.json
-#          deno test -A tests/integration --config tsconfig.json --no-check=remote
+          deno test -A tests/integration --config tsconfig.json --no-check=remote
 
       - name: Run Unit Tests
         run: |
