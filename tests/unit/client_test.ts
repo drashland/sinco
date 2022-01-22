@@ -79,23 +79,23 @@ for (const browserItem of browserList) {
     },
   );
 
-  Deno.test(`[${browserItem.name}] create() | Throws if address is already in use`, async () => {
-    const listener = Deno.listen({
-      hostname: "localhost",
-      port: 9292,
-    });
-    let errMsg = "";
-    try {
-      await buildFor(browserItem.name);
-    } catch (e) {
-      errMsg = e.message;
-    }
-    listener.close();
-    assertEquals(
-      errMsg,
-      "Unable to listen on address localhost:9292 because a process is already listening on it.",
-    );
-  });
+  // Deno.test(`[${browserItem.name}] create() | Throws if address is already in use`, async () => {
+  //   const listener = Deno.listen({
+  //     hostname: "localhost",
+  //     port: 9292,
+  //   });
+  //   let errMsg = "";
+  //   try {
+  //     await buildFor(browserItem.name);
+  //   } catch (e) {
+  //     errMsg = e.message;
+  //   }
+  //   listener.close();
+  //   assertEquals(
+  //     errMsg,
+  //     "Unable to listen on address localhost:9292 because a process is already listening on it.",
+  //   );
+  // });
 
   Deno.test(`[${browserItem.name}] close() | Should close all resources and not leak any`, async () => {
     const { browser, page } = await buildFor(browserItem.name);

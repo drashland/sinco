@@ -336,7 +336,23 @@ export class Client {
     browser: Client;
     page: Page;
   }> {
-    
+    // Check port is available first because we'll only know when we run the subprocess
+    // as it will show in the stderr, but will just hang. This way its easier because
+    // we can simply throw an error
+    // try {
+    //   const listener = Deno.listen({
+    //     hostname: wsOptions.hostname,
+    //     port: wsOptions.port,
+    //   });
+    //   listener.close();
+    // } catch (e) {
+    //   if (e instanceof Deno.errors.AddrInUse) {
+    //     throw new Deno.errors.AddrInUse(
+    //       `Unable to listen on address ${wsOptions.hostname}:${wsOptions.port} because a process is already listening on it.`,
+    //     );
+    //   }
+    //   throw e;
+    // }
 
     // Run the subprocess
     console.log('running subprocess')
