@@ -147,7 +147,7 @@ export class Client {
     console.log('waiting until target on pysh page isnt about blank')
     console.log('waited')
     console.log('got json item', item)
-    const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
+    //const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
     const ws = new WebSocket(`ws://${this.wsOptions.hostname}:${this.wsOptions.port}/devtools/page/${item.id}`);
     const p = deferred();
     ws.onopen = () => p.resolve();
@@ -164,20 +164,20 @@ export class Client {
     await newProt.sendWebSocketMessage("Log.enable");
     await newProt.sendWebSocketMessage("Target.enable");
     // wait until the endpoint is ready
-    // const endpointPromise = deferred()
-    // const intervalId = setInterval(async () => {
-    //   const targets = await newProt.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')
-    //   const target = targets.targetInfos.find(t => t.targetId === item?.id) as ProtocolTypes.Target.TargetInfo
-    //   if (target.title !== 'about:blank') {
-    //     clearInterval(intervalId)
-    //     endpointPromise.resolve()
-    //   }
-    // })
-    // await endpointPromise
+    const endpointPromise = deferred()
+    const intervalId = setInterval(async () => {
+      const targets = await newProt.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')
+      const target = targets.targetInfos.find(t => t.targetId === item?.id) as ProtocolTypes.Target.TargetInfo
+      if (target.title !== 'about:blank') {
+        clearInterval(intervalId)
+        endpointPromise.resolve()
+      }
+    })
+    await endpointPromise
     console.log('querying targets after creating newprot', await newProt.sendWebSocketMessage('Target.getTargets'))
     console.log('waitin for load')
-    const loadPromise = notifs.get('Page.frameStoppedLoading')
-    await loadPromise
+    // const loadPromise = notifs.get('Page.frameStoppedLoading')
+    // await loadPromise
     console.log('waited')
     const notificationData =
       (await newProt.notification_resolvables.get(method)) as {
