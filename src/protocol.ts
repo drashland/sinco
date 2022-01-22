@@ -103,13 +103,6 @@ export class Protocol {
         return;
       }
       if ("result" in message) { // success response
-        // TODO :: Why do we have this? should be in checkForErrorresult or something
-        if ("errorText" in message.result!) {
-          const r = this.notification_resolvables.get("Page.loadEventFired");
-          if (r) {
-            r.resolve();
-          }
-        }
         resolvable.resolve(message.result);
       }
       if ("error" in message) { // error response
