@@ -19,6 +19,9 @@ export class Protocol {
    */
   public socket: WebSocket;
 
+  /**
+   * All domains that a ws client should listen on for events
+   */
   public static initial_event_method_listeners = [
     'Page',
     'Target',

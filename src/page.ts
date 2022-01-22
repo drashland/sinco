@@ -19,7 +19,7 @@ export class Page {
    * If chrome, will look like 4174549611B216287286CA10AA78BF56
    * If firefox, will look like 41745-49611-B2162-87286 (eg like a uuid)
    */
-  readonly #target_id: string;
+  readonly target_id: string;
 
   /**
    * If chrome, ends up being what target id is
@@ -36,17 +36,13 @@ export class Page {
     frameId: string,
   ) {
     this.#protocol = protocol;
-    this.#target_id = targetId;
+    this.target_id = targetId;
     this.client = client;
     this.#frame_id = frameId;
   }
 
   public get socket() {
     return this.#protocol.socket;
-  }
-
-  public get target_id() {
-    return this.#target_id;
   }
 
   /**
@@ -69,7 +65,7 @@ export class Page {
     console.log('closedp age')
 
     // And remove it from the pages array
-    this.client._popPage(this.#target_id);
+    this.client._popPage(this.target_id);
   }
 
   /**
@@ -122,7 +118,7 @@ export class Page {
       const target = targets.targetInfos.find((target) =>
         target.targetId === this.target_id
       );
-      return await this.evaluate(`window.location.href`);
+      return target?.url ?? "";
     }
     const method = "Page.loadEventFired";
     this.#protocol.notification_resolvables.set(method, deferred());
@@ -323,9 +319,7 @@ export class Page {
         quality: quality,
         clip: clip,
       },
-    ) as {
-      data: string;
-    };
+    )
 
     //Writing the Obtained Base64 encoded string to image file
     const fName = `${path}/${

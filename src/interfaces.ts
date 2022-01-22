@@ -16,13 +16,23 @@ export interface ScreenshotOptions {
   quality?: number;
 }
 
+/**
+ * Interface that describes a /json/list item for the websocket endpoint
+ */
 export interface WebsocketTarget {
+  /** The page description, cna be "" */
   description: string;
+  /** The frontend url we can view for debugging */
   devtoolsFrontendUrl: string;
+  /** The target id of the target */
   id: string;
+  /** The page title */
   title: string;
+  /** The type of target */
   type: "page" | "browser";
+  /** The target url */
   url: string;
+  /** Websocket url we can connect to */
   webSocketDebuggerUrl: string;
 }
 

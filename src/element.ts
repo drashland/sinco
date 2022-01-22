@@ -246,23 +246,12 @@ export class Element {
     });
 
     // Creating this here because by the time we send the below events, and try wait for the notification, the protocol may have already got the message and discarded it
-    const middleClickHandlers = options.button === "middle" ? {
-      requested: {
-        method: "Page.frameRequestedNavigation",
-      },
-      navigated: {
-        method: "Page.frameClearedScheduledNavigation",
-      },
-    } : null
-    if (middleClickHandlers) {
+    const middleClickHandler = options.button === "middle" ? "Page.frameRequestedNavigation" : null
+    if (middleClickHandler) {
       this.#protocol.notification_resolvables.set(
-        middleClickHandlers.requested.method,
+        middleClickHandler,
         deferred(),
       );
-      // this.#protocol.notification_resolvables.set(
-      //   middleClickHandlers.navigated.method,
-      //   deferred(),
-      // );
     }
 
     await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
@@ -285,28 +274,18 @@ export class Element {
     });
     console.log('[click] did all click actions')
 
-    if (options.button === "middle" && middleClickHandlers) {
+    if (options.button === "middle" && middleClickHandler) {
       // this.#protocol.notification_resolvables.set('Page.navigated', deferred())
       // console.log('GON WAIT 1')
       // await this.#protocol.notification_resolvables.get('Page.navigated')
       // console.log('WAITED')
       const p1 = this.#protocol.notification_resolvables.get(
-        middleClickHandlers.requested.method,
+        middleClickHandler,
       );
       const { url, frameId} = await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
       this.#protocol.notification_resolvables.delete(
-        middleClickHandlers.requested.method as string,
+        middleClickHandler,
       );
-
-      // // TODO :: DO we need this p2?
-      // const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
-      // console.log('waiting for naigated')
-      // await p2
-      console.log('waited')
-      console.log('going to query endpoint and targets')
-      console.log(await this.#protocol.sendWebSocketMessage('Target.getTargets'))
-      console.log( await (await fetch('http://localhost:9292/json/list')).json())
-     // this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
 
       // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
       // 1. Get target id of this new page
