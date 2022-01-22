@@ -45,7 +45,7 @@ for (const browserItem of browserList) {
     "Throws an error when format passed is jpeg(or default) and quality > than 100",
     async () => {
       const { page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
+      await page.location("https://drash.land");
       let msg = "";
       try {
         await page.takeScreenshot(ScreenshotsFolder, { quality: 999 });
@@ -62,7 +62,7 @@ for (const browserItem of browserList) {
 
   Deno.test("Saves Screenshot with Given Filename", async () => {
     const { browser, page } = await buildFor(browserItem.name);
-    await page.location("https://chromestatus.com");
+    await page.location("https://drash.land");
     const filename = await page.takeScreenshot(ScreenshotsFolder, {
       fileName: "Happy",
     });
@@ -79,7 +79,7 @@ for (const browserItem of browserList) {
     "takeScreenshot() | Saves Screenshot with given format (jpeg | png)",
     async () => {
       const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
+      await page.location("https://drash.land");
       const fileName = await page.takeScreenshot(ScreenshotsFolder, {
         format: "png",
       });
@@ -108,7 +108,7 @@ for (const browserItem of browserList) {
   );
   Deno.test("evaluate() | It should evaluate string on current frame", async () => {
     const { browser, page } = await buildFor(browserItem.name);
-    await page.location("https://chromestatus.com");
+    await page.location("https://drash.land");
     const parentConstructor = await page.evaluate(`1 + 2`);
     await browser.close();
     assertEquals(parentConstructor, 3);

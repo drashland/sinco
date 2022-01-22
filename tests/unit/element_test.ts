@@ -60,10 +60,10 @@ for (const browserItem of browserList) {
         // if doesnt exist, no problamo
       }
       const { browser, page } = await buildFor(browserItem.name);
-      await page.location("https://chromestatus.com");
-      const span = await page.querySelector("span");
+      await page.location("https://drash.land");
+      const img = await page.querySelector("img");
       Deno.mkdirSync(ScreenshotsFolder);
-      const fileName = await span.takeScreenshot(ScreenshotsFolder, {
+      const fileName = await img.takeScreenshot(ScreenshotsFolder, {
         quality: 50,
       });
       await browser.close();
