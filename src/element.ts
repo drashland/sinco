@@ -286,6 +286,10 @@ export class Element {
     console.log('[click] did all click actions')
 
     if (options.button === "middle" && middleClickHandlers) {
+      // this.#protocol.notification_resolvables.set('Page.navigated', deferred())
+      // console.log('GON WAIT 1')
+      // await this.#protocol.notification_resolvables.get('Page.navigated')
+      // console.log('WAITED')
       const p1 = this.#protocol.notification_resolvables.get(
         middleClickHandlers.requested.method,
       );
@@ -293,6 +297,12 @@ export class Element {
       this.#protocol.notification_resolvables.delete(
         middleClickHandlers.requested.method as string,
       );
+
+      // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
+      // 1. Get target id of this new page
+      // 2. Create ws connection and protocol instance
+      //const client = new WebSocket(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${params.frame}`)
+
       const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
       console.log('waiting for naigated')
       await p2

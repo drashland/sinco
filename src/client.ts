@@ -80,7 +80,7 @@ export class Client {
   /**
    * The host and port that the websocket server is listening on
    */
-  readonly #wsOptions: {
+  readonly wsOptions: {
     hostname: string;
     port: number;
   };
@@ -105,7 +105,7 @@ export class Client {
     this.#protocol = protocol;
     this.#browser_process = browserProcess;
     this.browser = browser;
-    this.#wsOptions = wsOptions;
+    this.wsOptions = wsOptions;
     this.#firefox_profile_path = firefoxProfilePath;
   }
 
@@ -138,7 +138,7 @@ export class Client {
     let item: WebsocketTarget | undefined = undefined;
     while (!item) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
       const res = await fetch(
-        `http://${this.#wsOptions.hostname}:${this.#wsOptions.port}/json/list`,
+        `http://${this.wsOptions.hostname}:${this.wsOptions.port}/json/list`,
       );
       const json = await res.json() as WebsocketTarget[];
       item = json.find((j) => j["url"] === params.url);
@@ -146,13 +146,13 @@ export class Client {
     // and the page may not be properly loaded
     console.log('waiting until target on pysh page isnt about blank')
     let target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')).targetInfos.find(t => t.targetId === item?.id)
-    while (target?.url === "about:blank") {
-      target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')).targetInfos.find(t => t.targetId === item?.id)
-    }
+    // while (target?.url === "about:blank") {
+    //   target = (await this.#protocol.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')).targetInfos.find(t => t.targetId === item?.id)
+    // }
     console.log('waited')
     console.log('got json item', item)
     const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
-    const ws = new WebSocket(`ws://${this.#wsOptions.hostname}:${this.#wsOptions.port}/devtools/page/${item.id}`);
+    const ws = new WebSocket(`ws://${this.wsOptions.hostname}:${this.wsOptions.port}/devtools/page/${item.id}`);
     const p = deferred();
     ws.onopen = () => p.resolve();
     await p;
@@ -285,7 +285,7 @@ export class Client {
         listen(wsOptions)
       }
     }
-    listen(this.#wsOptions)
+    listen(this.wsOptions)
 
     this.#browser_process_closed = true;
 
