@@ -259,10 +259,10 @@ export class Element {
         middleClickHandlers.requested.method,
         deferred(),
       );
-      this.#protocol.notification_resolvables.set(
-        middleClickHandlers.navigated.method,
-        deferred(),
-      );
+      // this.#protocol.notification_resolvables.set(
+      //   middleClickHandlers.navigated.method,
+      //   deferred(),
+      // );
     }
 
     await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
@@ -298,15 +298,15 @@ export class Element {
         middleClickHandlers.requested.method as string,
       );
 
-      // TODO :: DO we need this p2?
-      const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
-      console.log('waiting for naigated')
-      await p2
+      // // TODO :: DO we need this p2?
+      // const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
+      // console.log('waiting for naigated')
+      // await p2
       console.log('waited')
       console.log('going to query endpoint and targets')
       console.log(await this.#protocol.sendWebSocketMessage('Target.getTargets'))
       console.log( await (await fetch('http://localhost:9292/json/list')).json())
-      this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
+     // this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
 
       // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
       // 1. Get target id of this new page
@@ -351,7 +351,7 @@ export class Element {
       this.#page.client._pushPage(
         new Page(newProt, targetId, this.#page.client, frameId),
       );
-    } else if (waitForNavigation) {
+    } else if (waitForNavigation) { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
       const method2 = "Page.frameStoppedLoading";
       this.#protocol.notification_resolvables.set(
         method2,
