@@ -44,7 +44,7 @@ import { WebsocketTarget } from "./interfaces.ts";
  */
 export class Client {
   /**
-   * Whilst we don't be using this like a page would, it is used
+   * Whilst we won't be using this like a page would, it is used
    * as a 'general' protocol, not specific to pages, but maybe
    * to get targets, or general information of the overal browser
    */
@@ -61,10 +61,13 @@ export class Client {
   #browser_process_closed = false;
 
   /**
-   * What browser we running?
+   * What browser are we running?
    */
   readonly browser: Browsers;
 
+  /**
+   * The collection of page objects for a user to interact with
+   */
   #pages: Page[] = [];
 
   /**
@@ -74,11 +77,21 @@ export class Client {
    */
   readonly #firefox_profile_path?: string;
 
+  /**
+   * The host and port that the websocket server is listening on
+   */
   readonly #wsOptions: {
     hostname: string;
     port: number;
   };
 
+  /**
+   * @param protocol - The browser protocol to interact with
+   * @param browserProcess - The browser process to interact with
+   * @param browser - The name of the browser we will be running
+   * @param wsOptions - The debugger options
+   * @param firefoxProfilePath - The path to the firefox dev profile (if applicable)
+   */
   constructor(
     protocol: ProtocolClass,
     browserProcess: Deno.Process,
@@ -103,15 +116,22 @@ export class Client {
    * This was only created so we could make `pages` property private,
    * but still allow the Page class to remove a page from the list
    *
-   * @param page
+   * @param pageTargetId - Target id of the page to remove
    */
   public _popPage(pageTargetId: string) {
     this.#pages = this.#pages.filter((page) => page.target_id !== pageTargetId);
   }
 
+  /**
+   * For internal use.
+   * 
+   * Creates a new page instance given the parameters
+   * 
+   * @param params - Notification parameters
+   */
+  // TODO :: Have a look at cleaning up
   public async _pushPage(
     params: ProtocolTypes.Page.FrameRequestedNavigationEvent,
-    protocol: ProtocolClass
   ): Promise<void> {
     console.log('[pushPage]')
     // wait until th
@@ -158,7 +178,6 @@ export class Client {
       }
     })
     await endpointPromise
-    console.log('querying targets on elem prot after creating newprot', await protocol.sendWebSocketMessage('Target.getTargets'))
     console.log('querying targets after creating newprot', await newProt.sendWebSocketMessage('Target.getTargets'))
     console.log('waitin for load')
     const loadPromise = notifs.get('Page.frameStoppedLoading')
@@ -195,8 +214,8 @@ export class Client {
    * console.log(await browser.page(2)); // will return a Page representation of the newly opened page
    * ```
    *
-   * @param i
-   * @returns
+   * @param pageNumber - Which page to get, the first/initial page? 1. The second you just opened via a click? 2.
+   * @returns The page
    */
   public async page(pageNumber: number): Promise<Page> {
     // `i` is given to us in a way that makes the user understand exactly what page they want.
@@ -216,8 +235,9 @@ export class Client {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    *
    * @param errMsg - If provided, after closing, will throw an error with the message. Useful for throwing errors but making sure all resources are closed beforehand
+   * @param errClass - The class name to throw with the error message, eg `SyntaxError`. Defaults to `Error` 
    */
-  public async close(errMsg?: string, errClass?: { new(message: string): any }) {
+  public async close(errMsg?: string, errClass: { new(message: string): any } = Error) {
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
@@ -285,7 +305,6 @@ export class Client {
       }
     }
 
-    errClass = errClass ?? Error
     if (errMsg) {
       throw new errClass(errMsg);
     }

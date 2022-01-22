@@ -33,6 +33,13 @@ export class Element {
    */
   readonly #objectId?: string;
 
+  /**
+   * @param method - The method we use for query selecting
+   * @param selector - The CSS selector
+   * @param page - The page this element belongs to
+   * @param protocol - The protocol for the page this element belongs to
+   * @param objectId - The object id assigned to the element
+   */
   constructor(
     method: "document.querySelector" | "$x",
     selector: string,
@@ -52,9 +59,9 @@ export class Element {
    *
    * @param newValue - If not passed, will return the value, else will set the value
    *
-   * @returns The value if setting, else void if not
+   * @returns The value if setting, else an empty string if not
    */
-  public async value(newValue?: string) {
+  public async value(newValue?: string): Promise<string> {
     if (!newValue) {
       return await this.#page.evaluate(
         `${this.#method}('${this.#selector}').value`,
@@ -63,6 +70,7 @@ export class Element {
     await this.#page.evaluate(
       `${this.#method}('${this.#selector}').value = \`${newValue}\``,
     );
+    return ""
   }
 
   /**
@@ -116,9 +124,7 @@ export class Element {
         quality: quality,
         clip: clip,
       },
-    ) as {
-      data: string;
-    };
+    )
 
     //Writing the Obtained Base64 encoded string to image file
     const fName = `${path}/${
@@ -154,7 +160,7 @@ export class Element {
   } = {}, waitForNavigation = false): Promise<void> {
     /**
      * This whole process doesnt work for firefox.. we get no events of a new tab opening. If you remove headless,
-     * and tyr open a new tab manually or middle clicky ourself, you get no events. Not sure if it's our fault or a CDP
+     * and try open a new tab manually or middle clicky ourself, you get no events. Not sure if it's our fault or a CDP
      * problem, but some related links are https://github.com/puppeteer/puppeteer/issues/6932 and
      * https://github.com/puppeteer/puppeteer/issues/7444
      */
@@ -228,6 +234,7 @@ export class Element {
       right: 2,
       middle: 4,
     };
+    
     await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       button: options.button,
@@ -296,7 +303,6 @@ export class Element {
       this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
       await this.#page.client._pushPage(
         params as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent,
-        this.#protocol
       );
     } else if (waitForNavigation) {
       const method2 = "Page.frameStoppedLoading";
