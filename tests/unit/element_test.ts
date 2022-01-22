@@ -51,23 +51,23 @@ for (const browserItem of browserList) {
     "takeScreenshot() | Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
     async () => {
       try {
-      Deno.removeSync(ScreenshotsFolder, {
-        recursive: true
-      })
-    } catch (_e) {
-      // if doesnt exist, no problamo
-    }
+        Deno.removeSync(ScreenshotsFolder, {
+          recursive: true,
+        });
+      } catch (_e) {
+        // if doesnt exist, no problamo
+      }
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://chromestatus.com");
       const span = await page.querySelector("span");
-      Deno.mkdirSync(ScreenshotsFolder)
+      Deno.mkdirSync(ScreenshotsFolder);
       const fileName = await span.takeScreenshot(ScreenshotsFolder, {
         quality: 50,
       });
       await browser.close();
       const exists = existsSync(fileName);
       Deno.removeSync(ScreenshotsFolder, {
-        recursive: true
+        recursive: true,
       });
       assertEquals(
         exists,
@@ -80,7 +80,7 @@ for (const browserItem of browserList) {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://chromestatus.com");
     const span = await page.querySelector("span");
-    Deno.mkdirSync(ScreenshotsFolder)
+    Deno.mkdirSync(ScreenshotsFolder);
     const filename = await span.takeScreenshot(ScreenshotsFolder, {
       fileName: "AllOpts",
       format: "jpeg",
@@ -89,7 +89,7 @@ for (const browserItem of browserList) {
     await browser.close();
     const exists = existsSync(filename);
     Deno.removeSync(ScreenshotsFolder, {
-      recursive: true
+      recursive: true,
     });
     assertEquals(
       exists,

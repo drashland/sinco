@@ -204,8 +204,8 @@ for (const browserItem of browserList) {
     await browser.close();
     assertEquals(errMsg, "readyState not OPEN");
     try {
-      await browser.page(1)
-      assertEquals(true, false)
+      await browser.page(1);
+      assertEquals(true, false);
     } catch (_e) {
       // do nothing, error should be thrown
     }

@@ -70,7 +70,7 @@ export class Element {
     await this.#page.evaluate(
       `${this.#method}('${this.#selector}').value = \`${newValue}\``,
     );
-    return ""
+    return "";
   }
 
   /**
@@ -124,7 +124,7 @@ export class Element {
         quality: quality,
         clip: clip,
       },
-    )
+    );
 
     //Writing the Obtained Base64 encoded string to image file
     const fName = `${path}/${
@@ -234,7 +234,7 @@ export class Element {
       right: 2,
       middle: 4,
     };
-    
+
     await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       button: options.button,
@@ -246,7 +246,9 @@ export class Element {
     });
 
     // Creating this here because by the time we send the below events, and try wait for the notification, the protocol may have already got the message and discarded it
-    const middleClickHandler = options.button === "middle" ? "Page.frameRequestedNavigation" : null
+    const middleClickHandler = options.button === "middle"
+      ? "Page.frameRequestedNavigation"
+      : null;
     if (middleClickHandler) {
       this.#protocol.notification_resolvables.set(
         middleClickHandler,
@@ -272,17 +274,13 @@ export class Element {
       y,
       buttons: buttonsMap[options.button],
     });
-    console.log('[click] did all click actions')
 
     if (options.button === "middle" && middleClickHandler) {
-      // this.#protocol.notification_resolvables.set('Page.navigated', deferred())
-      // console.log('GON WAIT 1')
-      // await this.#protocol.notification_resolvables.get('Page.navigated')
-      // console.log('WAITED')
       const p1 = this.#protocol.notification_resolvables.get(
         middleClickHandler,
       );
-      const { url, frameId} = await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
+      const { url, frameId } =
+        await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
       this.#protocol.notification_resolvables.delete(
         middleClickHandler,
       );
@@ -291,7 +289,7 @@ export class Element {
       // 1. Get target id of this new page
       // 2. Create ws connection and protocol instance
       // 3. Wait until the page has loaded properly and isnt about:blank
-      let targetId: string = "";
+      let targetId = "";
       while (!targetId) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
         const res = await fetch(
           `http://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/json/list`,
@@ -299,33 +297,38 @@ export class Element {
         const json = await res.json() as WebsocketTarget[];
         const item = json.find((j) => j["url"] === url);
         if (!item) {
-          console.log('continuing')
-          continue
+          continue;
         }
-        console.log(item)
-        targetId = item.id
+        targetId = item.id;
       }
-      const client = new WebSocket(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`)
-      const p = deferred()
-      client.onopen = () => p.resolve()
-      await p
+      const client = new WebSocket(
+        `ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`,
+      );
+      const p = deferred();
+      client.onopen = () => p.resolve();
+      await p;
       const newProt = new Protocol(
         client,
       );
       newProt.client = this.#page.client;
       for (const method of Protocol.initial_event_method_listeners) {
-        await newProt.sendWebSocketMessage(`${method}.enable`)
+        await newProt.sendWebSocketMessage(`${method}.enable`);
       }
-      const endpointPromise = deferred()
+      const endpointPromise = deferred();
       const intervalId = setInterval(async () => {
-        const targets = await newProt.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')
-        const target = targets.targetInfos.find(t => t.targetId === targetId) as ProtocolTypes.Target.TargetInfo
-        if (target.title !== 'about:blank') {
-          clearInterval(intervalId)
-          endpointPromise.resolve()
+        const targets = await newProt.sendWebSocketMessage<
+          null,
+          ProtocolTypes.Target.GetTargetsResponse
+        >("Target.getTargets");
+        const target = targets.targetInfos.find((t) =>
+          t.targetId === targetId
+        ) as ProtocolTypes.Target.TargetInfo;
+        if (target.title !== "about:blank") {
+          clearInterval(intervalId);
+          endpointPromise.resolve();
         }
-      })
-      await endpointPromise
+      });
+      await endpointPromise;
 
       this.#page.client._pushPage(
         new Page(newProt, targetId, this.#page.client, frameId),

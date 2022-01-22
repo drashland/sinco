@@ -60,9 +60,7 @@ export class Page {
     // wait for socket to close (closing page also shuts down connection to debugger url)
     const p2 = deferred();
     this.#protocol.socket.onclose = () => p2.resolve();
-    console.log('waiting to close page')
     await p2;
-    console.log('closedp age')
 
     // And remove it from the pages array
     this.client._popPage(this.target_id);
@@ -114,7 +112,6 @@ export class Page {
         null,
         Protocol.Target.GetTargetsResponse
       >("Target.getTargets");
-      console.log('[locattion] here are targets', targets)
       const target = targets.targetInfos.find((target) =>
         target.targetId === this.target_id
       );
@@ -272,8 +269,11 @@ export class Page {
     if (!filteredNotifs.length) {
       return;
     }
-    await this.client.close("Expected console to show no errors. Instead got:\n" +
-    filteredNotifs.join("\n"), AssertionError);
+    await this.client.close(
+      "Expected console to show no errors. Instead got:\n" +
+        filteredNotifs.join("\n"),
+      AssertionError,
+    );
   }
 
   /**
@@ -319,7 +319,7 @@ export class Page {
         quality: quality,
         clip: clip,
       },
-    )
+    );
 
     //Writing the Obtained Base64 encoded string to image file
     const fName = `${path}/${

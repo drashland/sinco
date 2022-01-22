@@ -3,7 +3,6 @@ export { Protocol };
 export {
   assertEquals,
   AssertionError,
-  assertThrows,
 } from "https://deno.land/std@0.118.0/testing/asserts.ts";
 export { readLines } from "https://deno.land/std@0.118.0/io/mod.ts";
 export { deferred } from "https://deno.land/std@0.118.0/async/deferred.ts";

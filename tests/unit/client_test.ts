@@ -25,28 +25,21 @@ for (const browserItem of browserList) {
   Deno.test(
     "create() | Uses the port when passed in to the parameters",
     async () => {
-      console.log('gonna bui ld')
       const { browser } = await buildFor(browserItem.name, {
         debuggerPort: 9999,
       });
-      console.log('built')
       const res = await fetch("http://localhost:9999/json/list");
       const json = await res.json();
       // Our ws client should be able to connect if the browser is running
-      console.log(json[0])
       const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
       const promise = deferred();
       client.onopen = function () {
-        console.log('client opened')
         client.close();
       };
       client.onclose = function () {
-        console.log('client closed')
         promise.resolve();
       };
-      console.log('waiting for client')
       await promise;
-      console.log('waiting for browser')
       await browser.close();
     },
   );
@@ -79,24 +72,6 @@ for (const browserItem of browserList) {
     },
   );
 
-  // Deno.test(`[${browserItem.name}] create() | Throws if address is already in use`, async () => {
-  //   const listener = Deno.listen({
-  //     hostname: "localhost",
-  //     port: 9292,
-  //   });
-  //   let errMsg = "";
-  //   try {
-  //     await buildFor(browserItem.name);
-  //   } catch (e) {
-  //     errMsg = e.message;
-  //   }
-  //   listener.close();
-  //   assertEquals(
-  //     errMsg,
-  //     "Unable to listen on address localhost:9292 because a process is already listening on it.",
-  //   );
-  // });
-
   Deno.test(`[${browserItem.name}] close() | Should close all resources and not leak any`, async () => {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://drash.land");
@@ -128,12 +103,11 @@ for (const browserItem of browserList) {
     Deno.test(`[${browserItem.name}] closeAllPagesExcept() | Should close all pages except the one passed in`, async () => {
       const { browser, page } = await buildFor(browserItem.name);
       await page.location("https://drash.land");
-      const elem = await page.querySelector('a')
+      const elem = await page.querySelector("a");
       await elem.click({
         button: "middle",
       });
       const page2 = await browser.page(2);
-      console.log('PAGE 2 LOC', await page2.location());
       await browser.closeAllPagesExcept(page2);
       let errMsg = "";
       try {
@@ -150,34 +124,22 @@ for (const browserItem of browserList) {
 
   Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
     const { browser, page } = await buildFor(browserItem.name);
-      console.log('asserting')
-      const mainPage = await browser.page(1)
-      await browser.close()
-      assertEquals(page.target_id, mainPage.target_id);
+    const mainPage = await browser.page(1);
+    await browser.close();
+    assertEquals(page.target_id, mainPage.target_id);
   });
 
   Deno.test(`[${browserItem.name}] page() | Should throw out of bounds if index doesnt exist`, async () => {
     const { browser } = await buildFor(browserItem.name);
-    let threw = false
+    let threw = false;
     try {
       await browser.page(2);
     } catch (_e) {
       // As expected :)
-      threw = true
+      threw = true;
     } finally {
-      await browser.close()
-      assertEquals(threw, true)
+      await browser.close();
+      assertEquals(threw, true);
     }
   });
-
-  // Rhum.testSuite("waitForAnchorChange()", () => {
-  //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
-  //     const { browser, page } = await ChromeClient.build();
-  //     await Sinco.goTo("https://chromestatus.com");
-  //     await Sinco.type('input[placeholder="Filter"]', "Gday");
-  //     await Sinco.waitForAnchorChange();
-  //     await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
-  //     await browser.close();
-  //   });
-  // });
 }

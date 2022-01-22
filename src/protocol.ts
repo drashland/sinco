@@ -23,10 +23,10 @@ export class Protocol {
    * All domains that a ws client should listen on for events
    */
   public static initial_event_method_listeners = [
-    'Page',
-    'Target',
-    'Log',
-    'Runtime',
+    "Page",
+    "Target",
+    "Log",
+    "Runtime",
   ];
 
   /**
@@ -117,7 +117,6 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
-      console.log("got notification", message);
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
         const params = message

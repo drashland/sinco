@@ -1,14 +1,8 @@
 import { Protocol as ProtocolClass } from "./protocol.ts";
-import {
-  Deferred,
-  deferred,
-  Protocol as ProtocolTypes,
-  readLines,
-} from "../deps.ts";
+import { deferred, Protocol as ProtocolTypes, readLines } from "../deps.ts";
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 import { existsSync } from "./utility.ts";
-import { WebsocketTarget } from "./interfaces.ts";
 
 // https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
 // FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
@@ -124,16 +118,15 @@ export class Client {
 
   /**
    * For internal use.
-   * 
+   *
    * Pushed a new item to the pages array
-   * 
+   *
    * @param page - Page to push
    */
-  public async _pushPage(
+  public _pushPage(
     page: Page,
-  ): Promise<void> {
-    console.log('[pushPage]')
-    this.#pages.push(page)
+  ): void {
+    this.#pages.push(page);
   }
 
   /**
@@ -156,9 +149,12 @@ export class Client {
     const index = pageNumber - 1;
 
     if (!this.#pages[index]) {
-      await this.close("You have request to get page number " + pageNumber + ", but only " +
-      this.#pages.length +
-      " pages are opened. If the issue persists, please submit an issue.", RangeError);
+      await this.close(
+        "You have request to get page number " + pageNumber + ", but only " +
+          this.#pages.length +
+          " pages are opened. If the issue persists, please submit an issue.",
+        RangeError,
+      );
     }
 
     return this.#pages[index];
@@ -168,9 +164,13 @@ export class Client {
    * Close/stop the sub process, and close the ws connection. Must be called when finished with all your testing
    *
    * @param errMsg - If provided, after closing, will throw an error with the message. Useful for throwing errors but making sure all resources are closed beforehand
-   * @param errClass - The class name to throw with the error message, eg `SyntaxError`. Defaults to `Error` 
+   * @param errClass - The class name to throw with the error message, eg `SyntaxError`. Defaults to `Error`
    */
-  public async close(errMsg?: string, errClass: { new(message: string): any } = Error) {
+  public async close(
+    errMsg?: string,
+    // deno-lint-ignore no-explicit-any
+    errClass: { new (message: string): any } = Error,
+  ) {
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
@@ -178,12 +178,12 @@ export class Client {
     }
 
     // Collect all promises we need to wait for due to the browser and any page websockets
-    const pList = this.#pages.map(_page => deferred())
-    pList.push(deferred())
+    const pList = this.#pages.map((_page) => deferred());
+    pList.push(deferred());
     this.#pages.forEach((page, i) => {
-      page.socket.onclose = () => pList[i].resolve()
-    })
-    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve()
+      page.socket.onclose = () => pList[i].resolve();
+    });
+    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
 
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     this.#browser_process.stderr!.close();
@@ -204,21 +204,21 @@ export class Client {
     }
 
     // Wait until all ws clients are closed, so we aren't leaking any ops
-    await Promise.all(pList)
+    await Promise.all(pList);
 
     // Wait until we know for sure that the process is gone and the port is freed up
-    function listen(wsOptions: { port: number, hostname: string }) {
+    function listen(wsOptions: { port: number; hostname: string }) {
       try {
-      const listener = Deno.listen({
-        hostname: wsOptions.hostname,
-        port: wsOptions.port
-      })
-      listener.close()
-      } catch (e) {
-        listen(wsOptions)
+        const listener = Deno.listen({
+          hostname: wsOptions.hostname,
+          port: wsOptions.port,
+        });
+        listener.close();
+      } catch (_e) {
+        listen(wsOptions);
       }
     }
-    listen(this.wsOptions)
+    listen(this.wsOptions);
 
     this.#browser_process_closed = true;
 
@@ -250,9 +250,9 @@ export class Client {
    * @param page - The page to not close
    */
   public async closeAllPagesExcept(page: Page) {
-    const pages = this.#pages.filter(p => p.target_id !== page.target_id)
+    const pages = this.#pages.filter((p) => p.target_id !== page.target_id);
     for (const page of pages) {
-      await page.close()
+      await page.close();
     }
   }
 
@@ -279,9 +279,7 @@ export class Client {
     browser: Client;
     page: Page;
   }> {
-
     // Run the subprocess, this starts up the debugger server
-    console.log('running subprocess')
     const browserProcess = Deno.run({
       cmd: buildArgs,
       stderr: "piped",
@@ -294,57 +292,45 @@ export class Client {
     // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
     let browserWsUrl = "";
     for await (const line of readLines(browserProcess.stderr)) { // Loop also needed before json endpoint is up
-      console.log(line)
-      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/)
+      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
       if (!match) {
-        console.log('continuing')
         continue;
       }
       browserWsUrl = line.split("on ")[1];
-      console.log('breaking')
       break;
     }
-    console.log('creating ws conn with url ', browserWsUrl)
 
     // Create the browser ws client and protocol
     const p = deferred();
     const mainSocket = new WebSocket(browserWsUrl);
     mainSocket.onopen = () => {
-      console.log('open')
       p.resolve();
-    }
+    };
     await p;
-    console.log('sending startin msgs')
     const mainProtocol = new ProtocolClass(
       mainSocket,
     );
     for (const method of ProtocolClass.initial_event_method_listeners) {
-      console.log(method)
-      await mainProtocol.sendWebSocketMessage(`${method}.enable`)
-      console.log('done')
+      await mainProtocol.sendWebSocketMessage(`${method}.enable`);
     }
 
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
-    console.log('getting info for page')
     async function getInitialPage(): Promise<ProtocolTypes.Target.TargetInfo> {
       const targets = await mainProtocol.sendWebSocketMessage<
         null,
         ProtocolTypes.Target.GetTargetsResponse
       >("Target.getTargets");
-      console.log('all targets for getting the page:', targets)
       const target = targets.targetInfos.find((info) =>
         info.type === "page" && info.url === "about:blank"
       );
       if (!target) {
-        return await getInitialPage()
+        return await getInitialPage();
       }
-      return target
+      return target;
     }
-    const pageTarget = await getInitialPage()
+    const pageTarget = await getInitialPage();
 
-    console.log('json res for list', await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json())
-    console.log('creating page conn')
     // Create the ws client and protocol for the default page
     const websocket = new WebSocket(
       `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`,
@@ -352,14 +338,13 @@ export class Client {
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
-    console.log('sending starting messages for page')
     const pageProtocol = new ProtocolClass(
       websocket,
     );
     const method = "Runtime.executionContextCreated";
     pageProtocol.notification_resolvables.set(method, deferred());
     for (const method of ProtocolClass.initial_event_method_listeners) {
-      await pageProtocol.sendWebSocketMessage(`${method}.enable`)
+      await pageProtocol.sendWebSocketMessage(`${method}.enable`);
     }
     const notificationData =
       (await pageProtocol.notification_resolvables.get(method)) as {
