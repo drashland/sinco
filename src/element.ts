@@ -293,7 +293,7 @@ export class Element {
       const p1 = this.#protocol.notification_resolvables.get(
         middleClickHandlers.requested.method,
       );
-      const { url, frameId } = await p1;
+      const { url, frameId} = await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
       this.#protocol.notification_resolvables.delete(
         middleClickHandlers.requested.method as string,
       );
