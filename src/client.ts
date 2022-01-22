@@ -236,12 +236,9 @@ export class Client {
       this.#pages[i].socket.onclose = () => pList[i].resolve();
     }
     this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
-    await this.#browser_process.stderrOutput()
-    await this.#browser_process.output()
     this.#browser_process.stderr!.close();
     this.#browser_process.stdout!.close();
     this.#browser_process.close();
-    await this.#browser_process.status()
     this.#browser_process_closed = true;
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
