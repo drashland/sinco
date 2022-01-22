@@ -208,6 +208,7 @@ export class Client {
       this.#pages.length +
       " pages are opened. If the issue persists, please submit an issue.", RangeError);
     }
+
     return this.#pages[index];
   }
 
@@ -222,20 +223,20 @@ export class Client {
     if (this.#browser_process_closed === true) {
       return;
     }
-    // Create promises for each ws conn
-    // TODO :: Maybe we could just do: browser process close(); foreahc page in pages, const p = deferred, page.socket.onclose = p.resolve, await p;
-    // const pList: Deferred<void>[] = [];
-    // for (const _page of this.#pages) {
-    //   pList.push(deferred());
-    // }
-    // pList.push(deferred());
-    // for (const i in this.#pages) {
-    //   this.#pages[i].socket.onclose = () => pList[i].resolve();
-    // }
-    //this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
+
+    // Collect all promises we need to wait for due to the browser and any page websockets
+    const pList = this.#pages.map(_page => deferred())
+    pList.push(deferred())
+    this.#pages.forEach((page, i) => {
+      page.socket.onclose = () => pList[i].resolve()
+    })
+    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve()
+
+    // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     this.#browser_process.stderr!.close();
     this.#browser_process.stdout!.close();
     this.#browser_process.close();
+
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
     // Related Deno issue: https://github.com/denoland/deno/issues/7087
@@ -248,18 +249,9 @@ export class Client {
       await p.status();
       p.close();
     }
-    // for (const page of this.#pages) {
-    //   const p = deferred()
-    //   page.socket.onclose = () => p.resolve()
-    //   await p
-    //   console.log('closed')
-    // }
-    const browserSocketPromise = deferred()
-    this.#protocol.socket.onclose = () => browserSocketPromise.resolve()
-    await browserSocketPromise
-    // for (const p of pList) {
-    //   await p;
-    // }
+
+    // Wait until all ws clients are closed, so we aren't leaking any ops
+    await Promise.all(pList)
 
     // Wait until we know for sure that the process is gone and the port is freed up
     function listen(wsOptions: { port: number, hostname: string }) {
@@ -292,6 +284,7 @@ export class Client {
         }
       }
     }
+
     errClass = errClass ?? Error
     if (errMsg) {
       throw new errClass(errMsg);
@@ -320,7 +313,7 @@ export class Client {
    * @param browser - Which browser we are building
    * @param firefoxProfilePath - If firefox, the path to the temporary profile location
    *
-   * @returns A client instance, ready to be used
+   * @returns A client and browser instance, ready to be used
    */
   static async create(
     buildArgs: string[],
