@@ -130,8 +130,7 @@ export class Element {
     try {
       Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      await this.#page.client.close();
-      throw new Error(e.message);
+      await this.#page.client.close(e.message);
     }
 
     return fName;

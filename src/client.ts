@@ -204,12 +204,9 @@ export class Client {
     const index = pageNumber - 1;
 
     if (!this.#pages[index]) {
-      await this.close();
-      throw new RangeError(
-        "You have request to get page number " + pageNumber + ", but only " +
-          this.#pages.length +
-          " pages are opened. If the issue persists, please submit an issue.",
-      );
+      await this.close("You have request to get page number " + pageNumber + ", but only " +
+      this.#pages.length +
+      " pages are opened. If the issue persists, please submit an issue.", RangeError);
     }
     return this.#pages[index];
   }
@@ -219,7 +216,7 @@ export class Client {
    *
    * @param errMsg - If provided, after closing, will throw an error with the message. Useful for throwing errors but making sure all resources are closed beforehand
    */
-  public async close(errMsg?: string) {
+  public async close(errMsg?: string, errClass?: { new(message: string): any }) {
     // Say a user calls an assertion method, and then calls done(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
@@ -227,19 +224,18 @@ export class Client {
     }
     // Create promises for each ws conn
     // TODO :: Maybe we could just do: browser process close(); foreahc page in pages, const p = deferred, page.socket.onclose = p.resolve, await p;
-    const pList: Deferred<void>[] = [];
-    for (const _page of this.#pages) {
-      pList.push(deferred());
-    }
-    pList.push(deferred());
-    for (const i in this.#pages) {
-      this.#pages[i].socket.onclose = () => pList[i].resolve();
-    }
-    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
+    // const pList: Deferred<void>[] = [];
+    // for (const _page of this.#pages) {
+    //   pList.push(deferred());
+    // }
+    // pList.push(deferred());
+    // for (const i in this.#pages) {
+    //   this.#pages[i].socket.onclose = () => pList[i].resolve();
+    // }
+    //this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
     this.#browser_process.stderr!.close();
     this.#browser_process.stdout!.close();
     this.#browser_process.close();
-    this.#browser_process_closed = true;
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
     // Related Deno issue: https://github.com/denoland/deno/issues/7087
@@ -252,9 +248,18 @@ export class Client {
       await p.status();
       p.close();
     }
-    for (const p of pList) {
-      await p;
-    }
+    // for (const page of this.#pages) {
+    //   const p = deferred()
+    //   page.socket.onclose = () => p.resolve()
+    //   await p
+    //   console.log('closed')
+    // }
+    const browserSocketPromise = deferred()
+    this.#protocol.socket.onclose = () => browserSocketPromise.resolve()
+    await browserSocketPromise
+    // for (const p of pList) {
+    //   await p;
+    // }
 
     // Wait until we know for sure that the process is gone and the port is freed up
     function listen(wsOptions: { port: number, hostname: string }) {
@@ -269,6 +274,8 @@ export class Client {
       }
     }
     listen(this.#wsOptions)
+
+    this.#browser_process_closed = true;
 
     if (this.#firefox_profile_path) {
       // On windows, this block is annoying. We either get a perm denied or
@@ -285,8 +292,9 @@ export class Client {
         }
       }
     }
+    errClass = errClass ?? Error
     if (errMsg) {
-      throw new Error(errMsg);
+      throw new errClass(errMsg);
     }
   }
 
@@ -297,36 +305,10 @@ export class Client {
    * @param page - The page to not close
    */
   public async closeAllPagesExcept(page: Page) {
-
     const pages = this.#pages.filter(p => p.target_id !== page.target_id)
     for (const page of pages) {
       await page.close()
     }
-
-    // const targets = await this.#protocol.sendWebSocketMessage<
-    //   null,
-    //   ProtocolTypes.Target.GetTargetsResponse
-    // >("Target.getTargets");
-    // console.log('all targets:', targets)
-    // console.log('and the page we wont be closing:', page.target_id)
-    // const pagesToClose = targets.targetInfos.filter((target) =>
-    //   target.targetId !== page.target_id
-    // );
-    // for (const target of pagesToClose) {
-    //   console.log('inside loop of closing page, looking at', target.targetId)
-    //   const page = this.#pages.find(p => p.target_id === target.targetId)
-    //   if (page) {
-    //     await page.close()
-    //   } else {
-    //     // Popup or something the user wasn't expecting
-    //     await this.#protocol.sendWebSocketMessage<
-    //       ProtocolTypes.Target.CloseTargetRequest,
-    //       ProtocolTypes.Target.CloseTargetResponse
-    //     >("Target.closeTarget", {
-    //       targetId: target.targetId,
-    //     });
-    //   }
-    // }
   }
 
   /**

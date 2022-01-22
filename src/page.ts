@@ -276,11 +276,8 @@ export class Page {
     if (!filteredNotifs.length) {
       return;
     }
-    await this.client.close();
-    throw new AssertionError(
-      "Expected console to show no errors. Instead got:\n" +
-        filteredNotifs.join("\n"),
-    );
+    await this.client.close("Expected console to show no errors. Instead got:\n" +
+    filteredNotifs.join("\n"), AssertionError);
   }
 
   /**
@@ -340,8 +337,7 @@ export class Page {
     try {
       Deno.writeFileSync(fName, u8Arr);
     } catch (e) {
-      await this.client.close();
-      throw new Error(e.message);
+      await this.client.close(e.message);
     }
 
     return fName;
@@ -368,8 +364,7 @@ export class Page {
       exceptionDetail.text;
     if (errorMessage.includes("SyntaxError")) { // a syntax error
       const message = errorMessage.replace("SyntaxError: ", "");
-      await this.client.close();
-      throw new SyntaxError(message + ": `" + commandSent + "`");
+      await this.client.close(message + ": `" + commandSent + "`", SyntaxError);
     }
     // any others, unsure what they'd be
     await this.client.close(`${errorMessage}: "${commandSent}"`);
