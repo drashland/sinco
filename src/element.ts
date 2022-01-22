@@ -301,19 +301,8 @@ export class Element {
         }
         targetId = item.id;
       }
-      const client = new WebSocket(
-        `ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`,
-      );
-      const p = deferred();
-      client.onopen = () => p.resolve();
-      await p;
-      const newProt = new Protocol(
-        client,
-      );
+      const newProt = await Protocol.create(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`);
       newProt.client = this.#page.client;
-      for (const method of Protocol.initial_event_method_listeners) {
-        await newProt.sendWebSocketMessage(`${method}.enable`);
-      }
       const endpointPromise = deferred();
       const intervalId = setInterval(async () => {
         const targets = await newProt.sendWebSocketMessage<

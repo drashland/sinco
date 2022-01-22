@@ -300,19 +300,8 @@ export class Client {
       break;
     }
 
-    // Create the browser ws client and protocol
-    const p = deferred();
-    const mainSocket = new WebSocket(browserWsUrl);
-    mainSocket.onopen = () => {
-      p.resolve();
-    };
-    await p;
-    const mainProtocol = new ProtocolClass(
-      mainSocket,
-    );
-    for (const method of ProtocolClass.initial_event_method_listeners) {
-      await mainProtocol.sendWebSocketMessage(`${method}.enable`);
-    }
+    // Create the browser protocol
+    const mainProtocol = await ProtocolClass.create(browserWsUrl)
 
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
@@ -331,30 +320,8 @@ export class Client {
     }
     const pageTarget = await getInitialPage();
 
-    // Create the ws client and protocol for the default page
-    const websocket = new WebSocket(
-      `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`,
-    );
-    const promise = deferred();
-    websocket.onopen = () => promise.resolve();
-    await promise;
-    const pageProtocol = new ProtocolClass(
-      websocket,
-    );
-    const method = "Runtime.executionContextCreated";
-    pageProtocol.notification_resolvables.set(method, deferred());
-    for (const method of ProtocolClass.initial_event_method_listeners) {
-      await pageProtocol.sendWebSocketMessage(`${method}.enable`);
-    }
-    const notificationData =
-      (await pageProtocol.notification_resolvables.get(method)) as {
-        context: {
-          auxData: {
-            frameId: string;
-          };
-        };
-      };
-    const { frameId } = notificationData.context.auxData;
+    // Create protocol for the default page
+    const { protocol: pageProtocol, frameId } = await ProtocolClass.create(`ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`, true)
 
     // Return a client and page instance for the user to interact with
     const client = new Client(

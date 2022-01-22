@@ -13,6 +13,11 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: Record<string, unknown>;
 }
 
+type Create<T> = T extends true ? {
+  protocol: Protocol,
+  frameId: string
+} : T extends false ? Protocol : never
+
 export class Protocol {
   /**
    * Our web socket connection to the remote debugging port
@@ -136,5 +141,37 @@ export class Protocol {
         resolvable.resolve(message.params);
       }
     }
+  }
+
+  /**
+   * A builder for creating an instance of a protocol
+   * 
+   * @param url - The websocket url to connect, which the protocol will use
+   * 
+   * @returns A new protocol instance
+   */
+  public static async create<T extends boolean = false>(url: string, getFrameId?: T):  Promise<Create<T>> {
+    const p = deferred();
+    const socket = new WebSocket(url);
+    socket.onopen = () => p.resolve()
+    await p;
+    const protocol = new Protocol(socket)
+    if (getFrameId) {
+      protocol.notification_resolvables.set('Runtime.executionContextCreated', deferred())
+    }
+    for (const method of ["Page",
+    "Target",
+    "Log",
+    "Runtime"]) {
+      await protocol.sendWebSocketMessage(`${method}.enable`);
+    }
+    if (getFrameId) {
+      const { context: { auxData: { frameId }} } = (await protocol.notification_resolvables.get('Runtime.executionContextCreated')) as unknown as ProtocolTypes.Runtime.ExecutionContextCreatedEvent
+      return {
+        protocol,
+        frameId
+      } as Create<T>
+    }
+    return protocol as Create<T>
   }
 }
