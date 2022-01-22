@@ -226,6 +226,7 @@ export class Client {
       return;
     }
     // Create promises for each ws conn
+    // TODO :: Maybe we could just do: browser process close(); foreahc page in pages, const p = deferred, page.socket.onclose = p.resolve, await p;
     const pList: Deferred<void>[] = [];
     for (const _page of this.#pages) {
       pList.push(deferred());
@@ -235,9 +236,12 @@ export class Client {
       this.#pages[i].socket.onclose = () => pList[i].resolve();
     }
     this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
+    await this.#browser_process.stderrOutput()
+    await this.#browser_process.output()
     this.#browser_process.stderr!.close();
     this.#browser_process.stdout!.close();
     this.#browser_process.close();
+    await this.#browser_process.status()
     this.#browser_process_closed = true;
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
@@ -254,6 +258,21 @@ export class Client {
     for (const p of pList) {
       await p;
     }
+
+    // Wait until we know for sure that the process is gone and the port is freed up
+    function listen() {
+      try {
+      const listener = Deno.listen({
+        hostname: this.#wsOptions.hostname,
+        port: this.#wsOptions.port
+      })
+      listener.close()
+      } catch (e) {
+        listen()
+      }
+    }
+    listen()
+
     if (this.#firefox_profile_path) {
       // On windows, this block is annoying. We either get a perm denied or
       // resource is in use error (classic windows). So what we're doing here is
@@ -336,23 +355,6 @@ export class Client {
     browser: Client;
     page: Page;
   }> {
-    // Check port is available first because we'll only know when we run the subprocess
-    // as it will show in the stderr, but will just hang. This way its easier because
-    // we can simply throw an error
-    // try {
-    //   const listener = Deno.listen({
-    //     hostname: wsOptions.hostname,
-    //     port: wsOptions.port,
-    //   });
-    //   listener.close();
-    // } catch (e) {
-    //   if (e instanceof Deno.errors.AddrInUse) {
-    //     throw new Deno.errors.AddrInUse(
-    //       `Unable to listen on address ${wsOptions.hostname}:${wsOptions.port} because a process is already listening on it.`,
-    //     );
-    //   }
-    //   throw e;
-    // }
 
     // Run the subprocess
     console.log('running subprocess')
@@ -362,37 +364,39 @@ export class Client {
       stdout: "piped",
     });
 
-    // Get the main ws conn for the client
-    console.log('getting ws url for client')
-    let mainWsUrl = "";
+    // Get the main ws conn for the client - this loop is needed as the ws server isn't open until we get the listeneing on.
+    // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
+    // isn't up for another 10s, meaning however many fetch requests in 10s
+    // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
+    let browserWsUrl = "";
     for await (const line of readLines(browserProcess.stderr)) { // Loop also needed before json endpoint is up
       console.log(line)
-      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
+      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/)
       if (!match) {
         console.log('continuing')
         continue;
       }
-      mainWsUrl = line.split("on ")[1];
+      browserWsUrl = line.split("on ")[1];
       console.log('breaking')
       break;
     }
     // On firefox, the ws url in the sterr isnt correct
-    if (browser === "firefox") {
-      const list = await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json() as {
-        type: "page" | "browser",
-        webSocketDebuggerUrl: string
-      }[]
-      const browserTarget = list.find(l => l.type === "browser")
-      mainWsUrl = browserTarget?.webSocketDebuggerUrl  ?? ""
-    }
-    console.log('creating ws conn with url ', mainWsUrl)
+    // TODO commented out because i dont think we need it, but for ref until we rm it and properly test it
+    // if (browser === "firefox") {
+    //   const list = await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json() as {
+    //     type: "page" | "browser",
+    //     webSocketDebuggerUrl: string
+    //   }[]
+    //   const browserTarget = list.find(l => l.type === "browser")
+    //   browserWsUrl = browserTarget?.webSocketDebuggerUrl  ?? ""
+    // }
+    console.log('creating ws conn with url ', browserWsUrl)
     const p = deferred();
-    const mainSocket = new WebSocket(mainWsUrl);
+    const mainSocket = new WebSocket(browserWsUrl);
     mainSocket.onopen = () => {
       console.log('open')
       p.resolve();
     }
-    mainSocket.onerror = (e) => console.log(e)
     await p;
     console.log('sending startin msgs')
     const mainProtocol = new ProtocolClass(
@@ -405,6 +409,7 @@ export class Client {
 
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available, so poll until it refreshes with the page
+    // TODO :: Is this still useful?
     console.log('getting info for page')
     async function getInitialPage() {
       const targets = await mainProtocol.sendWebSocketMessage<
