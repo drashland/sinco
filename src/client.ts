@@ -260,18 +260,18 @@ export class Client {
     }
 
     // Wait until we know for sure that the process is gone and the port is freed up
-    function listen() {
+    function listen(wsOptions: { port: number, hostname: string }) {
       try {
       const listener = Deno.listen({
-        hostname: this.#wsOptions.hostname,
-        port: this.#wsOptions.port
+        hostname: wsOptions.hostname,
+        port: wsOptions.port
       })
       listener.close()
       } catch (e) {
-        listen()
+        listen(wsOptions)
       }
     }
-    listen()
+    listen(this.#wsOptions)
 
     if (this.#firefox_profile_path) {
       // On windows, this block is annoying. We either get a perm denied or
