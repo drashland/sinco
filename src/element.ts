@@ -114,7 +114,7 @@ export class Element {
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 
-    const res = await this.#protocol.sendWebSocketMessage<
+    const res = await this.#protocol.send<
       ProtocolTypes.Page.CaptureScreenshotRequest,
       ProtocolTypes.Page.CaptureScreenshotResponse
     >(
@@ -153,12 +153,16 @@ export class Element {
    *
    * @param options
    * @param options.button - If you should left, mdidle, or right click the element
-   * @param waitForNavigation - If clicking an element that will change the page location, set to true and set `options` to `{}`. Will wait for the new location to load
+   * @param waitFor
+   * @param waitFor.navigation - If clicking an element that will change the page location, set to true and set `options` to `{}`. Will wait for the new location to load
    */
   public async click(options: {
     button?: "left" | "middle" | "right";
-  } = {}, waitForNavigation = false): Promise<void> {
+  } = {}, waitFor: {
+    navigation?: boolean;
+  } = {}): Promise<void> {
     /**
+     * TODO :: Remember to check now and then to see if this is fixed
      * This whole process doesnt work for firefox.. we get no events of a new tab opening. If you remove headless,
      * and try open a new tab manually or middle clicky ourself, you get no events. Not sure if it's our fault or a CDP
      * problem, but some related links are https://github.com/puppeteer/puppeteer/issues/6932 and
@@ -184,13 +188,13 @@ export class Element {
     );
 
     // Get details we need for dispatching input events on the element
-    const result = await this.#protocol.sendWebSocketMessage<
+    const result = await this.#protocol.send<
       ProtocolTypes.DOM.GetContentQuadsRequest,
       ProtocolTypes.DOM.GetContentQuadsResponse
     >("DOM.getContentQuads", {
       objectId: this.#objectId,
     });
-    const layoutMetrics = await this.#protocol.sendWebSocketMessage<
+    const layoutMetrics = await this.#protocol.send<
       null,
       ProtocolTypes.Page.GetLayoutMetricsResponse
     >("Page.getLayoutMetrics");
@@ -235,7 +239,7 @@ export class Element {
       middle: 4,
     };
 
-    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+    await this.#protocol.send("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       button: options.button,
       modifiers: 0,
@@ -250,13 +254,13 @@ export class Element {
       ? "Page.frameRequestedNavigation"
       : null;
     if (middleClickHandler) {
-      this.#protocol.notification_resolvables.set(
+      this.#protocol.notifications.set(
         middleClickHandler,
         deferred(),
       );
     }
 
-    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+    await this.#protocol.send("Input.dispatchMouseEvent", {
       type: "mousePressed",
       button: options.button,
       modifiers: 0,
@@ -265,7 +269,7 @@ export class Element {
       y,
       buttons: buttonsMap[options.button],
     });
-    await this.#protocol.sendWebSocketMessage("Input.dispatchMouseEvent", {
+    await this.#protocol.send("Input.dispatchMouseEvent", {
       type: "mouseReleased",
       button: options.button,
       modifiers: 0,
@@ -276,12 +280,12 @@ export class Element {
     });
 
     if (options.button === "middle" && middleClickHandler) {
-      const p1 = this.#protocol.notification_resolvables.get(
+      const p1 = this.#protocol.notifications.get(
         middleClickHandler,
       );
       const { url, frameId } =
         await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
-      this.#protocol.notification_resolvables.delete(
+      this.#protocol.notifications.delete(
         middleClickHandler,
       );
 
@@ -301,11 +305,12 @@ export class Element {
         }
         targetId = item.id;
       }
-      const newProt = await Protocol.create(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`);
-      newProt.client = this.#page.client;
+      const newProt = await Protocol.create(
+        `ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`,
+      );
       const endpointPromise = deferred();
       const intervalId = setInterval(async () => {
-        const targets = await newProt.sendWebSocketMessage<
+        const targets = await newProt.send<
           null,
           ProtocolTypes.Target.GetTargetsResponse
         >("Target.getTargets");
@@ -322,17 +327,17 @@ export class Element {
       this.#page.client._pushPage(
         new Page(newProt, targetId, this.#page.client, frameId),
       );
-    } else if (waitForNavigation) { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
+    } else if (waitFor.navigation) { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
       const method2 = "Page.frameStoppedLoading";
-      this.#protocol.notification_resolvables.set(
+      this.#protocol.notifications.set(
         method2,
         deferred(),
       );
-      const notificationPromise2 = this.#protocol.notification_resolvables.get(
+      const notificationPromise2 = this.#protocol.notifications.get(
         method2,
       );
       await notificationPromise2;
-      this.#protocol.notification_resolvables.delete(method2);
+      this.#protocol.notifications.delete(method2);
     }
   }
 }

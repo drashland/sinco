@@ -301,12 +301,12 @@ export class Client {
     }
 
     // Create the browser protocol
-    const mainProtocol = await ProtocolClass.create(browserWsUrl)
+    const mainProtocol = await ProtocolClass.create(browserWsUrl);
 
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
     async function getInitialPage(): Promise<ProtocolTypes.Target.TargetInfo> {
-      const targets = await mainProtocol.sendWebSocketMessage<
+      const targets = await mainProtocol.send<
         null,
         ProtocolTypes.Target.GetTargetsResponse
       >("Target.getTargets");
@@ -321,7 +321,10 @@ export class Client {
     const pageTarget = await getInitialPage();
 
     // Create protocol for the default page
-    const { protocol: pageProtocol, frameId } = await ProtocolClass.create(`ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`, true)
+    const { protocol: pageProtocol, frameId } = await ProtocolClass.create(
+      `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`,
+      true,
+    );
 
     // Return a client and page instance for the user to interact with
     const client = new Client(
@@ -334,8 +337,6 @@ export class Client {
       },
       firefoxProfilePath,
     );
-    mainProtocol.client = client;
-    pageProtocol.client = client;
     const page = new Page(pageProtocol, pageTarget.targetId, client, frameId);
     client.#pages.push(page);
     return {

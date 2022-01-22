@@ -1,6 +1,5 @@
 import { Deferred, deferred } from "../deps.ts";
 import { Protocol as ProtocolTypes } from "../deps.ts";
-import { Client } from "./client.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -14,25 +13,17 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
 }
 
 type Create<T> = T extends true ? {
-  protocol: Protocol,
-  frameId: string
-} : T extends false ? Protocol : never
+  protocol: Protocol;
+  frameId: string;
+}
+  : T extends false ? Protocol
+  : never;
 
 export class Protocol {
   /**
    * Our web socket connection to the remote debugging port
    */
   public socket: WebSocket;
-
-  /**
-   * All domains that a ws client should listen on for events
-   */
-  public static initial_event_method_listeners = [
-    "Page",
-    "Target",
-    "Log",
-    "Runtime",
-  ];
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
@@ -42,12 +33,12 @@ export class Protocol {
   /**
    * To keep hold of our promises waiting for messages from the websocket
    */
-  #resolvables: Map<number, Deferred<unknown>> = new Map();
+  #messages: Map<number, Deferred<unknown>> = new Map();
 
   /**
    * To keep hold of promises waiting for a notification from the websocket
    */
-  public notification_resolvables: Map<
+  public notifications: Map<
     string,
     Deferred<Record<string, unknown>>
   > = new Map();
@@ -56,8 +47,6 @@ export class Protocol {
    * Map of notifications, where the key is the method and the value is an array of the events
    */
   public console_errors: string[] = [];
-
-  client?: Client;
 
   constructor(
     socket: WebSocket,
@@ -78,7 +67,7 @@ export class Protocol {
    *
    * @returns
    */
-  public async sendWebSocketMessage<RequestType, ResponseType>(
+  public async send<RequestType, ResponseType>(
     method: string,
     params?: RequestType,
   ): Promise<ResponseType> {
@@ -92,10 +81,10 @@ export class Protocol {
     };
     if (params) data.params = params;
     const promise = deferred<ResponseType>();
-    this.#resolvables.set(data.id, promise);
+    this.#messages.set(data.id, promise);
     this.socket.send(JSON.stringify(data));
     const result = await promise;
-    this.#resolvables.delete(data.id);
+    this.#messages.delete(data.id);
     return result;
   }
 
@@ -103,7 +92,7 @@ export class Protocol {
     message: MessageResponse | NotificationResponse,
   ) {
     if ("id" in message) { // message response
-      const resolvable = this.#resolvables.get(message.id);
+      const resolvable = this.#messages.get(message.id);
       if (!resolvable) {
         return;
       }
@@ -136,7 +125,7 @@ export class Protocol {
         }
       }
 
-      const resolvable = this.notification_resolvables.get(message.method);
+      const resolvable = this.notifications.get(message.method);
       if (resolvable) {
         resolvable.resolve(message.params);
       }
@@ -145,33 +134,36 @@ export class Protocol {
 
   /**
    * A builder for creating an instance of a protocol
-   * 
+   *
    * @param url - The websocket url to connect, which the protocol will use
-   * 
+   *
    * @returns A new protocol instance
    */
-  public static async create<T extends boolean = false>(url: string, getFrameId?: T):  Promise<Create<T>> {
+  public static async create<T extends boolean = false>(
+    url: string,
+    getFrameId?: T,
+  ): Promise<Create<T>> {
     const p = deferred();
     const socket = new WebSocket(url);
-    socket.onopen = () => p.resolve()
+    socket.onopen = () => p.resolve();
     await p;
-    const protocol = new Protocol(socket)
+    const protocol = new Protocol(socket);
     if (getFrameId) {
-      protocol.notification_resolvables.set('Runtime.executionContextCreated', deferred())
+      protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    for (const method of ["Page",
-    "Target",
-    "Log",
-    "Runtime"]) {
-      await protocol.sendWebSocketMessage(`${method}.enable`);
+    for (const method of ["Page", "Target", "Log", "Runtime"]) {
+      await protocol.send(`${method}.enable`);
     }
     if (getFrameId) {
-      const { context: { auxData: { frameId }} } = (await protocol.notification_resolvables.get('Runtime.executionContextCreated')) as unknown as ProtocolTypes.Runtime.ExecutionContextCreatedEvent
+      const { context: { auxData: { frameId } } } =
+        (await protocol.notifications.get(
+          "Runtime.executionContextCreated",
+        )) as unknown as ProtocolTypes.Runtime.ExecutionContextCreatedEvent;
       return {
         protocol,
-        frameId
-      } as Create<T>
+        frameId,
+      } as Create<T>;
     }
-    return protocol as Create<T>
+    return protocol as Create<T>;
   }
 }

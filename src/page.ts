@@ -50,7 +50,7 @@ export class Page {
    */
   public async close() {
     // Delete page
-    this.#protocol.sendWebSocketMessage<
+    this.#protocol.send<
       Protocol.Target.CloseTargetRequest,
       Protocol.Target.CloseTargetResponse
     >("Target.closeTarget", {
@@ -77,13 +77,13 @@ export class Page {
     newCookie?: Cookie,
   ): Promise<Protocol.Network.Cookie[] | []> {
     if (!newCookie) {
-      const result = await this.#protocol.sendWebSocketMessage<
+      const result = await this.#protocol.send<
         Protocol.Network.GetCookiesRequest,
         Protocol.Network.GetCookiesResponse
       >("Network.getCookies");
       return result.cookies;
     }
-    await this.#protocol.sendWebSocketMessage<
+    await this.#protocol.send<
       Protocol.Network.SetCookieRequest,
       Protocol.Network.SetCookieResponse
     >("Network.setCookie", {
@@ -108,7 +108,7 @@ export class Page {
    */
   public async location(newLocation?: string): Promise<string> {
     if (!newLocation) {
-      const targets = await this.#protocol.sendWebSocketMessage<
+      const targets = await this.#protocol.send<
         null,
         Protocol.Target.GetTargetsResponse
       >("Target.getTargets");
@@ -118,11 +118,11 @@ export class Page {
       return target?.url ?? "";
     }
     const method = "Page.loadEventFired";
-    this.#protocol.notification_resolvables.set(method, deferred());
-    const notificationPromise = this.#protocol.notification_resolvables.get(
+    this.#protocol.notifications.set(method, deferred());
+    const notificationPromise = this.#protocol.notifications.get(
       method,
     );
-    const res = await this.#protocol.sendWebSocketMessage<
+    const res = await this.#protocol.send<
       Protocol.Page.NavigateRequest,
       Protocol.Page.NavigateResponse
     >(
@@ -153,7 +153,7 @@ export class Page {
     // deno-lint-ignore no-explicit-any
   ): Promise<any> {
     if (typeof pageCommand === "string") {
-      const result = await this.#protocol.sendWebSocketMessage<
+      const result = await this.#protocol.send<
         Protocol.Runtime.EvaluateRequest,
         Protocol.Runtime.EvaluateResponse
       >("Runtime.evaluate", {
@@ -165,7 +165,7 @@ export class Page {
     }
 
     if (typeof pageCommand === "function") {
-      const a = await this.#protocol.sendWebSocketMessage<
+      const a = await this.#protocol.send<
         Protocol.Page.CreateIsolatedWorldRequest,
         Protocol.Page.CreateIsolatedWorldResponse
       >(
@@ -176,7 +176,7 @@ export class Page {
       );
       const { executionContextId } = a;
 
-      const res = await this.#protocol.sendWebSocketMessage<
+      const res = await this.#protocol.send<
         Protocol.Runtime.CallFunctionOnRequest,
         Protocol.Runtime.CallFunctionOnResponse
       >(
@@ -202,7 +202,7 @@ export class Page {
    * @returns An element class, allowing you to take an action upon that element
    */
   async querySelector(selector: string) {
-    const result = await this.#protocol.sendWebSocketMessage<
+    const result = await this.#protocol.send<
       Protocol.Runtime.EvaluateRequest,
       Protocol.Runtime.EvaluateResponse
     >("Runtime.evaluate", {
@@ -309,7 +309,7 @@ export class Page {
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 
-    const res = await this.#protocol.sendWebSocketMessage<
+    const res = await this.#protocol.send<
       Protocol.Page.CaptureScreenshotRequest,
       Protocol.Page.CaptureScreenshotResponse
     >(
