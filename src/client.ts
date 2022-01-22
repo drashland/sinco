@@ -125,78 +125,15 @@ export class Client {
   /**
    * For internal use.
    * 
-   * Creates a new page instance given the parameters
+   * Pushed a new item to the pages array
    * 
-   * @param params - Notification parameters
+   * @param page - Page to push
    */
-  // TODO :: Have a look at cleaning up
   public async _pushPage(
-    params: ProtocolTypes.Page.FrameRequestedNavigationEvent,
+    page: Page,
   ): Promise<void> {
     console.log('[pushPage]')
-    // wait until th
-    let item: WebsocketTarget | undefined = undefined;
-    while (!item) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
-      const res = await fetch(
-        `http://${this.wsOptions.hostname}:${this.wsOptions.port}/json/list`,
-      );
-      const json = await res.json() as WebsocketTarget[];
-      item = json.find((j) => j["url"] === params.url);
-    }
-    // and the page may not be properly loaded
-    console.log('waiting until target on pysh page isnt about blank')
-    console.log('waited')
-    console.log('got json item', item)
-    //const notifs = this.#protocol.notification_resolvables.set('Page.frameLoaded', deferred())
-    const ws = new WebSocket(`ws://${this.wsOptions.hostname}:${this.wsOptions.port}/devtools/page/${item.id}`);
-    const p = deferred();
-    ws.onopen = () => p.resolve();
-    await p;
-   
-    const newProt = new ProtocolClass(
-      ws,
-    );
-    newProt.client = this;
-    const method = "Runtime.executionContextCreated";
-    newProt.notification_resolvables.set(method, deferred());
-    await newProt.sendWebSocketMessage("Page.enable");
-    await newProt.sendWebSocketMessage("Runtime.enable");
-    await newProt.sendWebSocketMessage("Log.enable");
-    await newProt.sendWebSocketMessage("Target.enable");
-    // wait until the endpoint is ready
-    const endpointPromise = deferred()
-    const intervalId = setInterval(async () => {
-      const targets = await newProt.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')
-      const target = targets.targetInfos.find(t => t.targetId === item?.id) as ProtocolTypes.Target.TargetInfo
-      if (target.title !== 'about:blank') {
-        clearInterval(intervalId)
-        endpointPromise.resolve()
-      }
-    })
-    await endpointPromise
-    console.log('querying targets after creating newprot', await newProt.sendWebSocketMessage('Target.getTargets'))
-    console.log('waitin for load')
-    // const loadPromise = notifs.get('Page.frameStoppedLoading')
-    // await loadPromise
-    console.log('waited')
-    const notificationData =
-      (await newProt.notification_resolvables.get(method)) as {
-        context: {
-          auxData: {
-            frameId: string;
-          };
-        };
-      };
-    const { frameId } = notificationData.context.auxData;
-    console.log('[pushPage] pushing new page. here is following ata: current page len, target id,frame id', this.#pages.length, item.id, frameId)
-    this.#pages.push(
-      new Page(
-        newProt,
-        item.id,
-        this,
-        frameId,
-      ),
-    );
+    this.#pages.push(page)
   }
 
   /**

@@ -2,7 +2,7 @@ import { Page } from "./page.ts";
 import { Protocol } from "./protocol.ts";
 import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
-import { ScreenshotOptions } from "./interfaces.ts";
+import { ScreenshotOptions, WebsocketTarget } from "./interfaces.ts";
 /**
  * A class to represent an element on the page, providing methods
  * to action on that element
@@ -293,16 +293,12 @@ export class Element {
       const p1 = this.#protocol.notification_resolvables.get(
         middleClickHandlers.requested.method,
       );
-      const params = await p1;
+      const { url, frameId } = await p1;
       this.#protocol.notification_resolvables.delete(
         middleClickHandlers.requested.method as string,
       );
 
-      // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
-      // 1. Get target id of this new page
-      // 2. Create ws connection and protocol instance
-      //const client = new WebSocket(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${params.frame}`)
-
+      // TODO :: DO we need this p2?
       const p2 = this.#protocol.notification_resolvables.get(middleClickHandlers.navigated.method)
       console.log('waiting for naigated')
       await p2
@@ -311,8 +307,49 @@ export class Element {
       console.log(await this.#protocol.sendWebSocketMessage('Target.getTargets'))
       console.log( await (await fetch('http://localhost:9292/json/list')).json())
       this.#protocol.notification_resolvables.delete(middleClickHandlers.navigated.method)
-      await this.#page.client._pushPage(
-        params as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent,
+
+      // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
+      // 1. Get target id of this new page
+      // 2. Create ws connection and protocol instance
+      // 3. Wait until the page has loaded properly and isnt about:blank
+      let targetId: string = "";
+      while (!targetId) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
+        const res = await fetch(
+          `http://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/json/list`,
+        );
+        const json = await res.json() as WebsocketTarget[];
+        const item = json.find((j) => j["url"] === url);
+        if (!item) {
+          console.log('continuing')
+          continue
+        }
+        console.log(item)
+        targetId = item.id
+      }
+      const client = new WebSocket(`ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`)
+      const p = deferred()
+      client.onopen = () => p.resolve()
+      await p
+      const newProt = new Protocol(
+        client,
+      );
+      newProt.client = this.#page.client;
+      for (const method of Protocol.initial_event_method_listeners) {
+        await newProt.sendWebSocketMessage(`${method}.enable`)
+      }
+      const endpointPromise = deferred()
+      const intervalId = setInterval(async () => {
+        const targets = await newProt.sendWebSocketMessage<null, ProtocolTypes.Target.GetTargetsResponse>('Target.getTargets')
+        const target = targets.targetInfos.find(t => t.targetId === targetId) as ProtocolTypes.Target.TargetInfo
+        if (target.title !== 'about:blank') {
+          clearInterval(intervalId)
+          endpointPromise.resolve()
+        }
+      })
+      await endpointPromise
+
+      this.#page.client._pushPage(
+        new Page(newProt, targetId, this.#page.client, frameId),
       );
     } else if (waitForNavigation) {
       const method2 = "Page.frameStoppedLoading";
