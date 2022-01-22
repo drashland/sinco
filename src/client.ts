@@ -353,7 +353,7 @@ export class Client {
     page: Page;
   }> {
 
-    // Run the subprocess
+    // Run the subprocess, this starts up the debugger server
     console.log('running subprocess')
     const browserProcess = Deno.run({
       cmd: buildArgs,
@@ -377,17 +377,9 @@ export class Client {
       console.log('breaking')
       break;
     }
-    // On firefox, the ws url in the sterr isnt correct
-    // TODO commented out because i dont think we need it, but for ref until we rm it and properly test it
-    // if (browser === "firefox") {
-    //   const list = await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json() as {
-    //     type: "page" | "browser",
-    //     webSocketDebuggerUrl: string
-    //   }[]
-    //   const browserTarget = list.find(l => l.type === "browser")
-    //   browserWsUrl = browserTarget?.webSocketDebuggerUrl  ?? ""
-    // }
     console.log('creating ws conn with url ', browserWsUrl)
+
+    // Create the browser ws client and protocol
     const p = deferred();
     const mainSocket = new WebSocket(browserWsUrl);
     mainSocket.onopen = () => {
@@ -399,16 +391,16 @@ export class Client {
     const mainProtocol = new ProtocolClass(
       mainSocket,
     );
-    await mainProtocol.sendWebSocketMessage("Page.enable");
-    await mainProtocol.sendWebSocketMessage("Runtime.enable");
-    await mainProtocol.sendWebSocketMessage("Log.enable");
-    await mainProtocol.sendWebSocketMessage("Target.enable");
+    for (const method of ProtocolClass.initial_event_method_listeners) {
+      console.log(method)
+      await mainProtocol.sendWebSocketMessage(`${method}.enable`)
+      console.log('done')
+    }
 
     // Get the connection info for the default page thats opened, that acts as our first page
-    // Sometimes, it isn't immediently available, so poll until it refreshes with the page
-    // TODO :: Is this still useful?
+    // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
     console.log('getting info for page')
-    async function getInitialPage() {
+    async function getInitialPage(): Promise<ProtocolTypes.Target.TargetInfo> {
       const targets = await mainProtocol.sendWebSocketMessage<
         null,
         ProtocolTypes.Target.GetTargetsResponse
@@ -416,34 +408,34 @@ export class Client {
       console.log('all targets for getting the page:', targets)
       const target = targets.targetInfos.find((info) =>
         info.type === "page" && info.url === "about:blank"
-      ) as ProtocolTypes.Target.TargetInfo;
+      );
+      if (!target) {
+        return await getInitialPage()
+      }
       return target
     }
-    let target: ProtocolTypes.Target.TargetInfo | null = null
-    while (!target) {
-      target = await getInitialPage()
-    }
+    const pageTarget = await getInitialPage()
 
     console.log('json res for list', await (await fetch(`http://${wsOptions.hostname}:${wsOptions.port}/json/list`)).json())
     console.log('creating page conn')
+    // Create the ws client and protocol for the default page
     const websocket = new WebSocket(
-      `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${target
-        ?.targetId}`,
+      `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`,
     );
     const promise = deferred();
     websocket.onopen = () => promise.resolve();
     await promise;
     console.log('sending starting messages for page')
-    const protocol = new ProtocolClass(
+    const pageProtocol = new ProtocolClass(
       websocket,
     );
     const method = "Runtime.executionContextCreated";
-    protocol.notification_resolvables.set(method, deferred());
-    await protocol.sendWebSocketMessage("Page.enable");
-    await protocol.sendWebSocketMessage("Runtime.enable");
-    await protocol.sendWebSocketMessage("Log.enable");
+    pageProtocol.notification_resolvables.set(method, deferred());
+    for (const method of ProtocolClass.initial_event_method_listeners) {
+      await pageProtocol.sendWebSocketMessage(`${method}.enable`)
+    }
     const notificationData =
-      (await protocol.notification_resolvables.get(method)) as {
+      (await pageProtocol.notification_resolvables.get(method)) as {
         context: {
           auxData: {
             frameId: string;
@@ -464,8 +456,8 @@ export class Client {
       firefoxProfilePath,
     );
     mainProtocol.client = client;
-    protocol.client = client;
-    const page = new Page(protocol, target.targetId, client, frameId);
+    pageProtocol.client = client;
+    const page = new Page(pageProtocol, pageTarget.targetId, client, frameId);
     client.#pages.push(page);
     return {
       browser: client,

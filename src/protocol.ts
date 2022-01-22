@@ -19,6 +19,13 @@ export class Protocol {
    */
   public socket: WebSocket;
 
+  public static initial_event_method_listeners = [
+    'Page',
+    'Target',
+    'Log',
+    'Runtime',
+  ];
+
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
    */
