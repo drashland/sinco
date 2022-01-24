@@ -22,8 +22,8 @@ Deno.test(
     const discordElem = await page.querySelector(
       'a[href="https://discord.gg/RFsCSaHRWK"]',
     );
-    await discordElem.click({}, {
-      navigation: true,
+    await discordElem.click({
+      waitFor: "navigation",
     });
     const page1Location = await page.location();
 
@@ -48,8 +48,8 @@ Deno.test(
     const discordElem = await page.querySelector(
       'a[href="https://discord.gg/RFsCSaHRWK"]',
     );
-    await discordElem.click({}, {
-      navigation: true,
+    await discordElem.click({
+      waitFor: "navigation",
     });
     const page1Location = await page.location();
 

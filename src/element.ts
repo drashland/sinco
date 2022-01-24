@@ -152,14 +152,23 @@ export class Element {
    * to wait until this new location loads
    *
    * @param options
-   * @param options.button - If you should left, mdidle, or right click the element
-   * @param waitFor
-   * @param waitFor.navigation - If clicking an element that will change the page location, set to true and set `options` to `{}`. Will wait for the new location to load
+   * @param options.button - If you should left, mdidle, or right click the element. Defaults to left. If middle, will wait until the new page has loaded
+   * @param options.waitFor - "navigation". If clicking an element that will change the page location, set to true. Will wait for the new location to load
+   *
+   * @example
+   * ```js
+   * // Clicking an anchor tag
+   * await click({
+   *   waitFor: "navigation"
+   * })
+   * // Clicking an anchor tag with `__BLANK`
+   * await click({
+   *   button: "middle",
+   * })
    */
   public async click(options: {
     button?: "left" | "middle" | "right";
-  } = {}, waitFor: {
-    navigation?: boolean;
+    waitFor?: "navigation";
   } = {}): Promise<void> {
     /**
      * TODO :: Remember to check now and then to see if this is fixed
@@ -327,7 +336,7 @@ export class Element {
       this.#page.client._pushPage(
         new Page(newProt, targetId, this.#page.client, frameId),
       );
-    } else if (waitFor.navigation) { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
+    } else if (options.waitFor === "navigation") { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
       const method2 = "Page.frameStoppedLoading";
       this.#protocol.notifications.set(
         method2,

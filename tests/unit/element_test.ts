@@ -11,8 +11,8 @@ for (const browserItem of browserList) {
     const elem = await page.querySelector(
       'a[href="https://discord.gg/RFsCSaHRWK"]',
     );
-    await elem.click({}, {
-      navigation: true,
+    await elem.click({
+      waitFor: "navigation",
     });
     const page1Location = await page.location();
     await browser.close();

@@ -15,8 +15,8 @@ for (const browserItem of browserList) {
       const elem = await page.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );
-      await elem.click({}, {
-        navigation: true,
+      await elem.click({
+        waitFor: "navigation",
       }); // This element will take the user to Sinco's documentation
       const location = await page.location();
 
