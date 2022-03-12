@@ -243,6 +243,10 @@ export class Client {
     }
   }
 
+  public async version() {
+    return await this.#protocol.send<null, ProtocolTypes.Browser.GetVersionResponse>("Browser.version")
+  }
+
   /**
    * Will close every tab/page that isn't the one passed in.
    * Useful if for some reason, a site has opened multiple tabs that you will not use
