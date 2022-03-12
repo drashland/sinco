@@ -168,8 +168,7 @@ export class Client {
    */
   public async close(
     errMsg?: string,
-    // deno-lint-ignore no-explicit-any
-    errClass: { new (message: string): any } = Error,
+    errClass: typeof Error = Error,
   ) {
     // Say a user calls an assertion method, and then calls close(), we make sure that if
     // the subprocess is already closed, dont try close it again

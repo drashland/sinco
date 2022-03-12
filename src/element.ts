@@ -59,7 +59,7 @@ export class Element {
    *
    * @param newValue - If not passed, will return the value, else will set the value
    *
-   * @returns The value if setting, else an empty string if not
+   * @returns The value if getting, else if setting then an empty string
    */
   public async value(newValue?: string): Promise<string> {
     if (!newValue) {
