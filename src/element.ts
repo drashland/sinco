@@ -181,7 +181,7 @@ export class Element {
       this.#page.client.browser === "firefox" && options.button === "middle"
     ) {
       await this.#page.client.close(
-        "Middle clicking in firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
+        "Middle clicking in Firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
       );
     }
 
