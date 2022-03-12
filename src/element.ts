@@ -308,7 +308,7 @@ export class Element {
           `http://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/json/list`,
         );
         const json = await res.json() as WebsocketTarget[];
-        const item = json.find((j) => j["url"] === url);
+        const item = json.find((j) => j.url === url);
         if (!item) {
           continue;
         }
