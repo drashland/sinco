@@ -257,7 +257,7 @@ export class Client {
   }
 
   /**
-   * Creates the instant and protocol to interact with, and a Page
+   * Creates the instance and protocol to interact with, and a Page
    * instance, representing a placeholder page we opened for you
    *
    * @param buildArgs - Sub process args, should be ones to run chrome
