@@ -168,7 +168,7 @@ export class Client {
    */
   public async close(
     errMsg?: string,
-    errClass: typeof Error = Error,
+    errClass: { new (message: string): Error } = Error,
   ) {
     // Say a user calls an assertion method, and then calls close(), we make sure that if
     // the subprocess is already closed, dont try close it again
