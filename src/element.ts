@@ -87,7 +87,7 @@ export class Element {
   ): Promise<string> {
     if (!existsSync(path)) {
       await this.#page.client.close(
-        `The provided folder path - ${path} doesn't exist`,
+        `The provided folder path "${path}" doesn't exist`,
       );
     }
     const ext = options?.format ?? "jpeg";

@@ -20,7 +20,7 @@ for (const browserItem of browserList) {
 
       assertEquals(
         msg,
-        `The provided folder path - eieio doesn't exist`,
+        `The provided folder path "eieio" doesn't exist`,
       );
     },
   );
