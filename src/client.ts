@@ -171,7 +171,7 @@ export class Client {
     // deno-lint-ignore no-explicit-any
     errClass: { new (message: string): any } = Error,
   ) {
-    // Say a user calls an assertion method, and then calls done(), we make sure that if
+    // Say a user calls an assertion method, and then calls close(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
       return;
