@@ -168,10 +168,9 @@ export class Client {
    */
   public async close(
     errMsg?: string,
-    // deno-lint-ignore no-explicit-any
-    errClass: { new (message: string): any } = Error,
+    errClass: { new (message: string): Error } = Error,
   ) {
-    // Say a user calls an assertion method, and then calls done(), we make sure that if
+    // Say a user calls an assertion method, and then calls close(), we make sure that if
     // the subprocess is already closed, dont try close it again
     if (this.#browser_process_closed === true) {
       return;
@@ -257,7 +256,7 @@ export class Client {
   }
 
   /**
-   * Creates the instant and protocol to interact with, and a Page
+   * Creates the instance and protocol to interact with, and a Page
    * instance, representing a placeholder page we opened for you
    *
    * @param buildArgs - Sub process args, should be ones to run chrome

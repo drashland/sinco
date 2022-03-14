@@ -59,7 +59,7 @@ export class Element {
    *
    * @param newValue - If not passed, will return the value, else will set the value
    *
-   * @returns The value if setting, else an empty string if not
+   * @returns The value if getting, else if setting then an empty string
    */
   public async value(newValue?: string): Promise<string> {
     if (!newValue) {
@@ -87,7 +87,7 @@ export class Element {
   ): Promise<string> {
     if (!existsSync(path)) {
       await this.#page.client.close(
-        `The provided folder path - ${path} doesn't exist`,
+        `The provided folder path "${path}" doesn't exist`,
       );
     }
     const ext = options?.format ?? "jpeg";
@@ -181,7 +181,7 @@ export class Element {
       this.#page.client.browser === "firefox" && options.button === "middle"
     ) {
       await this.#page.client.close(
-        "Middle clicking in firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
+        "Middle clicking in Firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
       );
     }
 
@@ -308,7 +308,7 @@ export class Element {
           `http://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/json/list`,
         );
         const json = await res.json() as WebsocketTarget[];
-        const item = json.find((j) => j["url"] === url);
+        const item = json.find((j) => j.url === url);
         if (!item) {
           continue;
         }
