@@ -117,11 +117,6 @@ export class Page {
       );
       return target?.url ?? "";
     }
-    const method = "Page.loadEventFired";
-    this.#protocol.notifications.set(method, deferred());
-    const notificationPromise = this.#protocol.notifications.get(
-      method,
-    );
     const res = await this.#protocol.send<
       Protocol.Page.NavigateRequest,
       Protocol.Page.NavigateResponse
@@ -131,7 +126,11 @@ export class Page {
         url: newLocation,
       },
     );
-    await notificationPromise;
+    // @ts-ignore
+    const loaderIdPromise = this.#protocol.notifications.get(res.loaderId);
+    if (loaderIdPromise && loaderIdPromise.state === "pending") {
+      await loaderIdPromise;
+    }
     if (res.errorText) {
       await this.client.close(
         `${res.errorText}: Error for navigating to page "${newLocation}"`,
@@ -209,11 +208,23 @@ export class Page {
       expression: `document.querySelector('${selector}')`,
       includeCommandLineAPI: true,
     });
+
+    // NOT SURE WHERE TO GO FROM HERE SINCE RUNTIME.EVALUATE HANGS
+    // NOT SURE WHERE TO GO FROM HERE SINCE RUNTIME.EVALUATE HANGS
+    // NOT SURE WHERE TO GO FROM HERE SINCE RUNTIME.EVALUATE HANGS
+    // NOT SURE WHERE TO GO FROM HERE SINCE RUNTIME.EVALUATE HANGS
+    // @ts-ignore
+    // const loaderIdPromise = this.#protocol.notifications.get(result.result.loaderId);
+    // if (loaderIdPromise && loaderIdPromise.state === "pending") {
+    //   await loaderIdPromise;
+    // }
+
     if (result.result.value === null) {
       await this.client.close(
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
+
     return new Element(
       "document.querySelector",
       selector,

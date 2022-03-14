@@ -85,6 +85,19 @@ export class Protocol {
     this.socket.send(JSON.stringify(data));
     const result = await promise;
     this.#messages.delete(data.id);
+    // @ts-ignore
+    if (result.loaderId) {
+      // @ts-ignore
+      const loaderIdPromise = this.notifications.get(result.loaderId);
+      if (loaderIdPromise) {
+        // @ts-ignore
+        console.log(`loaderIdPromise`, result);
+        console.log(this.notifications);
+        if (loaderIdPromise.state === "pending") {
+          await loaderIdPromise;
+        }
+      }
+    }
     return result;
   }
 
@@ -97,12 +110,20 @@ export class Protocol {
         return;
       }
       if ("result" in message) { // success response
+        // @ts-ignore
+        const loaderIdPromise = this.notifications.get(message.result.loaderId);
+        if (!loaderIdPromise) {
+          // @ts-ignore
+          this.notifications.set(message.result.loaderId, deferred());
+          console.log(`weeeeeee`, message.result);
+        }
         resolvable.resolve(message.result);
       }
       if ("error" in message) { // error response
         resolvable.resolve(message.error);
       }
     }
+
     if ("method" in message) { // Notification response
       // Store certain methods for if we need to query them later
       if (message.method === "Runtime.exceptionThrown") {
@@ -114,6 +135,7 @@ export class Protocol {
           this.console_errors.push(errorMessage);
         }
       }
+
       if (message.method === "Log.entryAdded") {
         const params = message
           .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
@@ -121,6 +143,21 @@ export class Protocol {
           const errorMessage = params.entry.text;
           if (errorMessage) {
             this.console_errors.push(errorMessage);
+          }
+        }
+      }
+
+      if (message.method === "Network.responseReceived") {
+        if (message.params && message.params.requestId) {
+          // @ts-ignore
+          const p = this.notifications.get(message.params.requestId);
+          if (p) {
+            p.resolve();
+          } else {
+            const p = deferred()
+            p.resolve(message.params.requestId);
+            // @ts-ignore
+            this.notifications.set(message.params.requestId, p);
           }
         }
       }
@@ -151,7 +188,7 @@ export class Protocol {
     if (getFrameId) {
       protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    for (const method of ["Page", "Target", "Log", "Runtime"]) {
+    for (const method of ["Network", "Page", "Target", "Log", "Runtime"]) {
       await protocol.send(`${method}.enable`);
     }
     if (getFrameId) {
