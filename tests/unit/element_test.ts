@@ -23,21 +23,21 @@ for (const browserItem of browserList) {
     const { browser, page } = await buildFor(browserItem.name);
     await page.location("https://drash.land");
     const elem = await page.querySelector("a");
-    if (browserItem.name === "firefox") {
-      let errMsg = "";
-      try {
-        await elem.click({
-          button: "middle",
-        });
-      } catch (e) {
-        errMsg = e.message;
-      }
-      assertEquals(
-        errMsg,
-        "Middle clicking in firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
-      );
-      return;
-    }
+    // if (browserItem.name === "firefox") {
+    //   let errMsg = "";
+    //   try {
+    //     await elem.click({
+    //       button: "middle",
+    //     });
+    //   } catch (e) {
+    //     errMsg = e.message;
+    //   }
+    //   assertEquals(
+    //     errMsg,
+    //     "Middle clicking in firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
+    //   );
+    //   return;
+    // }
     await elem.click({
       button: "middle",
     });

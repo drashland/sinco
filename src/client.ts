@@ -244,7 +244,10 @@ export class Client {
   }
 
   public async version() {
-    return await this.#protocol.send<null, ProtocolTypes.Browser.GetVersionResponse>("Browser.version")
+    return await this.#protocol.send<
+      null,
+      ProtocolTypes.Browser.GetVersionResponse
+    >("Browser.version");
   }
 
   /**
@@ -305,6 +308,7 @@ export class Client {
     }
 
     // Create the browser protocol
+    console.log(browserWsUrl);
     const mainProtocol = await ProtocolClass.create(browserWsUrl);
 
     // Get the connection info for the default page thats opened, that acts as our first page
@@ -323,6 +327,10 @@ export class Client {
       return target;
     }
     const pageTarget = await getInitialPage();
+
+    await mainProtocol.send("Target.attachToTarget", {
+      targetId: pageTarget.targetId,
+    });
 
     // Create protocol for the default page
     const { protocol: pageProtocol, frameId } = await ProtocolClass.create(

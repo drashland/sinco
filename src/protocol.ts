@@ -55,7 +55,8 @@ export class Protocol {
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
-      console.log('Got msg', data)
+      console.log("Got msg", data);
+      if (data.error) console.log(data.error.data);
       this.#handleSocketMessage(data);
     };
   }
@@ -152,7 +153,8 @@ export class Protocol {
     if (getFrameId) {
       protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    for (const method of ["Page", "Target", "Log", "Runtime"]) {
+    await protocol.send("Target.getTargets");
+    for (const method of ["Page", "Log", "Runtime"]) {
       await protocol.send(`${method}.enable`);
     }
     if (getFrameId) {
