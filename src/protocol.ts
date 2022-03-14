@@ -151,7 +151,6 @@ export class Protocol {
     if (getFrameId) {
       protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    await protocol.send("Target.getTargets");
     for (const method of ["Page", "Log", "Runtime"]) {
       await protocol.send(`${method}.enable`);
     }
