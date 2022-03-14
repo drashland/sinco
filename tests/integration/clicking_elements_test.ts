@@ -34,7 +34,6 @@ Deno.test(
       "https://github.com/drashland",
     );
     assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
-    console.log("finished");
   },
 );
 

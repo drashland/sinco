@@ -55,8 +55,6 @@ export class Protocol {
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
-      console.log("Got msg", data);
-      if (data.error) console.log(data.error.data);
       this.#handleSocketMessage(data);
     };
   }

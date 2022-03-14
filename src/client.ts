@@ -308,7 +308,6 @@ export class Client {
     }
 
     // Create the browser protocol
-    console.log(browserWsUrl);
     const mainProtocol = await ProtocolClass.create(browserWsUrl);
 
     // Get the connection info for the default page thats opened, that acts as our first page
