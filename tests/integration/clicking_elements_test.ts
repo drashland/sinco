@@ -37,24 +37,25 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "[firefox] Clicking elements - Tutorial for this feature in the docs should work",
-  async () => {
-    const { browser, page } = await buildFor("firefox");
-    // Clicking an element that will open up a new page (tab)
-    await page.location("https://drash.land");
+// Deno.test(
+//   "[firefox] Clicking elements - Tutorial for this feature in the docs should work",
+//   async () => {
+//     console.log('building')
+//     const { browser, page } = await buildFor("firefox");
+//     // Clicking an element that will open up a new page (tab)
+//     await page.location("https://drash.land");
 
-    // Click an element that will change a pages location
-    const discordElem = await page.querySelector(
-      'a[href="https://discord.gg/RFsCSaHRWK"]',
-    );
-    await discordElem.click({
-      waitFor: "navigation",
-    });
-    const page1Location = await page.location();
+//     // Click an element that will change a pages location
+//     const discordElem = await page.querySelector(
+//       'a[href="https://discord.gg/RFsCSaHRWK"]',
+//     );
+//     await discordElem.click({
+//       waitFor: "navigation",
+//     });
+//     const page1Location = await page.location();
 
-    await browser.close();
+//     await browser.close();
 
-    assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
-  },
-);
+//     assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
+//   },
+// );

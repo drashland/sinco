@@ -319,6 +319,10 @@ export class Client {
     }
     const pageTarget = await getInitialPage();
 
+    await mainProtocol.send("Target.attachToTarget", {
+      targetId: pageTarget.targetId,
+    });
+
     // Create protocol for the default page
     const { protocol: pageProtocol, frameId } = await ProtocolClass.create(
       `ws://${wsOptions.hostname}:${wsOptions.port}/devtools/page/${pageTarget.targetId}`,

@@ -314,6 +314,9 @@ export class Element {
         }
         targetId = item.id;
       }
+      await this.#protocol.send("Target.attachToTarget", {
+        targetId: this.#page.target_id,
+      });
       const newProt = await Protocol.create(
         `ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`,
       );
