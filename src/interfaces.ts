@@ -8,14 +8,32 @@ export interface BuildOptions {
 }
 
 export interface ScreenshotOptions {
-  /** Name to be given to the screenshot. Optional */
-  selector?: string;
   /** Screenshot the given selector instead of the full page. Optional */
   fileName?: string;
   /** The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional */
   format?: "jpeg" | "png";
   /** The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional */
   quality?: number;
+}
+
+/**
+ * Interface that describes a /json/list item for the websocket endpoint
+ */
+export interface WebsocketTarget {
+  /** The page description, cna be "" */
+  description: string;
+  /** The frontend url we can view for debugging */
+  devtoolsFrontendUrl: string;
+  /** The target id of the target */
+  id: string;
+  /** The page title */
+  title: string;
+  /** The type of target */
+  type: "page" | "browser";
+  /** The target url */
+  url: string;
+  /** Websocket url we can connect to */
+  webSocketDebuggerUrl: string;
 }
 
 export type Cookie = {

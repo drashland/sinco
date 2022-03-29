@@ -4,33 +4,9 @@ import { browserList } from "../browser_list.ts";
 
 for (const browserItem of browserList) {
   Deno.test(
-    "goTo() | Should go to the page",
+    `[${browserItem.name}] create() | Will start ${browserItem.name} headless as a subprocess`,
     async () => {
-      const Sinco = await buildFor(browserItem.name);
-      const page = await Sinco.goTo("https://drash.land");
-      const location = await page.location();
-      await Sinco.done();
-      assertEquals(location, "https://drash.land/");
-    },
-  );
-  Deno.test(
-    "goTo() | Should error when page is invalid",
-    async () => {
-      const Sinco = await buildFor(browserItem.name);
-      let errMsg = "";
-      try {
-        await Sinco.goTo("https://hhh");
-      } catch (e) {
-        errMsg = e.message;
-      }
-      await Sinco.done();
-      assertEquals(errMsg, browserItem.errors.page_name_not_resolved);
-    },
-  );
-  Deno.test(
-    `create() | Will start ${browserItem.name} headless as a subprocess`,
-    async () => {
-      const Sinco = await buildFor(browserItem.name);
+      const { browser } = await buildFor(browserItem.name);
       const res = await fetch("http://localhost:9292/json/list");
       const json = await res.json();
       // Our ws client should be able to connect if the browser is running
@@ -43,13 +19,13 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await Sinco.done();
+      await browser.close();
     },
   );
   Deno.test(
     "create() | Uses the port when passed in to the parameters",
     async () => {
-      const Sinco = await buildFor(browserItem.name, {
+      const { browser } = await buildFor(browserItem.name, {
         debuggerPort: 9999,
       });
       const res = await fetch("http://localhost:9999/json/list");
@@ -64,7 +40,7 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await Sinco.done();
+      await browser.close();
     },
   );
   Deno.test(
@@ -76,7 +52,7 @@ for (const browserItem of browserList) {
   Deno.test(
     "create() | Uses the binaryPath when passed in to the parameters",
     async () => {
-      const Sinco = await buildFor(browserItem.name, {
+      const { browser } = await buildFor(browserItem.name, {
         //binaryPath: await browserItem.getPath(),
       });
 
@@ -92,18 +68,78 @@ for (const browserItem of browserList) {
         promise.resolve();
       };
       await promise;
-      await Sinco.done();
+      await browser.close();
     },
   );
 
-  // Rhum.testSuite("waitForAnchorChange()", () => {
-  //   Rhum.testCase("Waits for any anchor changes after an action", async () => {
-  //     const Sinco = await ChromeClient.build();
-  //     await Sinco.goTo("https://chromestatus.com");
-  //     await Sinco.type('input[placeholder="Filter"]', "Gday");
-  //     await Sinco.waitForAnchorChange();
-  //     await Sinco.assertUrlIs("https://chromestatus.com/features#Gday");
-  //     await Sinco.done();
-  //   });
-  // });
+  Deno.test(`[${browserItem.name}] close() | Should close all resources and not leak any`, async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://drash.land");
+    await browser.close();
+    // If resources are not closed or pending ops or leaked, this test will show it when ran
+  });
+
+  Deno.test(`[${browserItem.name}] close() | Should close all page specific resources too`, async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    await page.location("https://drash.land");
+    await browser.close();
+    try {
+      const listener = Deno.listen({
+        port: 9292,
+        hostname: "localhost",
+      });
+      listener.close();
+    } catch (e) {
+      if (e instanceof Deno.errors.AddrInUse) {
+        throw new Error(
+          `Seems like the subprocess is still running: ${e.message}`,
+        );
+      }
+    }
+    // If resources are not closed or pending ops or leaked, this test will show it when ran
+  });
+
+  if (browserItem.name === "chrome") {
+    Deno.test(`[${browserItem.name}] closeAllPagesExcept() | Should close all pages except the one passed in`, async () => {
+      const { browser, page } = await buildFor(browserItem.name);
+      await page.location("https://drash.land");
+      const elem = await page.querySelector("a");
+      await elem.click({
+        button: "middle",
+      });
+      const page2 = await browser.page(2);
+      await browser.closeAllPagesExcept(page2);
+      let errMsg = "";
+      try {
+        await page.location();
+      } catch (e) {
+        errMsg = e.message;
+      }
+      const page2location = await page2.location();
+      await browser.close();
+      assertEquals(errMsg, "readyState not OPEN");
+      assertEquals(page2location, "https://github.com/drashland");
+    });
+  }
+
+  Deno.test(`[${browserItem.name}] page() | Should return the correct page`, async () => {
+    const { browser, page } = await buildFor(browserItem.name);
+    const mainPage = await browser.page(1);
+    await browser.close();
+    assertEquals(page.target_id, mainPage.target_id);
+  });
+
+  Deno.test(`[${browserItem.name}] page() | Should throw out of bounds if index doesnt exist`, async () => {
+    const { browser } = await buildFor(browserItem.name);
+    let threw = false;
+    try {
+      await browser.page(2);
+    } catch (_e) {
+      // As expected :)
+      threw = true;
+    } finally {
+      await browser.close();
+      assertEquals(threw, true);
+    }
+  });
 }

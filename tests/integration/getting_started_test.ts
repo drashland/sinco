@@ -7,20 +7,21 @@ for (const browserItem of browserList) {
     browserItem.name + ": Tutorial for Getting Started in the docs should work",
     async () => {
       // Setup
-      const Sinco = await buildFor(browserItem.name); // also supports firefox
-      const page = await Sinco.goTo("https://drash.land"); // Go to this page
+      const { browser, page } = await buildFor(browserItem.name); // also supports firefox
+      await page.location("https://drash.land"); // Go to this page
 
       // Do any actions and assertions, in any order
       assertEquals(await page.location(), "https://drash.land/");
       const elem = await page.querySelector(
         'a[href="https://discord.gg/RFsCSaHRWK"]',
       );
-      await elem.click(); // This element will take the user to Sinco's documentation
-      await page.waitForPageChange();
+      await elem.click({
+        waitFor: "navigation",
+      }); // This element will take the user to Sinco's documentation
       const location = await page.location();
 
       // Once finished, close to clean up any processes
-      await Sinco.done();
+      await browser.close();
       assertEquals(location, "https://discord.com/invite/RFsCSaHRWK");
     },
   );
