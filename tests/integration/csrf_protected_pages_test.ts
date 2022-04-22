@@ -1,4 +1,4 @@
-import { Rhum } from "../deps.ts";
+import { assertEquals } from "../../deps.ts";
 /**
  * Other ways you can achieve this are:
  *
@@ -22,6 +22,6 @@ for (const browserItem of browserList) {
       return document.cookie;
     });
     await browser.close();
-    Rhum.asserts.assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
+    assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
   });
 }
