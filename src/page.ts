@@ -326,7 +326,7 @@ export class Page {
       options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
         generateTimestamp()
     }.${ext}`;
-    const B64str = res.data;
+    const B64str = res.data.trim();
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
     try {
       Deno.writeFileSync(fName, u8Arr);
