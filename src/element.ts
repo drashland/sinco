@@ -55,6 +55,54 @@ export class Element {
   }
 
   /**
+   * Sets a file for a file input
+   *
+   * @param path - The remote path of the file to attach
+   */
+  public async file(path: string): Promise<void> {
+    return await this.files(path);
+  }
+
+  /**
+   * Sets many files for a file input
+   *
+   * @param files - The list of remote files to attach
+   */
+  public async files(...files: string[]) {
+    if (files.length > 1) {
+      const isMultiple = await this.#page.evaluate(
+        `${this.#method}('${this.#selector}').getAttribute('multiple') === true`,
+      );
+      if (!isMultiple) {
+        throw new Error("Trying to ");
+      }
+    }
+
+    const name = await this.#page.evaluate(
+      `${this.#method}('${this.#selector}').nodeName`,
+    );
+    if (name !== "INPUT") {
+      throw new Error("Trying to set a file on an element that isnt an input");
+    }
+    const type = await this.#page.evaluate(
+      `${this.#method}('${this.#selector}').type`,
+    );
+    if (type !== "file") {
+      throw new Error(
+        'Trying to set a file on an input that is not of type "file"',
+      );
+    }
+
+    await this.#protocol.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
+      "DOM.setFileInputFiles",
+      {
+        files: files,
+        objectId: this.#objectId,
+      },
+    );
+  }
+
+  /**
    * Get the value of this element, or set the value
    *
    * @param newValue - If not passed, will return the value, else will set the value
