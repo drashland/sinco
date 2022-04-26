@@ -11,7 +11,7 @@ for (const browserItem of browserList) {
       await t.step(
         "takeScreenshot() | Throws an error if provided path doesn't exist",
         async () => {
-          let msg = "";
+          let msg = ""; // empty message for starters
           const { page } = await buildFor(browserItem.name);
           await page.location("https://drash.land");
           try {
