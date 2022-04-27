@@ -154,5 +154,30 @@ for (const browserItem of browserList) {
         });
       });
     });
+
+    await t.step("getAttribute()", async (t) => {
+      await t.step("Should get the attribute", async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location("https://drash.land");
+        const elem = await page.querySelector("a");
+        const val = await elem.getAttribute("href");
+        await browser.close();
+        assertEquals(val, "https://github.com/drashland");
+      });
+    });
+
+    await t.step("setAttribute()", async (t) => {
+      await t.step("Should set the attribute", async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location("https://drash.land");
+        const elem = await page.querySelector("a");
+        elem.setAttribute("data-name", "Sinco");
+        const val = await page.evaluate(() => {
+          return document.querySelector("a")?.getAttribute("data-name");
+        });
+        await browser.close();
+        assertEquals(val, "Sinco");
+      });
+    });
   });
 }
