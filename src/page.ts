@@ -140,11 +140,13 @@ export class Page {
     return "";
   }
 
-  public async evaluate(command: string): Promise<any>;
   // deno-lint-ignore no-explicit-any
+  public async evaluate(command: string): Promise<any>;
   public async evaluate(
+    // deno-lint-ignore no-explicit-any
     pageFunction: (...args: any[]) => any | Promise<any>,
     ...args: unknown[]
+    // deno-lint-ignore no-explicit-any
   ): Promise<any>;
   /**
    * Invoke a function or string expression on the current frame.
