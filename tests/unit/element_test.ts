@@ -87,9 +87,9 @@ for (const browserItem of browserList) {
         await t.step("Saves Screenshot with all options provided", async () => {
           const { browser, page } = await buildFor(browserItem.name);
           await page.location("https://chromestatus.com");
-          const span = await page.querySelector("span");
+          const h3 = await page.querySelector("h3");
           Deno.mkdirSync(ScreenshotsFolder);
-          const filename = await span.takeScreenshot(ScreenshotsFolder, {
+          const filename = await h3.takeScreenshot(ScreenshotsFolder, {
             fileName: "AllOpts",
             format: "jpeg",
             quality: 100,
