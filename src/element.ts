@@ -58,6 +58,13 @@ export class Element {
    * Sets a file for a file input
    *
    * @param path - The remote path of the file to attach
+   *
+   * @example
+   * ```js
+   * import { resolve } from "https://deno.land/std@0.136.0/path/mod.ts";
+   * const fileInput = await page.querySelector("input[type='file']");
+   * await fileInput.file(resolve("./logo.png"));
+   * ```
    */
   public async file(path: string): Promise<void> {
     return await this.files(path);
@@ -67,14 +74,23 @@ export class Element {
    * Sets many files for a file input
    *
    * @param files - The list of remote files to attach
+   *
+   * @example
+   * ```js
+   * import { resolve } from "https://deno.land/std@0.136.0/path/mod.ts";
+   * const fileInput = await page.querySelector("input[type='file']");
+   * await fileInput.files(resolve("./logo.png"));
+   * ```
    */
   public async files(...files: string[]) {
     if (files.length > 1) {
       const isMultiple = await this.#page.evaluate(
-        `${this.#method}('${this.#selector}').getAttribute('multiple') === true`,
+        `${this.#method}('${this.#selector}').hasAttribute('multiple')`,
       );
       if (!isMultiple) {
-        throw new Error("Trying to ");
+        throw new Error(
+          "Trying to set files on a file input without the 'multiple' attribute",
+        );
       }
     }
 
@@ -93,11 +109,18 @@ export class Element {
       );
     }
 
+    const { node } = await this.#protocol.send<
+      ProtocolTypes.DOM.DescribeNodeRequest,
+      ProtocolTypes.DOM.DescribeNodeResponse
+    >("DOM.describeNode", {
+      objectId: this.#objectId,
+    });
     await this.#protocol.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
       "DOM.setFileInputFiles",
       {
         files: files,
         objectId: this.#objectId,
+        backendNodeId: node.backendNodeId,
       },
     );
   }

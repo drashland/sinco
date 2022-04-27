@@ -3,6 +3,8 @@ import { assertEquals } from "../../deps.ts";
 import { browserList } from "../browser_list.ts";
 const ScreenshotsFolder = "./Screenshots";
 import { existsSync } from "../../src/utility.ts";
+import { server } from "../server.ts";
+import { resolve } from "../deps.ts";
 
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
@@ -53,49 +55,28 @@ for (const browserItem of browserList) {
         assertEquals(page1Location, "https://drash.land/");
         assertEquals(page2location, "https://github.com/drashland");
       });
+    });
 
-      await t.step("takeScreenshot()", async (t) => {
-        await t.step(
-          "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
-          async () => {
-            try {
-              Deno.removeSync(ScreenshotsFolder, {
-                recursive: true,
-              });
-            } catch (_e) {
-              // if doesnt exist, no problamo
-            }
-            const { browser, page } = await buildFor(browserItem.name);
-            await page.location("https://drash.land");
-            const img = await page.querySelector("img");
-            Deno.mkdirSync(ScreenshotsFolder);
-            const fileName = await img.takeScreenshot(ScreenshotsFolder, {
-              quality: 50,
-            });
-            await browser.close();
-            const exists = existsSync(fileName);
+    await t.step("takeScreenshot()", async (t) => {
+      await t.step(
+        "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
+        async () => {
+          try {
             Deno.removeSync(ScreenshotsFolder, {
               recursive: true,
             });
-            assertEquals(
-              exists,
-              true,
-            );
-          },
-        );
-
-        await t.step("Saves Screenshot with all options provided", async () => {
+          } catch (_e) {
+            // if doesnt exist, no problamo
+          }
           const { browser, page } = await buildFor(browserItem.name);
-          await page.location("https://chromestatus.com");
-          const h3 = await page.querySelector("h3");
+          await page.location("https://drash.land");
+          const img = await page.querySelector("img");
           Deno.mkdirSync(ScreenshotsFolder);
-          const filename = await h3.takeScreenshot(ScreenshotsFolder, {
-            fileName: "AllOpts",
-            format: "jpeg",
-            quality: 100,
+          const fileName = await img.takeScreenshot(ScreenshotsFolder, {
+            quality: 50,
           });
           await browser.close();
-          const exists = existsSync(filename);
+          const exists = existsSync(fileName);
           Deno.removeSync(ScreenshotsFolder, {
             recursive: true,
           });
@@ -103,55 +84,216 @@ for (const browserItem of browserList) {
             exists,
             true,
           );
+        },
+      );
+
+      await t.step("Saves Screenshot with all options provided", async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location("https://chromestatus.com");
+        const h3 = await page.querySelector("h3");
+        Deno.mkdirSync(ScreenshotsFolder);
+        const filename = await h3.takeScreenshot(ScreenshotsFolder, {
+          fileName: "AllOpts",
+          format: "jpeg",
+          quality: 100,
         });
-      });
-
-      await t.step("value", async (t) => {
-        await t.step(
-          "It should get the value for the given input element",
-          async () => {
-            const { browser, page } = await buildFor(browserItem.name);
-            await page.location("https://chromestatus.com");
-            const elem = await page.querySelector(
-              'input[placeholder="Filter"]',
-            );
-            await elem.value("hello world");
-            const val = await elem.value();
-            assertEquals(val, "hello world");
-            await browser.close();
-          },
-        );
-        await t.step(
-          "Should return empty when element is not an input element",
-          async () => {
-            const { browser, page } = await buildFor(browserItem.name);
-            await page.location("https://chromestatus.com");
-            let errMsg = "";
-            const elem = await page.querySelector("div");
-            try {
-              await elem.value;
-            } catch (e) {
-              errMsg = e.message;
-            }
-            await browser.close();
-            assertEquals(
-              errMsg,
-              "",
-            );
-          },
+        await browser.close();
+        const exists = existsSync(filename);
+        Deno.removeSync(ScreenshotsFolder, {
+          recursive: true,
+        });
+        assertEquals(
+          exists,
+          true,
         );
       });
+    });
 
-      await t.step("value()", async (t) => {
-        await t.step("It should set the value of the element", async () => {
+    await t.step("value", async (t) => {
+      await t.step(
+        "It should get the value for the given input element",
+        async () => {
           const { browser, page } = await buildFor(browserItem.name);
           await page.location("https://chromestatus.com");
-          const elem = await page.querySelector('input[placeholder="Filter"]');
+          const elem = await page.querySelector(
+            'input[placeholder="Filter"]',
+          );
           await elem.value("hello world");
           const val = await elem.value();
-          await browser.close();
           assertEquals(val, "hello world");
-        });
+          await browser.close();
+        },
+      );
+      await t.step(
+        "Should return empty when element is not an input element",
+        async () => {
+          const { browser, page } = await buildFor(browserItem.name);
+          await page.location("https://chromestatus.com");
+          let errMsg = "";
+          const elem = await page.querySelector("div");
+          try {
+            await elem.value;
+          } catch (e) {
+            errMsg = e.message;
+          }
+          await browser.close();
+          assertEquals(
+            errMsg,
+            "",
+          );
+        },
+      );
+    });
+
+    await t.step("value()", async (t) => {
+      await t.step("It should set the value of the element", async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location("https://chromestatus.com");
+        const elem = await page.querySelector('input[placeholder="Filter"]');
+        await elem.value("hello world");
+        const val = await elem.value();
+        await browser.close();
+        assertEquals(val, "hello world");
+      });
+    });
+
+    await t.step("files()", async (t) => {
+      await t.step(
+        "Should throw if multiple files and input isnt multiple",
+        async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name);
+          await page.location(server.address + "/file-input");
+          const elem = await page.querySelector("#single-file");
+          let errMsg = "";
+          try {
+            await elem.files("ffff", "hhh");
+          } catch (e) {
+            errMsg = e.message;
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+          assertEquals(
+            errMsg,
+            `Trying to set files on a file input without the 'multiple' attribute`,
+          );
+        },
+      );
+      await t.step("Should throw if element isnt an input", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("p");
+        let errMsg = "";
+        try {
+          await elem.files("ffff");
+        } catch (e) {
+          errMsg = e.message;
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+        assertEquals(
+          errMsg,
+          "Trying to set a file on an element that isnt an input",
+        );
+      });
+      await t.step("Should throw if input is not of type file", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("#text");
+        let errMsg = "";
+        try {
+          await elem.files("ffff");
+        } catch (e) {
+          errMsg = e.message;
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+        assertEquals(
+          errMsg,
+          'Trying to set a file on an input that is not of type "file"',
+        );
+      });
+      await t.step("Should successfully upload files", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("#multiple-file");
+        try {
+          await elem.files(resolve("./README.md"), resolve("./tsconfig.json"));
+          const files = JSON.parse(
+            await page.evaluate(
+              `JSON.stringify(document.querySelector('#multiple-file').files)`,
+            ),
+          );
+          assertEquals(Object.keys(files), 2);
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+      });
+    });
+
+    await t.step("file()", async (t) => {
+      await t.step("Should throw if element isnt an input", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("p");
+        let errMsg = "";
+        try {
+          await elem.file("ffff");
+        } catch (e) {
+          errMsg = e.message;
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+        assertEquals(
+          errMsg,
+          "Trying to set a file on an element that isnt an input",
+        );
+      });
+      await t.step("Should throw if input is not of type file", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("#text");
+        let errMsg = "";
+        try {
+          await elem.file("ffff");
+        } catch (e) {
+          errMsg = e.message;
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+        assertEquals(
+          errMsg,
+          'Trying to set a file on an input that is not of type "file"',
+        );
+      });
+      await t.step("Should successfully upload files", async () => {
+        server.run();
+        const { browser, page } = await buildFor(browserItem.name);
+        await page.location(server.address + "/file-input");
+        const elem = await page.querySelector("#single-file");
+        try {
+          await elem.file(resolve("./README.md"));
+          const files = JSON.parse(
+            await page.evaluate(
+              `JSON.stringify(document.querySelector('#multiple-file').files)`,
+            ),
+          );
+          assertEquals(Object.keys(files), 1);
+        } finally {
+          await server.close();
+          await browser.close();
+        }
       });
     });
   });
