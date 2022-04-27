@@ -230,7 +230,7 @@ for (const browserItem of browserList) {
               `JSON.stringify(document.querySelector('#multiple-file').files)`,
             ),
           );
-          assertEquals(Object.keys(files), 2);
+          assertEquals(Object.keys(files).length, 2);
         } finally {
           await server.close();
           await browser.close();
@@ -289,7 +289,7 @@ for (const browserItem of browserList) {
               `JSON.stringify(document.querySelector('#single-file').files)`,
             ),
           );
-          assertEquals(Object.keys(files), 1);
+          assertEquals(Object.keys(files).length, 1);
         } finally {
           await server.close();
           await browser.close();
