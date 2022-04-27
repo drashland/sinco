@@ -286,7 +286,7 @@ for (const browserItem of browserList) {
           await elem.file(resolve("./README.md"));
           const files = JSON.parse(
             await page.evaluate(
-              `JSON.stringify(document.querySelector('#multiple-file').files)`,
+              `JSON.stringify(document.querySelector('#single-file').files)`,
             ),
           );
           assertEquals(Object.keys(files), 1);
