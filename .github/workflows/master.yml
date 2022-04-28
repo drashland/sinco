@@ -36,6 +36,11 @@ jobs:
         with:
           deno-version: vx.x.x
 
+      - uses: nanasess/setup-chromedriver@v1
+        with:
+          # Optional: do not specify to match Chrome's version
+          chromedriver-version: '101.0.4951.41'
+
       - name: Run Integration Tests
         run: |
           deno test -A tests/integration --config tsconfig.json --no-check=remote

@@ -3,7 +3,7 @@ FROM debian:stable-slim
 # Install chrome driver
 RUN apt update -y && apt clean -y
 RUN apt install gnupg -y
-ENV CHROME_VERSION "google-chrome-stable"
+ENV CHROME_VERSION "101.0.4951.41"
 RUN sed -i -- 's&deb http://deb.debian.org/debian jessie-updates main&#deb http://deb.debian.org/debian jessie-updates main&g' /etc/apt/sources.list \
   && apt-get update && apt-get install wget -y
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
