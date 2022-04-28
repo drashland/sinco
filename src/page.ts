@@ -89,7 +89,6 @@ export class Page {
         `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand`,
       );
     }
-    console.log("dd");
     await p;
     const method = "Page.javascriptDialogClosed";
     this.#protocol.notifications.set(method, deferred());
@@ -99,7 +98,6 @@ export class Page {
     if (promptText) {
       body.promptText = promptText;
     }
-    console.log("sending");
     await this.#protocol.send<
       Protocol.Page.HandleJavaScriptDialogRequest,
       null
