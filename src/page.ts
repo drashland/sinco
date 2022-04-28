@@ -105,12 +105,11 @@ export class Page {
 
   /**
    * Wait for a request to finish loading.
-   * 
+   *
    * Can be used to wait for:
    *   - Clicking a button that (via JS) will send a HTTO request via axios/fetch etc
    *   - Submitting an inline form
    *   - ... and many others
-   * 
    */
   public async waitForRequest() {
     const params = await this.#protocol.notifications.get(
