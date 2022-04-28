@@ -95,11 +95,23 @@ export class Page {
     return [];
   }
 
+  /**
+   * Tell Sinco that you will be expecting to wait for a request
+   */
   public expectWaitForRequest() {
     const requestWillBeSendMethod = "Network.requestWillBeSent";
     this.#protocol.notifications.set(requestWillBeSendMethod, deferred());
   }
 
+  /**
+   * Wait for a request to finish loading.
+   * 
+   * Can be used to wait for:
+   *   - Clicking a button that (via JS) will send a HTTO request via axios/fetch etc
+   *   - Submitting an inline form
+   *   - ... and many others
+   * 
+   */
   public async waitForRequest() {
     const params = await this.#protocol.notifications.get(
       "Network.requestWillBeSent",
