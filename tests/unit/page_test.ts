@@ -226,5 +226,52 @@ for (const browserItem of browserList) {
         assertEquals(page.socket.readyState, page.socket.CLOSED);
       });
     });
+
+    await t.step("dialog()", async (t) => {
+      await t.step(`Accepts a dialog`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/dialogs");
+        const elem = await page.querySelector("#button");
+        page.expectDialog();
+        elem.click();
+        await page.dialog(true, "Sinco 4eva");
+        const val = await page.evaluate(
+          `document.querySelector("#button").textContent`,
+        );
+        await browser.close();
+        await server.close();
+        assertEquals(val, "Sinco 4eva");
+      });
+      await t.step(`Throws if a dialog was not expected`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        let errMsg = "";
+        try {
+          await page.dialog(true, "Sinco 4eva");
+        } catch (e) {
+          errMsg = e.message;
+        }
+        await browser.close();
+        assertEquals(
+          errMsg,
+          'Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand',
+        );
+      });
+      await t.step(`Rejects a dialog`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/dialogs");
+        const elem = await page.querySelector("#button");
+        page.expectDialog();
+        elem.click();
+        await page.dialog(false, "Sinco 4eva");
+        const val = await page.evaluate(
+          `document.querySelector("#button").textContent`,
+        );
+        await browser.close();
+        await server.close();
+        assertEquals(val, "");
+      });
+    });
   });
 }

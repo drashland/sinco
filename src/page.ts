@@ -46,6 +46,69 @@ export class Page {
   }
 
   /**
+   * Tells Sinco you are expecting a dialog, so Sinco can listen for the event,
+   * and when `.dialog()` is called, Sinco can accept or decline it at the right time
+   *
+   * @example
+   * ```js
+   * // Note that if `.click()` produces a dialog, do not await it.
+   * await page.expectDialog();
+   * await elem.click();
+   * await page.dialog(true, "my username is Sinco");
+   * ```
+   */
+  public expectDialog() {
+    this.#protocol.notifications.set(
+      "Page.javascriptDialogOpening",
+      deferred(),
+    );
+  }
+
+  /**
+   * Interact with a dialog.
+   *
+   * Will throw if `.expectDialog()` was not called before.
+   * This is so Sino doesn't try to accept/decline a dialog before
+   * it opens.
+   *
+   * @example
+   * ```js
+   * // Note that if `.click()` produces a dialog, do not await it.
+   * await page.expectDialog();
+   * elem.click();
+   * await page.dialog(true, "my username is Sinco");
+   * ```
+   *
+   * @param accept - Whether to accept or dismiss the dialog
+   * @param promptText  - The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog.
+   */
+  public async dialog(accept: boolean, promptText?: string) {
+    const p = this.#protocol.notifications.get("Page.javascriptDialogOpening");
+    if (!p) {
+      throw new Error(
+        `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand`,
+      );
+    }
+    console.log("dd");
+    await p;
+    const method = "Page.javascriptDialogClosed";
+    this.#protocol.notifications.set(method, deferred());
+    const body: Protocol.Page.HandleJavaScriptDialogRequest = {
+      accept,
+    };
+    if (promptText) {
+      body.promptText = promptText;
+    }
+    console.log("sending");
+    await this.#protocol.send<
+      Protocol.Page.HandleJavaScriptDialogRequest,
+      null
+    >("Page.handleJavaScriptDialog", body);
+    const closedPromise = this.#protocol.notifications.get(method);
+    await closedPromise;
+  }
+
+  /**
    * Closes the page. After, you will not be able to interact with it
    */
   public async close() {

@@ -23,8 +23,24 @@ class PopupsResource extends Drash.Resource {
   }
 }
 
+class DialogsResource extends Drash.Resource {
+  public paths = ["/dialogs"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+      <button type="button" id="button">Click</button>
+      <script>
+        document.querySelector('#button').addEventListener('click', e => {
+          const value = prompt("some text");
+          e.target.textContent = value;
+        })
+      </script>
+    `);
+  }
+}
+
 export const server = new Drash.Server({
-  resources: [HomeResource, JSResource, PopupsResource],
+  resources: [HomeResource, JSResource, PopupsResource, DialogsResource],
   protocol: "http",
   port: 1447,
   hostname: "localhost",
