@@ -40,7 +40,10 @@ export class Protocol {
    */
   public notifications: Map<
     string,
-    Deferred<Record<string, unknown>>
+    Deferred<Record<string, unknown>> | {
+      params: Record<string, unknown>;
+      promise: Deferred<Record<string, unknown>>;
+    }
   > = new Map();
 
   /**
@@ -55,6 +58,7 @@ export class Protocol {
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
+      console.log(data);
       this.#handleSocketMessage(data);
     };
   }
@@ -126,8 +130,34 @@ export class Protocol {
       }
 
       const resolvable = this.notifications.get(message.method);
-      if (resolvable) {
+      if (!resolvable) {
+        return;
+      }
+      if ("resolve" in resolvable && "reject" in resolvable) {
         resolvable.resolve(message.params);
+      }
+      if ("params" in resolvable && "promise" in resolvable) {
+        let allMatch = false;
+        Object.keys(resolvable.params).forEach((paramName) => {
+          if (
+            allMatch === true &&
+            (message.params[paramName] as string | number).toString() !==
+              (resolvable.params[paramName] as string | number).toString()
+          ) {
+            allMatch = false;
+            return;
+          }
+          if (
+            (message.params[paramName] as string | number).toString() ===
+              (resolvable.params[paramName] as string | number).toString()
+          ) {
+            allMatch = true;
+          }
+        });
+        if (allMatch) {
+          resolvable.promise.resolve(message.params);
+        }
+        return;
       }
     }
   }
@@ -151,7 +181,7 @@ export class Protocol {
     if (getFrameId) {
       protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    for (const method of ["Page", "Log", "Runtime"]) {
+    for (const method of ["Page", "Log", "Runtime", "Network"]) {
       await protocol.send(`${method}.enable`);
     }
     if (getFrameId) {

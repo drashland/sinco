@@ -1,4 +1,4 @@
-import { Drash } from "./deps.ts";
+import { delay, Drash } from "./deps.ts";
 
 class HomeResource extends Drash.Resource {
   public paths = ["/"];
@@ -23,8 +23,39 @@ class PopupsResource extends Drash.Resource {
   }
 }
 
+class WaitForRequestsResource extends Drash.Resource {
+  public paths = ["/wait-for-requests"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+      <form action="/wait-for-requests" method="POST">
+        <button type="submit">Click</button>
+      </form>
+      <button id="second-button" type="button">Click</button>
+      <script>
+        document.getElementById("second-button").addEventListener('click', async e => {
+          await fetch("/wait-for-requests", {
+            method: "POST",
+          })
+          e.target.textContent = "done";
+        })
+      </script>
+    `);
+  }
+
+  public async POST(_r: Drash.Request, res: Drash.Response) {
+    await delay(2000);
+    return res.text("Done!!");
+  }
+}
+
 export const server = new Drash.Server({
-  resources: [HomeResource, JSResource, PopupsResource],
+  resources: [
+    HomeResource,
+    JSResource,
+    PopupsResource,
+    WaitForRequestsResource,
+  ],
   protocol: "http",
   port: 1447,
   hostname: "localhost",

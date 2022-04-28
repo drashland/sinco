@@ -248,6 +248,7 @@ export class Element {
       middle: 4,
     };
 
+    console.log("clicking");
     await this.#protocol.send("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       button: options.button,

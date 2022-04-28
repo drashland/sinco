@@ -4,6 +4,7 @@ import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 import { Client } from "./client.ts";
+import type { Deferred } from "../deps.ts";
 
 /**
  * A representation of the page the client is on, allowing the client to action
@@ -92,6 +93,36 @@ export class Page {
       url: newCookie.url,
     });
     return [];
+  }
+
+  public expectWaitForRequest() {
+    const requestWillBeSendMethod = "Network.requestWillBeSent";
+    this.#protocol.notifications.set(requestWillBeSendMethod, deferred());
+  }
+
+  public async waitForRequest() {
+    const params = await this.#protocol.notifications.get(
+      "Network.requestWillBeSent",
+    ) as {
+      requestId: string;
+    };
+    if (!params) {
+      throw new Error(
+        `Unable to wait for a request because \`.expectWaitForRequest()\` was not called.`,
+      );
+    }
+    const { requestId } = params;
+    const method = "Network.loadingFinished";
+    this.#protocol.notifications.set(method, {
+      params: {
+        requestId,
+      },
+      promise: deferred(),
+    });
+    const result = this.#protocol.notifications.get(method) as unknown as {
+      promise: Deferred<never>;
+    };
+    await result.promise;
   }
 
   /**
