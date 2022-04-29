@@ -234,6 +234,7 @@ for (const browserItem of browserList) {
         await page.location(server.address + "/long-running-js");
         const result = await page.wait(`document.readyState === "complete"`);
         await browser.close();
+        await server.close();
         assertEquals(result, true);
       });
       await t.step(`Returns false if it took to long`, async () => {
@@ -242,6 +243,7 @@ for (const browserItem of browserList) {
         await page.location(server.address + "/long-running-js");
         const result = await page.wait(`document.readyState === "nothing"`);
         await browser.close();
+        await server.close();
         assertEquals(result, false);
       });
     });
