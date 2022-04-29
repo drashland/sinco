@@ -226,5 +226,24 @@ for (const browserItem of browserList) {
         assertEquals(page.socket.readyState, page.socket.CLOSED);
       });
     });
+
+    await t.step("wait()", async (t) => {
+      await t.step(`Waits correctly`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/long-running-js");
+        const result = await page.wait(`document.readyState === "complete"`);
+        await browser.close();
+        assertEquals(result, true);
+      });
+      await t.step(`Returns false if it took to long`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/long-running-js");
+        const result = await page.wait(`document.readyState === "nothing"`);
+        await browser.close();
+        assertEquals(result, false);
+      });
+    });
   });
 }

@@ -93,7 +93,6 @@ export class Page {
     });
     return [];
   }
-
   /**
    * Either get the href/url for the page, or set the location
    *
@@ -117,7 +116,7 @@ export class Page {
       );
       return target?.url ?? "";
     }
-    const method = "Page.loadEventFired";
+    const method = "Network.loadingFinished";
     this.#protocol.notifications.set(method, deferred());
     const notificationPromise = this.#protocol.notifications.get(
       method,
@@ -138,6 +137,44 @@ export class Page {
       );
     }
     return "";
+  }
+
+  /**
+   * Wait for an evaluation to be truthy.
+   *
+   * Useful to wait for an AJAX request or until the document is ready
+   *
+   * If you need to just wait, use https://deno.land/std/async/delay.ts
+   *
+   * @example
+   * ```js
+   * await page.wait(`document.readyState === "complete"`)
+   * ```
+   *
+   * @param waitFor - Evaluation to wait for
+   * @param timeout - Milliseconds. Defaults to 2000. If duration reaches this, will return false
+   *
+   * @returns Returns true if condition was met, or false if condition was not met in time
+   */
+  public async wait(waitFor: string, timeout = 2000): Promise<boolean> {
+    let currentDuration = 0;
+    const p = deferred<boolean>();
+    const interval = setInterval(async () => {
+      const result = await this.evaluate(waitFor);
+      if (result === true) {
+        p.resolve(true);
+      }
+      if (
+        p.state !== "fulfilled" &&
+        (currentDuration === timeout || (currentDuration + 150) === timeout)
+      ) {
+        p.resolve(false);
+      }
+      currentDuration += 150;
+    }, 150);
+    const result = await p;
+    clearInterval(interval);
+    return result;
   }
 
   /**

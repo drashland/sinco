@@ -151,7 +151,7 @@ export class Protocol {
     if (getFrameId) {
       protocol.notifications.set("Runtime.executionContextCreated", deferred());
     }
-    for (const method of ["Page", "Log", "Runtime"]) {
+    for (const method of ["Page", "Log", "Runtime", "Network", "DOM"]) {
       await protocol.send(`${method}.enable`);
     }
     if (getFrameId) {

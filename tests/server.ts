@@ -1,4 +1,4 @@
-import { Drash } from "./deps.ts";
+import { delay, Drash } from "./deps.ts";
 
 class HomeResource extends Drash.Resource {
   public paths = ["/"];
@@ -23,8 +23,30 @@ class PopupsResource extends Drash.Resource {
   }
 }
 
+class LongWaitingJSResource extends Drash.Resource {
+  public paths = ["/long-waiting-js"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+      <p>hello</p>
+      <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+          document.querySelector('p').textContent = "no"
+        })
+        for( let i = 0; i < 1000000000; i++) {}
+        document.querySelector('p').textContent = "noooo"
+      </script>
+    `);
+  }
+
+  public async POST(_r: Drash.Request, res: Drash.Response) {
+    await delay(5000);
+    res.text("done");
+  }
+}
+
 export const server = new Drash.Server({
-  resources: [HomeResource, JSResource, PopupsResource],
+  resources: [HomeResource, JSResource, PopupsResource, LongWaitingJSResource],
   protocol: "http",
   port: 1447,
   hostname: "localhost",
