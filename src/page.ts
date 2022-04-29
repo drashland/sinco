@@ -166,7 +166,7 @@ export class Page {
       }
       if (
         p.state !== "fulfilled" &&
-        (currentDuration === timeout || (currentDuration + 150) === timeout)
+        (currentDuration >= timeout || (currentDuration + 150) >= timeout)
       ) {
         p.resolve(false);
       }
