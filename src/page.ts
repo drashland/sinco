@@ -116,7 +116,7 @@ export class Page {
       );
       return target?.url ?? "";
     }
-    const method = "Network.loadingFinished";
+    const method = "Page.loadEventFired";
     this.#protocol.notifications.set(method, deferred());
     const notificationPromise = this.#protocol.notifications.get(
       method,
