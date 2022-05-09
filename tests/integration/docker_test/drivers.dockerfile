@@ -6,7 +6,7 @@ ENV CHROME_VERSION "101.0.4951.54"
 RUN apt update -y \
   && apt-get upgrade -y \
   && apt clean -y \
-  && apt-get install wget -y
+  && apt-get install wget -y \
   && apt-get install gnupg -y \
   && wget http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}-1_amd64.deb \
   && apt-get install -y ./google-chrome-stable_${CHROME_VERSION}-1_amd64.deb
@@ -32,7 +32,7 @@ RUN apt update -y \
 # RUN apt clean
 
 # Install deno
-RUN apt install curl unzip -y
-RUN curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL=/usr/local sh
-RUN export DENO_INSTALL="/root/.local"
-RUN export PATH="$DENO_INSTALL/bin:$PATH"
+RUN apt install curl unzip -y \
+  && curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL=/usr/local sh \
+  && export DENO_INSTALL="/root/.local" \
+  && export PATH="$DENO_INSTALL/bin:$PATH"
