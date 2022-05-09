@@ -7,7 +7,6 @@ RUN apt update -y \
   && apt-get upgrade -y \
   && apt clean -y \
   && apt-get install wget -y \
-  && apt-get install gnupg -y \
   && wget http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}-1_amd64.deb \
   && apt-get install -y ./google-chrome-stable_${CHROME_VERSION}-1_amd64.deb
 
