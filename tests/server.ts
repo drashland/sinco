@@ -71,7 +71,7 @@ class WaitForRequestsResource extends Drash.Resource {
       </script>
     `);
   }
-  
+
   public async POST(_r: Drash.Request, res: Drash.Response) {
     await delay(2000);
     return res.text("Done!!");
