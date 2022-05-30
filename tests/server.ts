@@ -85,7 +85,7 @@ export const server = new Drash.Server({
     PopupsResource,
     WaitForRequestsResource,
     FileInputResource,
-    DialogsResource
+    DialogsResource,
   ],
   protocol: "http",
   port: 1447,
