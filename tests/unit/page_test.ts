@@ -226,5 +226,40 @@ for (const browserItem of browserList) {
         assertEquals(page.socket.readyState, page.socket.CLOSED);
       });
     });
+
+    await t.step("waitForRequest()", async (t) => {
+      await t.step(`Should wait for a request via JS`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/wait-for-requests");
+        const elem = await page.querySelector("#second-button");
+        page.expectWaitForRequest();
+        await elem.click();
+        await page.waitForRequest();
+        const value = await page.evaluate(
+          `document.querySelector("#second-button").textContent`,
+        );
+        await page.close();
+        await browser.close();
+        await server.close();
+        assertEquals(value, "done");
+      });
+      await t.step(`Should wait for a request via inline forms`, async () => {
+        const { browser, page } = await buildFor(browserItem.name);
+        server.run();
+        await page.location(server.address + "/wait-for-requests");
+        const elem = await page.querySelector(`button[type="submit"]`);
+        page.expectWaitForRequest();
+        await elem.click();
+        await page.waitForRequest();
+        const value = await page.evaluate(() => {
+          return document.body.innerText;
+        });
+        await page.close();
+        await browser.close();
+        await server.close();
+        assertEquals(value, "Done!!");
+      });
+    });
   });
 }

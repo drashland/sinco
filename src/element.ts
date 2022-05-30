@@ -423,4 +423,38 @@ export class Element {
       this.#protocol.notifications.delete(method2);
     }
   }
+
+  /**
+   * Get an attribute on the element
+   *
+   * @example
+   * ```js
+   * const class = await elem.getAttribute("class"); // "form-control button"
+   * ```
+   *
+   * @param name - The name of the attribute
+   *
+   * @returns The attribute value
+   */
+  public async getAttribute(name: string): Promise<string> {
+    return await this.#page.evaluate(
+      `${this.#method}('${this.#selector}').getAttribute('${name}')`,
+    );
+  }
+  /**
+   * Set an attribute on the element
+   *
+   * @example
+   * ```js
+   * await elem.setAttribute("data-name", "Sinco");
+   * ```
+   *
+   * @param name - The name of the attribute
+   * @param value - The value to set the atrribute to
+   */
+  public async setAttribute(name: string, value: string): Promise<void> {
+    await this.#page.evaluate(
+      `${this.#method}('${this.#selector}').setAttribute('${name}', '${value}')`,
+    );
+  }
 }
