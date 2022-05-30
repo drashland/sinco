@@ -314,7 +314,7 @@ for (const browserItem of browserList) {
         assertEquals(val, "");
       });
     });
-    
+
     await t.step("waitForRequest()", async (t) => {
       await t.step(`Should wait for a request via JS`, async () => {
         const { browser, page } = await buildFor(browserItem.name);
