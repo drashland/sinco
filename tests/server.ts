@@ -23,6 +23,19 @@ class PopupsResource extends Drash.Resource {
   }
 }
 
+class FileInputResource extends Drash.Resource {
+  public paths = ["/file-input"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+        <p></p>
+        <input id="text" type="text" />
+        <input type="file" multiple id="multiple-file" />
+        <input type="file" id="single-file" />
+    `);
+  }
+}
+
 class WaitForRequestsResource extends Drash.Resource {
   public paths = ["/wait-for-requests"];
 
@@ -55,6 +68,7 @@ export const server = new Drash.Server({
     JSResource,
     PopupsResource,
     WaitForRequestsResource,
+    FileInputResource,
   ],
   protocol: "http",
   port: 1447,
