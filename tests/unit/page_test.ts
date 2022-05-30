@@ -254,7 +254,7 @@ for (const browserItem of browserList) {
         await browser.close();
         assertEquals(
           errMsg,
-          'Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand',
+          'Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand.',
         );
       });
       await t.step(`Rejects a dialog`, async () => {

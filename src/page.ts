@@ -86,7 +86,7 @@ export class Page {
     const p = this.#protocol.notifications.get("Page.javascriptDialogOpening");
     if (!p) {
       throw new Error(
-        `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand`,
+        `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand.`,
       );
     }
     await p;
