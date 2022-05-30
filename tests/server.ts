@@ -1,4 +1,4 @@
-import { Drash } from "./deps.ts";
+import { delay, Drash } from "./deps.ts";
 
 class HomeResource extends Drash.Resource {
   public paths = ["/"];
@@ -39,8 +39,54 @@ class DialogsResource extends Drash.Resource {
   }
 }
 
+class FileInputResource extends Drash.Resource {
+  public paths = ["/file-input"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+        <p></p>
+        <input id="text" type="text" />
+        <input type="file" multiple id="multiple-file" />
+        <input type="file" id="single-file" />
+    `);
+  }
+}
+
+class WaitForRequestsResource extends Drash.Resource {
+  public paths = ["/wait-for-requests"];
+
+  public GET(_r: Drash.Request, res: Drash.Response) {
+    return res.html(`
+      <form action="/wait-for-requests" method="POST">
+        <button type="submit">Click</button>
+      </form>
+      <button id="second-button" type="button">Click</button>
+      <script>
+        document.getElementById("second-button").addEventListener('click', async e => {
+          await fetch("/wait-for-requests", {
+            method: "POST",
+          })
+          e.target.textContent = "done";
+        })
+      </script>
+    `);
+  }
+  
+  public async POST(_r: Drash.Request, res: Drash.Response) {
+    await delay(2000);
+    return res.text("Done!!");
+  }
+}
+
 export const server = new Drash.Server({
-  resources: [HomeResource, JSResource, PopupsResource, DialogsResource],
+  resources: [
+    HomeResource,
+    JSResource,
+    PopupsResource,
+    WaitForRequestsResource,
+    FileInputResource,
+    DialogsResource
+  ],
   protocol: "http",
   port: 1447,
   hostname: "localhost",

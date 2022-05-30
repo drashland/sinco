@@ -4,6 +4,7 @@ import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 import { Client } from "./client.ts";
+import type { Deferred } from "../deps.ts";
 
 /**
  * A representation of the page the client is on, allowing the client to action
@@ -156,6 +157,47 @@ export class Page {
   }
 
   /**
+   * Tell Sinco that you will be expecting to wait for a request
+   */
+  public expectWaitForRequest() {
+    const requestWillBeSendMethod = "Network.requestWillBeSent";
+    this.#protocol.notifications.set(requestWillBeSendMethod, deferred());
+  }
+
+  /**
+   * Wait for a request to finish loading.
+   *
+   * Can be used to wait for:
+   *   - Clicking a button that (via JS) will send a HTTO request via axios/fetch etc
+   *   - Submitting an inline form
+   *   - ... and many others
+   */
+  public async waitForRequest() {
+    const params = await this.#protocol.notifications.get(
+      "Network.requestWillBeSent",
+    ) as {
+      requestId: string;
+    };
+    if (!params) {
+      throw new Error(
+        `Unable to wait for a request because \`.expectWaitForRequest()\` was not called.`,
+      );
+    }
+    const { requestId } = params;
+    const method = "Network.loadingFinished";
+    this.#protocol.notifications.set(method, {
+      params: {
+        requestId,
+      },
+      promise: deferred(),
+    });
+    const result = this.#protocol.notifications.get(method) as unknown as {
+      promise: Deferred<never>;
+    };
+    await result.promise;
+  }
+
+  /**
    * Either get the href/url for the page, or set the location
    *
    * @param newLocation - Only required if you want to set the location
@@ -201,24 +243,71 @@ export class Page {
     return "";
   }
 
+  // deno-lint-ignore no-explicit-any
+  public async evaluate(command: string): Promise<any>;
+  public async evaluate(
+    // deno-lint-ignore no-explicit-any
+    pageFunction: (...args: any[]) => any | Promise<any>,
+    ...args: unknown[]
+    // deno-lint-ignore no-explicit-any
+  ): Promise<any>;
   /**
    * Invoke a function or string expression on the current frame.
    *
    * @param pageCommand - The function to be called or the line of code to execute.
+   * @param args - Only if pageCommand is a function. Arguments to pass to the command so you can use data that was out of scope
+   *
+   * @example
+   * ```js
+   * const user = { name: "Sinco" };
+   * const result1 = await page.evaluate((user: { name: string }) => {
+   *   // Now we're able to use `user` and any other bits of data!
+   *   return user.name;
+   * }, user) // "Sinco"
+   * const result2 = await page.evaluate((user: { name: string }, window: Window, answer: "yes") => {
+   *   // Query dom
+   *   // ...
+   *
+   *   return {
+   *     ...user,
+   *     window,
+   *     answer
+   *   };
+   * }, user, window, "yes") // { name: "Sinco", window: ..., answer: "yes" }
+   * ```
    *
    * @returns The result of the evaluation
    */
   async evaluate(
-    pageCommand: (() => unknown) | string,
+    // deno-lint-ignore no-explicit-any
+    pageCommand: ((...args: any[]) => unknown) | string,
+    ...args: unknown[]
     // As defined by the #protocol, the `value` is `any`
     // deno-lint-ignore no-explicit-any
   ): Promise<any> {
+    function convertArgument(
+      this: Page,
+      arg: unknown,
+    ): Protocol.Runtime.CallArgument {
+      if (typeof arg === "bigint") {
+        return { unserializableValue: `${arg.toString()}n` };
+      }
+      if (Object.is(arg, -0)) return { unserializableValue: "-0" };
+      if (Object.is(arg, Infinity)) return { unserializableValue: "Infinity" };
+      if (Object.is(arg, -Infinity)) {
+        return { unserializableValue: "-Infinity" };
+      }
+      if (Object.is(arg, NaN)) return { unserializableValue: "NaN" };
+      return { value: arg };
+    }
+
     if (typeof pageCommand === "string") {
       const result = await this.#protocol.send<
         Protocol.Runtime.EvaluateRequest,
         Protocol.Runtime.EvaluateResponse
       >("Runtime.evaluate", {
         expression: pageCommand,
+        returnByValue: true,
         includeCommandLineAPI: true, // supports things like $x
       });
       await this.#checkForEvaluateErrorResult(result, pageCommand);
@@ -226,7 +315,7 @@ export class Page {
     }
 
     if (typeof pageCommand === "function") {
-      const a = await this.#protocol.send<
+      const { executionContextId } = await this.#protocol.send<
         Protocol.Page.CreateIsolatedWorldRequest,
         Protocol.Page.CreateIsolatedWorldResponse
       >(
@@ -235,7 +324,6 @@ export class Page {
           frameId: this.#frame_id,
         },
       );
-      const { executionContextId } = a;
 
       const res = await this.#protocol.send<
         Protocol.Runtime.CallFunctionOnRequest,
@@ -248,6 +336,7 @@ export class Page {
           returnByValue: true,
           awaitPromise: true,
           userGesture: true,
+          arguments: args.map(convertArgument.bind(this)),
         },
       );
       await this.#checkForEvaluateErrorResult(res, pageCommand.toString());

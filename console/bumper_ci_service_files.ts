@@ -17,4 +17,15 @@ export const preReleaseFiles = [
   },
 ];
 
-export const bumperFiles = [];
+const chromeVersionsRes = await fetch(
+  "https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/versions",
+);
+const { versions } = await chromeVersionsRes.json();
+
+export const bumperFiles = [
+  {
+    filename: "./tests/integration/docker_test/drivers.dockerfile",
+    replaceTheRegex: /ENV CHROME_VERSION \".*\"/,
+    replaceWith: `ENV CHROME_VERSION "${versions[0].version}"`,
+  },
+];
