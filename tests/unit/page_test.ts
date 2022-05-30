@@ -117,6 +117,47 @@ for (const browserItem of browserList) {
         await browser.close();
         assertEquals(parentConstructor, 3);
       });
+      await t.step(
+        "You should be able to pass arguments to the callback",
+        async () => {
+          const { browser, page } = await buildFor(browserItem.name);
+          await page.location("https://drash.land");
+          interface User {
+            name: string;
+            age: number;
+          }
+          type Answer = "yes" | "no";
+          const user: User = {
+            name: "Cleanup crew",
+            age: 9001,
+          };
+          const answer: Answer = "yes";
+          const result1 = await page.evaluate(
+            (user: User, answer: Answer) => {
+              return user.name + " " + answer;
+            },
+            user,
+            answer,
+          );
+          const result2 = await page.evaluate(
+            (user: User, answer: Answer) => {
+              return {
+                ...user,
+                answer,
+              };
+            },
+            user,
+            answer,
+          );
+          await browser.close();
+          assertEquals(result1, "Cleanup crew yes");
+          assertEquals(result2, {
+            name: "Cleanup crew",
+            age: 9001,
+            answer: "yes",
+          });
+        },
+      );
     });
 
     await t.step("location()", async (t) => {
