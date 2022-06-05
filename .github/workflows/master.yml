@@ -17,7 +17,7 @@ jobs:
       - name: Run Docker Tests
         run: |
           cd tests/integration/docker_test
-          docker-compose up drivers -d
+          docker-compose up -d drivers
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/unit
 
