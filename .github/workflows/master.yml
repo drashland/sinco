@@ -17,7 +17,7 @@ jobs:
       - name: Run Docker Tests
         run: |
           cd tests/integration/docker_test
-          docker-compose up -d
+          docker-compose up drivers -d
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/unit
 
@@ -54,9 +54,23 @@ jobs:
         run: |
           deno test -A tests/integration --config tsconfig.json --no-check=remote
 
+      - name: Run Integration Tests (remote)
+        if: ${{ matrix.os == 'ubuntu-latest'}}
+        run: |
+          docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
+          deno test -A tests/integration --config tsconfig.json --no-check=remote -- --remoteBrowser
+          docker compose -f tests/integration/docker_test/docker-compose.yml down
+      
       - name: Run Unit Tests
         run: |
           deno test -A --config tsconfig.json tests/unit --no-check=remote
+
+      - name: Run Unit Tests (remote)
+        if: ${{ matrix.os == 'ubuntu-latest'}}
+        run: |
+          docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
+          deno test -A tests/unit --config tsconfig.json --no-check=remote -- --remoteBrowser
+          docker compose -f tests/integration/docker_test/docker-compose.yml down
 
   linter:
     # Only one OS is required since fmt is cross platform
