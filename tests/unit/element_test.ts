@@ -2,9 +2,10 @@ import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { browserList } from "../browser_list.ts";
 const ScreenshotsFolder = "./Screenshots";
-import { existsSync } from "../../src/utility.ts";
+import { existsSync, waiter } from "../../src/utility.ts";
 import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
+const remote = Deno.args.includes("--remoteBrowser");
 
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
@@ -12,7 +13,8 @@ for (const browserItem of browserList) {
       await t.step(
         "It should allow clicking of elements and update location",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           const elem = await page.querySelector(
             'a[href="https://discord.gg/RFsCSaHRWK"]',
@@ -27,7 +29,8 @@ for (const browserItem of browserList) {
       );
 
       await t.step(`Should open a new page when middle clicked`, async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         // if (browserItem.name === "firefox") {
@@ -68,7 +71,8 @@ for (const browserItem of browserList) {
           } catch (_e) {
             // if doesnt exist, no problamo
           }
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           const img = await page.querySelector("img");
           Deno.mkdirSync(ScreenshotsFolder);
@@ -88,7 +92,8 @@ for (const browserItem of browserList) {
       );
 
       await t.step("Saves Screenshot with all options provided", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://chromestatus.com");
         const h3 = await page.querySelector("h3");
         Deno.mkdirSync(ScreenshotsFolder);
@@ -113,7 +118,8 @@ for (const browserItem of browserList) {
       await t.step(
         "It should get the value for the given input element",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://chromestatus.com");
           const elem = await page.querySelector(
             'input[placeholder="Filter"]',
@@ -127,12 +133,13 @@ for (const browserItem of browserList) {
       await t.step(
         "Should return empty when element is not an input element",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://chromestatus.com");
           let errMsg = "";
           const elem = await page.querySelector("div");
           try {
-            await elem.value;
+            await elem.value();
           } catch (e) {
             errMsg = e.message;
           }
@@ -147,7 +154,8 @@ for (const browserItem of browserList) {
 
     await t.step("value()", async (t) => {
       await t.step("It should set the value of the element", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://chromestatus.com");
         const elem = await page.querySelector('input[placeholder="Filter"]');
         await elem.value("hello world");
@@ -157,7 +165,7 @@ for (const browserItem of browserList) {
       });
     });
 
-    await t.step("files()", async (t) => {
+    await t.step({name:"files()", fn: async (t) => {
       await t.step(
         "Should throw if multiple files and input isnt multiple",
         async () => {
@@ -236,9 +244,9 @@ for (const browserItem of browserList) {
           await browser.close();
         }
       });
-    });
+    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
-    await t.step("file()", async (t) => {
+    await t.step({name: "file()", fn: async (t) => {
       await t.step("Should throw if element isnt an input", async () => {
         server.run();
         const { browser, page } = await buildFor(browserItem.name);
@@ -295,11 +303,12 @@ for (const browserItem of browserList) {
           await browser.close();
         }
       });
-    });
+    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
     await t.step("getAttribute()", async (t) => {
       await t.step("Should get the attribute", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         const val = await elem.getAttribute("href");
@@ -310,7 +319,8 @@ for (const browserItem of browserList) {
 
     await t.step("setAttribute()", async (t) => {
       await t.step("Should set the attribute", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         elem.setAttribute("data-name", "Sinco");

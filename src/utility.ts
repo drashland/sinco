@@ -129,3 +129,12 @@ export function getFirefoxArgs(
     "about:blank",
   ];
 }
+
+//This methods just waits for the browser endpoint
+export async function waiter() { 
+  try {
+    await (await fetch("http://localhost:9292/json/version")).body?.cancel();
+  } catch (_ex) {
+    await waiter();
+  }
+}

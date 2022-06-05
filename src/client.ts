@@ -47,7 +47,7 @@ export class Client {
   /**
    * The sub process that runs headless chrome
    */
-  readonly #browser_process: Deno.Process;
+  readonly #browser_process: Deno.Process | undefined;
 
   /**
    * Track if we've closed the sub process, so we dont try close it when it already has been
@@ -88,7 +88,7 @@ export class Client {
    */
   constructor(
     protocol: ProtocolClass,
-    browserProcess: Deno.Process,
+    browserProcess: Deno.Process | undefined,
     browser: Browsers,
     wsOptions: {
       hostname: string;
@@ -185,14 +185,22 @@ export class Client {
     this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
 
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
-    this.#browser_process.stderr!.close();
-    this.#browser_process.stdout!.close();
-    this.#browser_process.close();
+    if (this.#browser_process) {
+      this.#browser_process.stderr!.close();
+      this.#browser_process.stdout!.close();
+      this.#browser_process.close();
+    } else {
+      //When Working with Remote Brwosers, where we don't control the Browser Process explicitly
+      await this.#protocol.send("Browser.close");
+    }
 
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
     // Related Deno issue: https://github.com/denoland/deno/issues/7087
-    if (this.browser === "firefox" && Deno.build.os === "windows") {
+    if (
+      this.#browser_process && this.browser === "firefox" &&
+      Deno.build.os === "windows"
+    ) {
       const p = Deno.run({
         cmd: ["taskkill", "/F", "/IM", "firefox.exe"],
         stdout: "null",
@@ -217,7 +225,9 @@ export class Client {
         listen(wsOptions);
       }
     }
-    listen(this.wsOptions);
+    if (this.#browser_process) {
+      listen(this.wsOptions);
+    }
 
     this.#browser_process_closed = true;
 
@@ -260,7 +270,7 @@ export class Client {
    * instance, representing a placeholder page we opened for you
    *
    * @param buildArgs - Sub process args, should be ones to run chrome
-   * @param wsOptions - Hostname and port to run the websocket server on
+   * @param wsOptions - Hostname and port to run the websocket server on, and whether the browser is remote
    * @param browser - Which browser we are building
    * @param firefoxProfilePath - If firefox, the path to the temporary profile location
    *
@@ -271,6 +281,7 @@ export class Client {
     wsOptions: {
       hostname: string;
       port: number;
+      remote: boolean;
     },
     browser: Browsers,
     firefoxProfilePath?: string,
@@ -278,40 +289,50 @@ export class Client {
     browser: Client;
     page: Page;
   }> {
-    // Run the subprocess, this starts up the debugger server
-    const browserProcess = Deno.run({
-      cmd: buildArgs,
-      stderr: "piped",
-      stdout: "piped",
-    });
-
-    // Get the main ws conn for the client - this loop is needed as the ws server isn't open until we get the listeneing on.
-    // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
-    // isn't up for another 10s, meaning however many fetch requests in 10s
-    // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
+    let browserProcess: Deno.Process | undefined = undefined;
     let browserWsUrl = "";
-    for await (const line of readLines(browserProcess.stderr)) { // Loop also needed before json endpoint is up
-      const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-      if (!match) {
-        continue;
+    // Run the subprocess, this starts up the debugger server
+    if (!wsOptions.remote) { //Skip this if browser is remote
+      browserProcess = Deno.run({
+        cmd: buildArgs,
+        stderr: "piped",
+        stdout: "piped",
+      });
+      // Get the main ws conn for the client - this loop is needed as the ws server isn't open until we get the listeneing on.
+      // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
+      // isn't up for another 10s, meaning however many fetch requests in 10s
+      // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
+
+      for await (const line of readLines(browserProcess.stderr!)) { // Loop also needed before json endpoint is up
+        const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
+        if (!match) {
+          continue;
+        }
+        browserWsUrl = line.split("on ")[1];
+        break;
       }
-      browserWsUrl = line.split("on ")[1];
-      break;
+    } else { //We just fetch the browser ws url on the json endpoint
+      const jsonObj = await (await fetch(
+        `http://${wsOptions.hostname}:${wsOptions.port}/json/version`,
+      )).json();
+      browserWsUrl = jsonObj["webSocketDebuggerUrl"];
     }
 
     // Create the browser protocol
     const mainProtocol = await ProtocolClass.create(browserWsUrl);
-
+    
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
+
     async function getInitialPage(): Promise<ProtocolTypes.Target.TargetInfo> {
       const targets = await mainProtocol.send<
         null,
         ProtocolTypes.Target.GetTargetsResponse
       >("Target.getTargets");
       const target = targets.targetInfos.find((info) =>
-        info.type === "page" && info.url === "about:blank"
+        info.type === "page" && (info.url === "about:blank" || wsOptions.remote)
       );
+
       if (!target) {
         return await getInitialPage();
       }

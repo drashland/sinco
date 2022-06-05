@@ -1,6 +1,8 @@
 import { assertEquals, deferred } from "../../deps.ts";
 import { buildFor } from "../../mod.ts";
 import { browserList } from "../browser_list.ts";
+import { waiter } from "../../src/utility.ts";
+const remote = Deno.args.includes("--remoteBrowser");
 
 for (const browserItem of browserList) {
   Deno.test(`${browserItem.name}`, async (t) => {
@@ -8,7 +10,8 @@ for (const browserItem of browserList) {
       await t.step(
         "Will start ${browserItem.name} headless as a subprocess",
         async () => {
-          const { browser } = await buildFor(browserItem.name);
+          remote && await waiter()
+          const { browser } = await buildFor(browserItem.name, {remote});
           const res = await fetch("http://localhost:9292/json/list");
           const json = await res.json();
           // Our ws client should be able to connect if the browser is running
@@ -55,8 +58,8 @@ for (const browserItem of browserList) {
       );
 
       await t.step(
-        "Uses the binaryPath when passed in to the parameters",
-        async () => {
+        {name: "Uses the binaryPath when passed in to the parameters",
+        fn: async () => {
           const { browser } = await buildFor(browserItem.name, {
             //binaryPath: await browserItem.getPath(),
           });
@@ -75,18 +78,21 @@ for (const browserItem of browserList) {
           await promise;
           await browser.close();
         },
+        ignore: remote //Ignoring as binary path is not a necessisty to test for remote browsers
+      }
       );
     });
 
     await t.step(`close()`, async (t) => {
       await t.step(`Should close all resources and not leak any`, async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         await browser.close();
         // If resources are not closed or pending ops or leaked, this test will show it when ran
       });
 
-      await t.step(`Should close all page specific resources too`, async () => {
+      await t.step({name: `Should close all page specific resources too`, fn: async () => {
         const { browser, page } = await buildFor(browserItem.name);
         await page.location("https://drash.land");
         await browser.close();
@@ -104,7 +110,7 @@ for (const browserItem of browserList) {
           }
         }
         // If resources are not closed or pending ops or leaked, this test will show it when ran
-      });
+      }, ignore: remote}); //The previous test works the same way so this one can be skipped for remotes
     });
 
     await t.step("closeAllPagesExcept()", async (t) => {
@@ -112,7 +118,8 @@ for (const browserItem of browserList) {
         await t.step(
           `Should close all pages except the one passed in`,
           async () => {
-            const { browser, page } = await buildFor(browserItem.name);
+            remote && await waiter();
+            const { browser, page } = await buildFor(browserItem.name, {remote});
             await page.location("https://drash.land");
             const elem = await page.querySelector("a");
             await elem.click({
@@ -137,7 +144,8 @@ for (const browserItem of browserList) {
 
     await t.step("page()", async (t) => {
       await t.step(`Should return the correct page`, async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         const mainPage = await browser.page(1);
         await browser.close();
         assertEquals(page.target_id, mainPage.target_id);
@@ -146,7 +154,8 @@ for (const browserItem of browserList) {
       await t.step(
         `Should throw out of bounds if index doesnt exist`,
         async () => {
-          const { browser } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser } = await buildFor(browserItem.name, {remote});
           let threw = false;
           try {
             await browser.page(2);

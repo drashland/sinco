@@ -2,8 +2,9 @@ import { browserList } from "../browser_list.ts";
 const ScreenshotsFolder = "./tests/unit/Screenshots";
 import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
-import { existsSync } from "../../src/utility.ts";
+import { existsSync, waiter } from "../../src/utility.ts";
 import { server } from "../server.ts";
+const remote = Deno.args.includes("--remoteBrowser");
 
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
@@ -12,7 +13,8 @@ for (const browserItem of browserList) {
         "takeScreenshot() | Throws an error if provided path doesn't exist",
         async () => {
           let msg = "";
-          const { page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           try {
             await page.takeScreenshot("eieio");
@@ -30,7 +32,8 @@ for (const browserItem of browserList) {
       await t.step(
         "takeScreenshot() | Takes a Screenshot with timestamp as filename if filename is not provided",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           const fileName = await page.takeScreenshot(ScreenshotsFolder);
           await browser.close();
@@ -46,7 +49,8 @@ for (const browserItem of browserList) {
       await t.step(
         "Throws an error when format passed is jpeg(or default) and quality > than 100",
         async () => {
-          const { page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           let msg = "";
           try {
@@ -63,7 +67,8 @@ for (const browserItem of browserList) {
       );
 
       await t.step("Saves Screenshot with Given Filename", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         const filename = await page.takeScreenshot(ScreenshotsFolder, {
           fileName: "Happy",
@@ -80,7 +85,8 @@ for (const browserItem of browserList) {
       await t.step(
         "Saves Screenshot with given format (jpeg | png)",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           const fileName = await page.takeScreenshot(ScreenshotsFolder, {
             format: "png",
@@ -100,7 +106,8 @@ for (const browserItem of browserList) {
       await t.step(
         "It should evaluate function on current frame",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           const pageTitle = await page.evaluate(() => {
             // deno-lint-ignore no-undef
@@ -111,7 +118,8 @@ for (const browserItem of browserList) {
         },
       );
       await t.step("It should evaluate string on current frame", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         const parentConstructor = await page.evaluate(`1 + 2`);
         await browser.close();
@@ -120,7 +128,8 @@ for (const browserItem of browserList) {
       await t.step(
         "You should be able to pass arguments to the callback",
         async () => {
-          const { browser, page } = await buildFor(browserItem.name);
+          remote && await waiter();
+          const { browser, page } = await buildFor(browserItem.name, {remote});
           await page.location("https://drash.land");
           interface User {
             name: string;
@@ -162,7 +171,8 @@ for (const browserItem of browserList) {
 
     await t.step("location()", async (t) => {
       await t.step("Sets and gets the location", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://google.com");
         await page.location("https://drash.land");
         const location = await page.location();
@@ -173,7 +183,8 @@ for (const browserItem of browserList) {
 
     await t.step("cookie()", async (t) => {
       await t.step("Sets and gets cookies", async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         await page.cookie({
           name: "user",
@@ -186,7 +197,7 @@ for (const browserItem of browserList) {
       });
     });
 
-    await t.step("assertNoConsoleErrors()", async (t) => {
+    await t.step({name: "assertNoConsoleErrors()", fn: async (t) => {
       await t.step(`Should throw when errors`, async () => {
         server.run();
         const { browser, page } = await buildFor(browserItem.name);
@@ -243,11 +254,12 @@ for (const browserItem of browserList) {
         assertEquals(errMsg.includes("Not Found"), true);
         assertEquals(errMsg.includes("callUser"), false);
       });
-    });
+    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
     await t.step("close()", async (t) => {
       await t.step(`Closes the page`, async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        remote && await waiter();
+        const { browser, page } = await buildFor(browserItem.name, {remote});
         await page.location("https://drash.land");
         await page.close();
         let errMsg = "";
@@ -268,7 +280,7 @@ for (const browserItem of browserList) {
       });
     });
 
-    await t.step("dialog()", async (t) => {
+    await t.step({name: "dialog()", fn: async (t) => {
       await t.step(`Accepts a dialog`, async () => {
         const { browser, page } = await buildFor(browserItem.name);
         server.run();
@@ -313,9 +325,9 @@ for (const browserItem of browserList) {
         await server.close();
         assertEquals(val, "");
       });
-    });
+    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
-    await t.step("waitForRequest()", async (t) => {
+    await t.step({name: "waitForRequest()", fn: async (t) => {
       await t.step(`Should wait for a request via JS`, async () => {
         const { browser, page } = await buildFor(browserItem.name);
         server.run();
@@ -348,6 +360,6 @@ for (const browserItem of browserList) {
         await server.close();
         assertEquals(value, "Done!!");
       });
-    });
+    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
   });
 }
