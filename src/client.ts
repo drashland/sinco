@@ -197,7 +197,7 @@ export class Client {
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
     // Related Deno issue: https://github.com/denoland/deno/issues/7087
-    if (
+    /* if (
       this.#browser_process && this.browser === "firefox" &&
       Deno.build.os === "windows"
     ) {
@@ -208,7 +208,7 @@ export class Client {
       });
       await p.status();
       p.close();
-    }
+    } */
 
     // Wait until all ws clients are closed, so we aren't leaking any ops
     await Promise.all(pList);
