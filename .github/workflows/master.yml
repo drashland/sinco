@@ -54,19 +54,31 @@ jobs:
         run: |
           deno test -A tests/integration --config tsconfig.json --no-check=remote
 
-      - name: Run Integration Tests (remote)
-        if: ${{ matrix.os == 'ubuntu-latest'}}
-        run: |
-          docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
-          deno test -A tests/integration --config tsconfig.json --no-check=remote -- --remoteBrowser
-          docker compose -f tests/integration/docker_test/docker-compose.yml down
+      
       
       - name: Run Unit Tests
         run: |
           deno test -A --config tsconfig.json tests/unit --no-check=remote
 
+  remote-tests:
+    #only ubuntu as docker and docker compose is preinstalled only on ubuntu
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: vx.x.x
+
+      - name: Run Integration Tests (remote)
+        run: |
+          docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
+          deno test -A tests/integration --config tsconfig.json --no-check=remote -- --remoteBrowser
+          docker compose -f tests/integration/docker_test/docker-compose.yml down
+      
       - name: Run Unit Tests (remote)
-        if: ${{ matrix.os == 'ubuntu-latest'}}
         run: |
           docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
           deno test -A tests/unit --config tsconfig.json --no-check=remote -- --remoteBrowser

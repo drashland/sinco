@@ -25,5 +25,7 @@ services:
       dockerfile: drivers.dockerfile
     ports:
       - "9292:9292"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: bash ./custom_scripts/remote_chrome.sh
     working_dir: /var/www/docker-test

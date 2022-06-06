@@ -2,19 +2,22 @@ import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { browserList } from "../browser_list.ts";
 const ScreenshotsFolder = "./Screenshots";
-import { existsSync, waiter } from "../../src/utility.ts";
+import { existsSync } from "../../src/utility.ts";
 import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
 const remote = Deno.args.includes("--remoteBrowser");
-
+const serverAdd = `http://${
+  (remote) ? "host.docker.internal" : "localhost"
+}:1447`;
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
     await t.step("click()", async (t) => {
       await t.step(
         "It should allow clicking of elements and update location",
         async () => {
-          remote && await waiter();
-          const { browser, page } = await buildFor(browserItem.name, {remote});
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
           await page.location("https://drash.land");
           const elem = await page.querySelector(
             'a[href="https://discord.gg/RFsCSaHRWK"]',
@@ -29,8 +32,7 @@ for (const browserItem of browserList) {
       );
 
       await t.step(`Should open a new page when middle clicked`, async () => {
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote});
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         // if (browserItem.name === "firefox") {
@@ -71,8 +73,10 @@ for (const browserItem of browserList) {
           } catch (_e) {
             // if doesnt exist, no problamo
           }
-          remote && await waiter();
-          const { browser, page } = await buildFor(browserItem.name, {remote});
+
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
           await page.location("https://drash.land");
           const img = await page.querySelector("img");
           Deno.mkdirSync(ScreenshotsFolder);
@@ -92,8 +96,7 @@ for (const browserItem of browserList) {
       );
 
       await t.step("Saves Screenshot with all options provided", async () => {
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote});
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://chromestatus.com");
         const h3 = await page.querySelector("h3");
         Deno.mkdirSync(ScreenshotsFolder);
@@ -118,8 +121,9 @@ for (const browserItem of browserList) {
       await t.step(
         "It should get the value for the given input element",
         async () => {
-          remote && await waiter();
-          const { browser, page } = await buildFor(browserItem.name, {remote});
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
           await page.location("https://chromestatus.com");
           const elem = await page.querySelector(
             'input[placeholder="Filter"]',
@@ -133,8 +137,9 @@ for (const browserItem of browserList) {
       await t.step(
         "Should return empty when element is not an input element",
         async () => {
-          remote && await waiter();
-          const { browser, page } = await buildFor(browserItem.name, {remote});
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
           await page.location("https://chromestatus.com");
           let errMsg = "";
           const elem = await page.querySelector("div");
@@ -154,8 +159,7 @@ for (const browserItem of browserList) {
 
     await t.step("value()", async (t) => {
       await t.step("It should set the value of the element", async () => {
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote});
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://chromestatus.com");
         const elem = await page.querySelector('input[placeholder="Filter"]');
         await elem.value("hello world");
@@ -165,17 +169,43 @@ for (const browserItem of browserList) {
       });
     });
 
-    await t.step({name:"files()", fn: async (t) => {
-      await t.step(
-        "Should throw if multiple files and input isnt multiple",
-        async () => {
+    await t.step({
+      name: "files()",
+      fn: async (t) => {
+        await t.step(
+          "Should throw if multiple files and input isnt multiple",
+          async () => {
+            server.run();
+            const { browser, page } = await buildFor(browserItem.name, {
+              remote,
+            });
+            await page.location(serverAdd + "/file-input");
+            const elem = await page.querySelector("#single-file");
+            let errMsg = "";
+            try {
+              await elem.files("ffff", "hhh");
+            } catch (e) {
+              errMsg = e.message;
+            } finally {
+              await server.close();
+              await browser.close();
+            }
+            assertEquals(
+              errMsg,
+              `Trying to set files on a file input without the 'multiple' attribute`,
+            );
+          },
+        );
+        await t.step("Should throw if element isnt an input", async () => {
           server.run();
-          const { browser, page } = await buildFor(browserItem.name);
-          await page.location(server.address + "/file-input");
-          const elem = await page.querySelector("#single-file");
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("p");
           let errMsg = "";
           try {
-            await elem.files("ffff", "hhh");
+            await elem.files("ffff");
           } catch (e) {
             errMsg = e.message;
           } finally {
@@ -184,131 +214,127 @@ for (const browserItem of browserList) {
           }
           assertEquals(
             errMsg,
-            `Trying to set files on a file input without the 'multiple' attribute`,
+            "Trying to set a file on an element that isnt an input",
           );
-        },
-      );
-      await t.step("Should throw if element isnt an input", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("p");
-        let errMsg = "";
-        try {
-          await elem.files("ffff");
-        } catch (e) {
-          errMsg = e.message;
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-        assertEquals(
-          errMsg,
-          "Trying to set a file on an element that isnt an input",
-        );
-      });
-      await t.step("Should throw if input is not of type file", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("#text");
-        let errMsg = "";
-        try {
-          await elem.files("ffff");
-        } catch (e) {
-          errMsg = e.message;
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-        assertEquals(
-          errMsg,
-          'Trying to set a file on an input that is not of type "file"',
-        );
-      });
-      await t.step("Should successfully upload files", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("#multiple-file");
-        try {
-          await elem.files(resolve("./README.md"), resolve("./tsconfig.json"));
-          const files = JSON.parse(
-            await page.evaluate(
-              `JSON.stringify(document.querySelector('#multiple-file').files)`,
-            ),
+        });
+        await t.step("Should throw if input is not of type file", async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("#text");
+          let errMsg = "";
+          try {
+            await elem.files("ffff");
+          } catch (e) {
+            errMsg = e.message;
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+          assertEquals(
+            errMsg,
+            'Trying to set a file on an input that is not of type "file"',
           );
-          assertEquals(Object.keys(files).length, 2);
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-      });
-    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
+        });
+        await t.step("Should successfully upload files", async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("#multiple-file");
+          try {
+            await elem.files(
+              resolve("./README.md"),
+              resolve("./tsconfig.json"),
+            );
+            const files = JSON.parse(
+              await page.evaluate(
+                `JSON.stringify(document.querySelector('#multiple-file').files)`,
+              ),
+            );
+            assertEquals(Object.keys(files).length, 2);
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+        });
+      },
+    }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
-    await t.step({name: "file()", fn: async (t) => {
-      await t.step("Should throw if element isnt an input", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("p");
-        let errMsg = "";
-        try {
-          await elem.file("ffff");
-        } catch (e) {
-          errMsg = e.message;
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-        assertEquals(
-          errMsg,
-          "Trying to set a file on an element that isnt an input",
-        );
-      });
-      await t.step("Should throw if input is not of type file", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("#text");
-        let errMsg = "";
-        try {
-          await elem.file("ffff");
-        } catch (e) {
-          errMsg = e.message;
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-        assertEquals(
-          errMsg,
-          'Trying to set a file on an input that is not of type "file"',
-        );
-      });
-      await t.step("Should successfully upload files", async () => {
-        server.run();
-        const { browser, page } = await buildFor(browserItem.name);
-        await page.location(server.address + "/file-input");
-        const elem = await page.querySelector("#single-file");
-        try {
-          await elem.file(resolve("./README.md"));
-          const files = JSON.parse(
-            await page.evaluate(
-              `JSON.stringify(document.querySelector('#single-file').files)`,
-            ),
+    await t.step({
+      name: "file()",
+      fn: async (t) => {
+        await t.step("Should throw if element isnt an input", async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("p");
+          let errMsg = "";
+          try {
+            await elem.file("ffff");
+          } catch (e) {
+            errMsg = e.message;
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+          assertEquals(
+            errMsg,
+            "Trying to set a file on an element that isnt an input",
           );
-          assertEquals(Object.keys(files).length, 1);
-        } finally {
-          await server.close();
-          await browser.close();
-        }
-      });
-    }, ignore: remote}); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
+        });
+        await t.step("Should throw if input is not of type file", async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("#text");
+          let errMsg = "";
+          try {
+            await elem.file("ffff");
+          } catch (e) {
+            errMsg = e.message;
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+          assertEquals(
+            errMsg,
+            'Trying to set a file on an input that is not of type "file"',
+          );
+        });
+        await t.step("Should successfully upload files", async () => {
+          server.run();
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          await page.location(serverAdd + "/file-input");
+          const elem = await page.querySelector("#single-file");
+          try {
+            await elem.file(resolve("./README.md"));
+            const files = JSON.parse(
+              await page.evaluate(
+                `JSON.stringify(document.querySelector('#single-file').files)`,
+              ),
+            );
+            assertEquals(Object.keys(files).length, 1);
+          } finally {
+            await server.close();
+            await browser.close();
+          }
+        });
+      },
+    }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
 
     await t.step("getAttribute()", async (t) => {
       await t.step("Should get the attribute", async () => {
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote});
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         const val = await elem.getAttribute("href");
@@ -319,8 +345,7 @@ for (const browserItem of browserList) {
 
     await t.step("setAttribute()", async (t) => {
       await t.step("Should set the attribute", async () => {
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote});
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://drash.land");
         const elem = await page.querySelector("a");
         elem.setAttribute("data-name", "Sinco");

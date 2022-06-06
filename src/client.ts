@@ -190,7 +190,7 @@ export class Client {
       this.#browser_process.stdout!.close();
       this.#browser_process.close();
     } else {
-      //When Working with Remote Brwosers, where we don't control the Browser Process explicitly
+      //When Working with Remote Browsers, where we don't control the Browser Process explicitly
       await this.#protocol.send("Browser.close");
     }
 
@@ -312,15 +312,26 @@ export class Client {
         break;
       }
     } else { //We just fetch the browser ws url on the json endpoint
-      const jsonObj = await (await fetch(
-        `http://${wsOptions.hostname}:${wsOptions.port}/json/version`,
-      )).json();
+      //This code waits for the remote browser for 5 seconds
+      const waitTill = new Date().getTime() + 5000;
+      let jsonObj = undefined;
+      do {
+        try {
+          jsonObj = await (await fetch(
+            `http://${wsOptions.hostname}:${wsOptions.port}/json/version`,
+          )).json();
+          break;
+        } catch (_ex) {
+          //do nothing
+        }
+      } while (new Date().getTime() < waitTill);
+
       browserWsUrl = jsonObj["webSocketDebuggerUrl"];
     }
 
     // Create the browser protocol
     const mainProtocol = await ProtocolClass.create(browserWsUrl);
-    
+
     // Get the connection info for the default page thats opened, that acts as our first page
     // Sometimes, it isn't immediently available (eg `targets` is `[]`), so poll until it refreshes with the page
 

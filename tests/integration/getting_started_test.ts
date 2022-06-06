@@ -1,7 +1,7 @@
 import { buildFor } from "../../mod.ts";
 import { browserList } from "../browser_list.ts";
 import { assertEquals } from "../../deps.ts";
-import { waiter } from "../../src/utility.ts";
+
 const remote = Deno.args.includes("--remoteBrowser");
 
 for (const browserItem of browserList) {
@@ -10,8 +10,7 @@ for (const browserItem of browserList) {
       "Tutorial for Getting Started in the docs should work",
       async () => {
         // Setup
-        remote && await waiter();
-        const { browser, page } = await buildFor(browserItem.name, {remote}); // also supports firefox
+        const { browser, page } = await buildFor(browserItem.name, { remote }); // also supports firefox
         await page.location("https://drash.land"); // Go to this page
 
         // Do any actions and assertions, in any order
