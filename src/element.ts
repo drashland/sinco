@@ -258,8 +258,6 @@ export class Element {
 
     if (!options.button) options.button = "left";
 
-    // TODO :: Ensure element is still present in dom
-
     // Scroll into view
     try {
       await this.#page.evaluate(
