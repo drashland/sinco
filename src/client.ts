@@ -372,6 +372,14 @@ export class Client {
       },
       firefoxProfilePath,
     );
+
+    Deno.addSignalListener("SIGINT", async () => {
+      await client.close();
+      Deno.exit(1);
+    });
+    addEventListener('close', async () => await client.close());
+
+
     const page = new Page(pageProtocol, pageTarget.targetId, client, frameId);
     client.#pages.push(page);
     return {

@@ -7,8 +7,37 @@ const remote = Deno.args.includes("--remoteBrowser");
 for (const browserItem of browserList) {
   Deno.test(`${browserItem.name}`, async (t) => {
     await t.step("create()", async (t) => {
+      await t.step("Registers close listener", async () => {
+        await buildFor(browserItem.name, { remote });
+        const res = await fetch("http://localhost:9292/json/list");
+        const json = await res.json();
+        const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+        let promise = deferred();
+        client.onopen = function () {
+          promise.resolve();
+        };
+        await promise;
+        promise = deferred();
+        client.onclose = () => promise.resolve();
+        dispatchEvent(new CustomEvent('close'));
+        await promise;
+      })
+      await t.step("Closes process on SIGINT", async () => {
+        await buildFor(browserItem.name, { remote });
+        const res = await fetch("http://localhost:9292/json/list");
+        const json = await res.json();
+        const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+        const promise = deferred();
+        client.onclose = function () {
+          promise.resolve();
+        };
+        // TODO :: Emit sigint
+        // ...
+        await promise;
+      });
+
       await t.step(
-        "Will start ${browserItem.name} headless as a subprocess",
+        `Will start ${browserItem.name} headless as a subprocess`,
         async () => {
           const { browser } = await buildFor(browserItem.name, { remote });
           const res = await fetch("http://localhost:9292/json/list");
