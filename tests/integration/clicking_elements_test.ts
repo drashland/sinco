@@ -2,11 +2,13 @@ import { buildFor } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { delay } from "https://deno.land/std/async/delay.ts";
 
+const remote = Deno.args.includes("--remoteBrowser");
+
 Deno.test("chrome", async (t) => {
   await t.step(
     "Clicking elements - Tutorial for this feature in the docs should work",
     async () => {
-      const { browser, page } = await buildFor("chrome");
+      const { browser, page } = await buildFor("chrome", { remote });
       // Clicking an element that will open up a new page (tab)
       await page.location("https://drash.land");
       const githubElem = await page.querySelector(

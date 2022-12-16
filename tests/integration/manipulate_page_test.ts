@@ -3,10 +3,12 @@ import { buildFor } from "../../mod.ts";
 
 import { browserList } from "../browser_list.ts";
 
+const remote = Deno.args.includes("--remoteBrowser");
+
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
     await t.step("Manipulate Webpage", async () => {
-      const { browser, page } = await buildFor(browserItem.name);
+      const { browser, page } = await buildFor(browserItem.name, { remote });
       await page.location("https://drash.land");
 
       const updatedBody = await page.evaluate(() => {
@@ -27,7 +29,7 @@ for (const browserItem of browserList) {
     await t.step(
       "Evaluating a script - Tutorial for this feature in the documentation works",
       async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://drash.land");
         const pageTitle = await page.evaluate(() => {
           // deno-lint-ignore no-undef

@@ -89,5 +89,5 @@ export const server = new Drash.Server({
   ],
   protocol: "http",
   port: 1447,
-  hostname: "localhost",
+  hostname: "0.0.0.0", //changed from localhost  to 0.0.0.0 because we cannot curl the loopback of any network device
 });

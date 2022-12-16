@@ -2,12 +2,14 @@ import { buildFor } from "../../mod.ts";
 
 import { browserList } from "../browser_list.ts";
 
+const remote = Deno.args.includes("--remoteBrowser");
+
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
     await t.step(
       "Tutorial for taking screenshots in the docs should work",
       async () => {
-        const { browser, page } = await buildFor(browserItem.name);
+        const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://drash.land");
         const screenshotsFolder = "./screenshots";
         Deno.mkdirSync(screenshotsFolder); // Ensure you create the directory your screenshots will be put within

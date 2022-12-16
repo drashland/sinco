@@ -12,6 +12,7 @@ export async function buildFor(
     hostname: "localhost",
     debuggerPort: 9292,
     binaryPath: undefined,
+    remote: false,
   },
 ): Promise<{
   browser: Client;
@@ -26,6 +27,7 @@ export async function buildFor(
     {
       hostname: options.hostname,
       port: options.debuggerPort,
+      remote: !!options.remote,
     },
     browser,
     undefined,

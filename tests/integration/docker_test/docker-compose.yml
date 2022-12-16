@@ -15,3 +15,17 @@ services:
       - ../../../tsconfig.json:/var/www/docker-test/tsconfig.json
     command: bash -c "tail -f /dev/null"
     working_dir: /var/www/docker-test
+  remotes:
+    container_name: remotes
+    restart: always
+    volumes:
+      - ./custom_scripts:/var/www/docker-test/custom_scripts
+    build:
+      context: .
+      dockerfile: drivers.dockerfile
+    ports:
+      - "9292:9292"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: bash ./custom_scripts/remote_chrome.sh
+    working_dir: /var/www/docker-test
