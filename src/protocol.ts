@@ -13,9 +13,9 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
 }
 
 type Create<T> = T extends true ? {
-  protocol: Protocol;
-  frameId: string;
-}
+    protocol: Protocol;
+    frameId: string;
+  }
   : T extends false ? Protocol
   : never;
 
