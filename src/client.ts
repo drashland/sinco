@@ -179,8 +179,8 @@ export class Client {
 
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     if (this.#browser_process) {
-      this.#browser_process.stderr!.cancel();
-      this.#browser_process.stdout!.cancel();
+      this.#browser_process.stderr.cancel();
+      this.#browser_process.stdout.cancel();
       this.#browser_process.kill();
       await this.#browser_process.status;
     } else {

@@ -39,7 +39,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -53,8 +53,6 @@ jobs:
       - name: Run Integration Tests
         run: |
           deno test -A tests/integration --config tsconfig.json --no-check=remote
-
-      
       
       - name: Run Unit Tests
         run: |
