@@ -177,6 +177,15 @@ export class Client {
       return;
     }
 
+    // Collect all promises we need to wait for due to the browser and any page websockets
+    // Only needed for windows...
+    const pList = this.#pages.map((_page) => deferred());
+    pList.push(deferred());
+    this.#pages.forEach((page, i) => {
+      page.socket.onclose = () => pList[i].resolve();
+    });
+    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
+
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     if (this.#browser_process) {
       this.#browser_process.stderr!.cancel();
@@ -185,11 +194,10 @@ export class Client {
       await this.#browser_process.status;
     } else {
       // When Working with Remote Browsers, where we don't control the Browser Process explicitly
-      const p = deferred()
-      this.#protocol.socket.onclose = () => p.resolve()
       await this.#protocol.send("Browser.close");
-      await p
     }
+    
+    await Promise.all(pList)
 
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
@@ -287,7 +295,6 @@ export class Client {
         const line of browserProcess.stderr.pipeThrough(new TextDecoderStream())
           .pipeThrough(new TextLineStream())
       ) { // Loop also needed before json endpoint is up
-        console.log(line);
         const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
         if (!match) {
           continue;
