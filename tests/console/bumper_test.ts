@@ -15,11 +15,12 @@ Deno.test("Updates chrome version in dockerfile", async () => {
     "./tests/integration/docker_test/drivers.dockerfile",
     newContent,
   );
-  const p = Deno.run({
-    cmd: ["deno", "run", "-A", "console/bumper_ci_service.ts"],
+  const p = new Deno.Command('deno', {
+    args: ["run", "-A", "console/bumper_ci_service.ts"],
   });
-  await p.status();
-  p.close();
+  const child = p.spawn();
+  await child.status;
+  child.kill();
   newContent = Deno.readTextFileSync(
     "./tests/integration/docker_test/drivers.dockerfile",
   );

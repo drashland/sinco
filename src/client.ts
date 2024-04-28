@@ -1,8 +1,9 @@
 import { Protocol as ProtocolClass } from "./protocol.ts";
-import { deferred, Protocol as ProtocolTypes, readLines } from "../deps.ts";
+import { Protocol as ProtocolTypes } from "../deps.ts";
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 import { existsSync } from "./utility.ts";
+import { TextLineStream } from "jsr:@std/streams";
 
 // https://stackoverflow.com/questions/50395719/firefox-remote-debugging-with-websockets
 // FYI for reference, we can connect using websockets, but severe lack of documentation gives us NO info on how to proceed after:
@@ -47,7 +48,7 @@ export class Client {
   /**
    * The sub process that runs headless chrome
    */
-  readonly #browser_process: Deno.Process | undefined;
+  readonly #browser_process: Deno.ChildProcess | undefined;
 
   /**
    * Track if we've closed the sub process, so we dont try close it when it already has been
@@ -88,7 +89,7 @@ export class Client {
    */
   constructor(
     protocol: ProtocolClass,
-    browserProcess: Deno.Process | undefined,
+    browserProcess: Deno.ChildProcess | undefined,
     browser: Browsers,
     wsOptions: {
       hostname: string;
@@ -176,19 +177,12 @@ export class Client {
       return;
     }
 
-    // Collect all promises we need to wait for due to the browser and any page websockets
-    const pList = this.#pages.map((_page) => deferred());
-    pList.push(deferred());
-    this.#pages.forEach((page, i) => {
-      page.socket.onclose = () => pList[i].resolve();
-    });
-    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
-
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     if (this.#browser_process) {
-      this.#browser_process.stderr!.close();
-      this.#browser_process.stdout!.close();
-      this.#browser_process.close();
+      this.#browser_process.stderr!.cancel();
+      this.#browser_process.stdout!.cancel();
+      this.#browser_process.kill();
+      await this.#browser_process.status
     } else {
       //When Working with Remote Browsers, where we don't control the Browser Process explicitly
       await this.#protocol.send("Browser.close");
@@ -209,25 +203,6 @@ export class Client {
       await p.status();
       p.close();
     } */
-
-    // Wait until all ws clients are closed, so we aren't leaking any ops
-    await Promise.all(pList);
-
-    // Wait until we know for sure that the process is gone and the port is freed up
-    function listen(wsOptions: { port: number; hostname: string }) {
-      try {
-        const listener = Deno.listen({
-          hostname: wsOptions.hostname,
-          port: wsOptions.port,
-        });
-        listener.close();
-      } catch (_e) {
-        listen(wsOptions);
-      }
-    }
-    if (this.#browser_process) {
-      listen(this.wsOptions);
-    }
 
     this.#browser_process_closed = true;
 
@@ -289,21 +264,24 @@ export class Client {
     browser: Client;
     page: Page;
   }> {
-    let browserProcess: Deno.Process | undefined = undefined;
+    let browserProcess: Deno.ChildProcess | undefined = undefined;
     let browserWsUrl = "";
     // Run the subprocess, this starts up the debugger server
     if (!wsOptions.remote) { //Skip this if browser is remote
-      browserProcess = Deno.run({
-        cmd: buildArgs,
+      const path = buildArgs.splice(0, 1)[0];
+      const command = new Deno.Command(path, {
+        args: buildArgs,
         stderr: "piped",
         stdout: "piped",
       });
+      browserProcess = command.spawn();
+
       // Get the main ws conn for the client - this loop is needed as the ws server isn't open until we get the listeneing on.
       // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
       // isn't up for another 10s, meaning however many fetch requests in 10s
       // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
-
-      for await (const line of readLines(browserProcess.stderr!)) { // Loop also needed before json endpoint is up
+      for await (const line of browserProcess.stderr.pipeThrough(new TextDecoderStream()).pipeThrough(new TextLineStream())) { // Loop also needed before json endpoint is up
+        console.log(line)
         const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
         if (!match) {
           continue;
