@@ -185,13 +185,11 @@ export class Client {
       await this.#browser_process.status;
     } else {
       // When Working with Remote Browsers, where we don't control the Browser Process explicitly
-      const promise = deferred()
+      const promise = deferred();
       this.#protocol.socket.onclose = () => promise.resolve();
       await this.#protocol.send("Browser.close");
       await promise;
     }
-
-    
 
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.

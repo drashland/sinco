@@ -19,15 +19,15 @@ for (const browserItem of browserList) {
           const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
           let promise = deferred();
           client.onopen = function () {
-            promise.resolve()
+            promise.resolve();
           };
           await promise;
-          promise = deferred()
+          promise = deferred();
           client.onclose = function () {
             promise.resolve();
           };
-          client.close()
-          await promise
+          client.close();
+          await promise;
           await browser.close();
         },
       );
@@ -42,14 +42,14 @@ for (const browserItem of browserList) {
           const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
           let promise = deferred();
           client.onopen = function () {
-            promise.resolve()
+            promise.resolve();
           };
           await promise;
-          promise = deferred()
+          promise = deferred();
           client.onclose = function () {
             promise.resolve();
           };
-          client.close()
+          client.close();
           await promise;
           await browser.close();
         },
