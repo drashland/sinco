@@ -177,17 +177,6 @@ export class Client {
       return;
     }
 
-    // Collect all promises we need to wait for due to the browser and any page websockets
-    // Only needed for windows... whereas waiting for the protocol socket to close is also
-    // needed if remote
-    const pList = this.#pages.map((page) => {
-      const prom = deferred();
-      page.socket.onclose = () => prom.resolve();
-      return prom;
-    });
-    pList.push(deferred());
-    this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
-
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     if (this.#browser_process) {
       this.#browser_process.stderr!.cancel();
@@ -196,10 +185,13 @@ export class Client {
       await this.#browser_process.status;
     } else {
       // When Working with Remote Browsers, where we don't control the Browser Process explicitly
+      const promise = deferred()
+      this.#protocol.socket.onclose = () => promise.resolve();
       await this.#protocol.send("Browser.close");
+      await promise;
     }
 
-    await Promise.all(pList);
+    
 
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
