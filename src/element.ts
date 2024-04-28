@@ -307,6 +307,20 @@ export class Element {
     const quad = quads[0];
     let x = 0;
     let y = 0;
+
+    /**
+     * It could be that the element isn't clickable. Once
+     * instance i've found this is when i've tried to click
+     * an element `<a id=... href=... />` eg self closing.
+     * Could be more reasons though
+     */
+    if (!quad) {
+      await this.#page.client.close(
+        `Unable to click the element "${this.#selector}". It could be that it is invalid HTML`,
+      );
+      return;
+    }
+
     for (const point of quad) {
       x += point.x;
       y += point.y;

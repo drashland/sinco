@@ -110,6 +110,8 @@ export function getFirefoxPath(): string {
       return "/usr/bin/firefox";
     case "windows":
       return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
+    default:
+      throw new Error("Unhandled OS. Unsupported for " + Deno.build.os);
   }
 }
 

@@ -33,7 +33,7 @@ for (const browserItem of browserList) {
         await page.location("https://drash.land");
         const pageTitle = await page.evaluate(() => {
           // deno-lint-ignore no-undef
-          return document.title;
+          return document.querySelector("h1")?.textContent;
         });
         const sum = await page.evaluate(`1 + 10`);
         const oldBodyLength = await page.evaluate(() => {
