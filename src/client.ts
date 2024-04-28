@@ -1,5 +1,5 @@
 import { Protocol as ProtocolClass } from "./protocol.ts";
-import { Protocol as ProtocolTypes, deferred } from "../deps.ts";
+import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 import { existsSync } from "./utility.ts";
@@ -178,12 +178,14 @@ export class Client {
     }
 
     // Collect all promises we need to wait for due to the browser and any page websockets
-    // Only needed for windows...
-    const pList = this.#pages.map((_page) => deferred());
-    pList.push(deferred());
-    this.#pages.forEach((page, i) => {
-      page.socket.onclose = () => pList[i].resolve();
+    // Only needed for windows... whereas waiting for the protocol socket to close is also
+    // needed if remote
+    const pList = this.#pages.map((page) => {
+      const prom = deferred();
+      page.socket.onclose = () => prom.resolve();
+      return prom;
     });
+    pList.push(deferred());
     this.#protocol.socket.onclose = () => pList.at(-1)?.resolve();
 
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
@@ -196,8 +198,8 @@ export class Client {
       // When Working with Remote Browsers, where we don't control the Browser Process explicitly
       await this.#protocol.send("Browser.close");
     }
-    
-    await Promise.all(pList)
+
+    await Promise.all(pList);
 
     // Zombie processes is a thing with Windows, the firefox process on windows
     // will not actually be closed using the above.
