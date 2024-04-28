@@ -1,5 +1,5 @@
 import { Protocol as ProtocolClass } from "./protocol.ts";
-import { Protocol as ProtocolTypes } from "../deps.ts";
+import { Protocol as ProtocolTypes, deferred } from "../deps.ts";
 import { Page } from "./page.ts";
 import type { Browsers } from "./types.ts";
 import { existsSync } from "./utility.ts";
@@ -182,10 +182,13 @@ export class Client {
       this.#browser_process.stderr!.cancel();
       this.#browser_process.stdout!.cancel();
       this.#browser_process.kill();
-      await this.#browser_process.status
+      await this.#browser_process.status;
     } else {
-      //When Working with Remote Browsers, where we don't control the Browser Process explicitly
+      // When Working with Remote Browsers, where we don't control the Browser Process explicitly
+      const p = deferred()
+      this.#protocol.socket.onclose = () => p.resolve()
       await this.#protocol.send("Browser.close");
+      await p
     }
 
     // Zombie processes is a thing with Windows, the firefox process on windows
@@ -280,8 +283,11 @@ export class Client {
       // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
       // isn't up for another 10s, meaning however many fetch requests in 10s
       // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
-      for await (const line of browserProcess.stderr.pipeThrough(new TextDecoderStream()).pipeThrough(new TextLineStream())) { // Loop also needed before json endpoint is up
-        console.log(line)
+      for await (
+        const line of browserProcess.stderr.pipeThrough(new TextDecoderStream())
+          .pipeThrough(new TextLineStream())
+      ) { // Loop also needed before json endpoint is up
+        console.log(line);
         const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
         if (!match) {
           continue;
