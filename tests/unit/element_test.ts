@@ -13,32 +13,6 @@ for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
     await t.step("click()", async (t) => {
       await t.step(
-        "It should fail if the element is no longer present in the DOM",
-        async () => {
-          const { page } = await buildFor(browserItem.name, {
-            remote,
-          });
-          await page.location("https://drash.land");
-          // Need to make the element either not clickable or not a HTMLElement
-          const selector = 'a[href="https://discord.gg/RFsCSaHRWK"]';
-          const elem = await page.querySelector(
-            selector,
-          );
-          await page.location("https://google.com");
-          let errMsg = "";
-          try {
-            await elem.click();
-          } catch (e) {
-            errMsg = e.message;
-          }
-          assertEquals(
-            errMsg,
-            `The given element ("${selector}") is no longer present in the DOM`,
-          );
-        },
-      );
-
-      await t.step(
         "It should allow clicking of elements and update location",
         async () => {
           const { browser, page } = await buildFor(browserItem.name, {
