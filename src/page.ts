@@ -220,7 +220,7 @@ export class Page {
       );
       return target?.url ?? "";
     }
-    const method = "Page.loadEventFired";
+    const method = "Page.frameStoppedLoading";
     this.#protocol.notifications.set(method, deferred());
     const notificationPromise = this.#protocol.notifications.get(
       method,
