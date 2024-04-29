@@ -52,8 +52,8 @@ for (const browserItem of browserList) {
         await browser.close();
         assertEquals(pageTitle, "Drash Land");
         assertEquals(sum, 11);
-        assertEquals(oldBodyLength, 3);
-        assertEquals(newBodyLength, 4);
+        assertEquals(oldBodyLength, remote ? 5 : 3);
+        assertEquals(newBodyLength, remote ? 6 : 4);
       },
     );
   });
