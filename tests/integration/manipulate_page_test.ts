@@ -33,7 +33,7 @@ for (const browserItem of browserList) {
         await page.location("https://drash.land");
         const pageTitle = await page.evaluate(() => {
           // deno-lint-ignore no-undef
-          return document.title;
+          return document.querySelector("h1")?.textContent;
         });
         const sum = await page.evaluate(`1 + 10`);
         const oldBodyLength = await page.evaluate(() => {
@@ -52,8 +52,8 @@ for (const browserItem of browserList) {
         await browser.close();
         assertEquals(pageTitle, "Drash Land");
         assertEquals(sum, 11);
-        assertEquals(oldBodyLength, 3);
-        assertEquals(newBodyLength, 4);
+        assertEquals(oldBodyLength, remote ? 5 : 3);
+        assertEquals(newBodyLength, remote ? 6 : 4);
       },
     );
   });

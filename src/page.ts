@@ -5,6 +5,7 @@ import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 import { Client } from "./client.ts";
 import type { Deferred } from "../deps.ts";
+import { waitUntilNetworkIdle } from "./utility.ts";
 
 /**
  * A representation of the page the client is on, allowing the client to action
@@ -220,11 +221,8 @@ export class Page {
       );
       return target?.url ?? "";
     }
-    const method = "Page.loadEventFired";
-    this.#protocol.notifications.set(method, deferred());
-    const notificationPromise = this.#protocol.notifications.get(
-      method,
-    );
+
+    // Send message
     const res = await this.#protocol.send<
       Protocol.Page.NavigateRequest,
       Protocol.Page.NavigateResponse
@@ -234,7 +232,18 @@ export class Page {
         url: newLocation,
       },
     );
-    await notificationPromise;
+
+    await waitUntilNetworkIdle();
+
+    // Usually if an invalid URL is given, the WS never gets a notification
+    // but we get a message with the id associated with the msg we sent
+    // TODO :: Ideally the protocol class would throw and we could catch it so we know
+    // for sure its an error
+    if ("errorText" in res) {
+      await this.client.close(res.errorText);
+      return "";
+    }
+
     if (res.errorText) {
       await this.client.close(
         `${res.errorText}: Error for navigating to page "${newLocation}"`,
@@ -399,7 +408,7 @@ export class Page {
       // Otherwise, we have not gotten anymore notifs in the last .5s
       clearInterval(interval);
       forMessages.resolve();
-    }, 1000);
+    }, 500);
     await forMessages;
     const errorNotifs = this.#protocol.console_errors;
     const filteredNotifs = !exceptions.length
