@@ -1,3 +1,5 @@
+import { deferred } from "../deps.ts";
+
 export const existsSync = (filename: string): boolean => {
   try {
     Deno.statSync(filename);
@@ -70,7 +72,6 @@ export function getChromeArgs(port: number, binaryPath?: string): string[] {
     "--headless",
     "--no-sandbox",
     "--disable-background-networking",
-    "--enable-features=NetworkService,NetworkServiceInProcess",
     "--disable-background-timer-throttling",
     "--disable-backgrounding-occluded-windows",
     "--disable-breakpad",
@@ -130,4 +131,32 @@ export function getFirefoxArgs(
     "-url",
     "about:blank",
   ];
+}
+
+export async function waitUntilNetworkIdle() {
+  // Logic for waiting until zero network requests have been received for 500ms
+  const p = deferred();
+  let interval = 0;
+  const startInterval = () => {
+    interval = setInterval(() => {
+      p.resolve();
+      clearInterval(interval);
+    }, 500);
+  };
+
+  // Event listener to restart interval
+  const eventListener = () => {
+    clearInterval(interval);
+    startInterval();
+  };
+
+  // On message, restart interval
+  addEventListener("message", eventListener);
+
+  // Start the interval and wait
+  startInterval();
+  await p;
+
+  // Unregister event listener
+  removeEventListener("message", eventListener);
 }

@@ -94,6 +94,8 @@ export class Protocol {
   #handleSocketMessage(
     message: MessageResponse | NotificationResponse,
   ) {
+    // TODO :: make it unique eg `<frame-id>.message` so say another page instance wont pick up events for the wrong websocket
+    dispatchEvent(new CustomEvent("message", { detail: message }));
     if ("id" in message) { // message response
       const resolvable = this.#messages.get(message.id);
       if (!resolvable) {
