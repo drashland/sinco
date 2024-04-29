@@ -3,6 +3,7 @@ import { Protocol } from "./protocol.ts";
 import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { ScreenshotOptions, WebsocketTarget } from "./interfaces.ts";
+import { waitUntilNetworkIdle } from "./utility.ts";
 /**
  * A class to represent an element on the page, providing methods
  * to action on that element
@@ -259,13 +260,19 @@ export class Element {
     if (!options.button) options.button = "left";
 
     // Scroll into view
-    await this.#page.evaluate(
-      `${this.#method}('${this.#selector}').scrollIntoView({
-      block: 'center',
-      inline: 'center',
-      behavior: 'instant'
-    })`,
-    );
+    try {
+      await this.#page.evaluate(
+        `${this.#method}('${this.#selector}').scrollIntoView({
+        block: 'center',
+        inline: 'center',
+        behavior: 'instant'
+      })`,
+      );
+    } catch (_e) {
+      await this.#page.client.close(
+        `The given element ("${this.#selector}") is no longer present in the DOM`,
+      );
+    }
 
     // Get details we need for dispatching input events on the element
     const result = await this.#protocol.send<
@@ -278,6 +285,12 @@ export class Element {
       null,
       ProtocolTypes.Page.GetLayoutMetricsResponse
     >("Page.getLayoutMetrics");
+    if (!result || !result.quads.length) {
+      await this.#page.client.close(
+        `Node is either not clickable or not an HTMLElement`,
+      );
+    }
+
     // Ignoring because cssLayoutMetrics is present on chrome, but not firefox
     // deno-lint-ignore ban-ts-comment
     // @ts-ignore
@@ -307,6 +320,20 @@ export class Element {
     const quad = quads[0];
     let x = 0;
     let y = 0;
+
+    /**
+     * It could be that the element isn't clickable. Once
+     * instance i've found this is when i've tried to click
+     * an element `<a id=... href=... />` eg self closing.
+     * Could be more reasons though
+     */
+    if (!quad) {
+      await this.#page.client.close(
+        `Unable to click the element "${this.#selector}". It could be that it is invalid HTML`,
+      );
+      return;
+    }
+
     for (const point of quad) {
       x += point.x;
       y += point.y;
@@ -411,16 +438,7 @@ export class Element {
         new Page(newProt, targetId, this.#page.client, frameId),
       );
     } else if (options.waitFor === "navigation") { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
-      const method2 = "Page.frameStoppedLoading";
-      this.#protocol.notifications.set(
-        method2,
-        deferred(),
-      );
-      const notificationPromise2 = this.#protocol.notifications.get(
-        method2,
-      );
-      await notificationPromise2;
-      this.#protocol.notifications.delete(method2);
+      await waitUntilNetworkIdle();
     }
   }
 

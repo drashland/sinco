@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   drivers:
     container_name: drivers

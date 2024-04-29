@@ -15,11 +15,13 @@ class JSResource extends Drash.Resource {
     response.headers.set("content-type", "application/javascript");
   }
 }
-class PopupsResource extends Drash.Resource {
-  public paths = ["/popups"];
+class AnchorLinksResource extends Drash.Resource {
+  public paths = ["/anchor-links"];
 
   public GET(_r: Drash.Request, res: Drash.Response) {
-    return res.html('<a href="https://drash.land" target="_blank" />');
+    return res.html(
+      '<a id="blank" href="https://drash.land" target="_blank">Website</a> <a id="not-blank" href="https://discord.gg/RFsCSaHRWK">Discord</a> <a id="invalid-link" href="#" />',
+    );
   }
 }
 
@@ -39,12 +41,13 @@ class DialogsResource extends Drash.Resource {
   }
 }
 
-class FileInputResource extends Drash.Resource {
-  public paths = ["/file-input"];
+class InputResource extends Drash.Resource {
+  public paths = ["/input"];
 
   public GET(_r: Drash.Request, res: Drash.Response) {
     return res.html(`
         <p></p>
+        <div></div>
         <input id="text" type="text" />
         <input type="file" multiple id="multiple-file" />
         <input type="file" id="single-file" />
@@ -82,9 +85,9 @@ export const server = new Drash.Server({
   resources: [
     HomeResource,
     JSResource,
-    PopupsResource,
+    AnchorLinksResource,
     WaitForRequestsResource,
-    FileInputResource,
+    InputResource,
     DialogsResource,
   ],
   protocol: "http",
