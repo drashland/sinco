@@ -7,7 +7,7 @@ import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
 const remote = Deno.args.includes("--remoteBrowser");
 const serverAdd = `http://${
-  (remote) ? "host.docker.internal" : "localhost"
+  remote ? "host.docker.internal" : "localhost"
 }:1447`;
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
@@ -44,16 +44,46 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location("https://drash.land");
+          server.run();
+          await page.location(serverAdd + "/anchor-links");
           const elem = await page.querySelector(
-            'a[href="https://discord.gg/RFsCSaHRWK"]',
+            "a#not-blank",
           );
           await elem.click({
             waitFor: "navigation",
           });
           const page1Location = await page.location();
           await browser.close();
+          await server.close();
           assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
+        },
+      );
+
+      await t.step(
+        "It should error if the HTML for the element is invalid",
+        async () => {
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          server.run();
+          await page.location(serverAdd + "/anchor-links");
+          const elem = await page.querySelector(
+            "a#invalid-link",
+          );
+          let error = null;
+          try {
+            await elem.click({
+              waitFor: "navigation",
+            });
+          } catch (e) {
+            error = e.message;
+          }
+          await browser.close();
+          await server.close();
+          assertEquals(
+            error,
+            'Unable to click the element "a#invalid-link". It could be that it is invalid HTML',
+          );
         },
       );
 
@@ -123,15 +153,17 @@ for (const browserItem of browserList) {
 
       await t.step("Saves Screenshot with all options provided", async () => {
         const { browser, page } = await buildFor(browserItem.name, { remote });
-        await page.location("https://chromestatus.com");
-        const h3 = await page.querySelector("h3");
+        server.run();
+        await page.location(serverAdd + "/anchor-links");
+        const a = await page.querySelector("a");
         Deno.mkdirSync(ScreenshotsFolder);
-        const filename = await h3.takeScreenshot(ScreenshotsFolder, {
+        const filename = await a.takeScreenshot(ScreenshotsFolder, {
           fileName: "AllOpts",
           format: "jpeg",
           quality: 100,
         });
         await browser.close();
+        await server.close();
         const exists = existsSync(filename);
         Deno.removeSync(ScreenshotsFolder, {
           recursive: true,
@@ -150,14 +182,16 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location("https://chromestatus.com");
+          server.run();
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector(
-            'input[placeholder="Filter"]',
+            'input[type="text"]',
           );
           await elem.value("hello world");
           const val = await elem.value();
-          assertEquals(val, "hello world");
           await browser.close();
+          await server.close();
+          assertEquals(val, "hello world");
         },
       );
       await t.step(
@@ -166,7 +200,8 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location("https://chromestatus.com");
+          server.run();
+          await page.location(serverAdd + "/input");
           let errMsg = "";
           const elem = await page.querySelector("div");
           try {
@@ -175,6 +210,7 @@ for (const browserItem of browserList) {
             errMsg = e.message;
           }
           await browser.close();
+          await server.close();
           assertEquals(
             errMsg,
             "",
@@ -186,11 +222,13 @@ for (const browserItem of browserList) {
     await t.step("value()", async (t) => {
       await t.step("It should set the value of the element", async () => {
         const { browser, page } = await buildFor(browserItem.name, { remote });
-        await page.location("https://chromestatus.com");
-        const elem = await page.querySelector('input[placeholder="Filter"]');
+        server.run();
+        await page.location(serverAdd + "/input");
+        const elem = await page.querySelector('input[type="text"]');
         await elem.value("hello world");
         const val = await elem.value();
         await browser.close();
+        await server.close();
         assertEquals(val, "hello world");
       });
     });
@@ -205,7 +243,7 @@ for (const browserItem of browserList) {
             const { browser, page } = await buildFor(browserItem.name, {
               remote,
             });
-            await page.location(serverAdd + "/file-input");
+            await page.location(serverAdd + "/input");
             const elem = await page.querySelector("#single-file");
             let errMsg = "";
             try {
@@ -227,7 +265,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("p");
           let errMsg = "";
           try {
@@ -248,7 +286,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("#text");
           let errMsg = "";
           try {
@@ -269,7 +307,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("#multiple-file");
           try {
             await elem.files(
@@ -298,7 +336,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("p");
           let errMsg = "";
           try {
@@ -319,7 +357,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("#text");
           let errMsg = "";
           try {
@@ -340,7 +378,7 @@ for (const browserItem of browserList) {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location(serverAdd + "/file-input");
+          await page.location(serverAdd + "/input");
           const elem = await page.querySelector("#single-file");
           try {
             await elem.file(resolve("./README.md"));

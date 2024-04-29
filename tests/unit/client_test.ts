@@ -8,26 +8,6 @@ for (const browserItem of browserList) {
   Deno.test(`${browserItem.name}`, async (t) => {
     await t.step("create()", async (t) => {
       await t.step(
-        "Will start ${browserItem.name} headless as a subprocess",
-        async () => {
-          const { browser } = await buildFor(browserItem.name, { remote });
-          const res = await fetch("http://localhost:9292/json/list");
-          const json = await res.json();
-          // Our ws client should be able to connect if the browser is running
-          const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
-          const promise = deferred();
-          client.onopen = function () {
-            client.close();
-          };
-          client.onclose = function () {
-            promise.resolve();
-          };
-          await promise;
-          await browser.close();
-        },
-      );
-
-      await t.step(
         "Uses the port when passed in to the parameters",
         async () => {
           const { browser } = await buildFor(browserItem.name, {
@@ -37,13 +17,39 @@ for (const browserItem of browserList) {
           const json = await res.json();
           // Our ws client should be able to connect if the browser is running
           const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
-          const promise = deferred();
+          let promise = deferred();
           client.onopen = function () {
-            client.close();
+            promise.resolve();
           };
+          await promise;
+          promise = deferred();
           client.onclose = function () {
             promise.resolve();
           };
+          client.close();
+          await promise;
+          await browser.close();
+        },
+      );
+
+      await t.step(
+        `Will start headless as a subprocess`,
+        async () => {
+          const { browser } = await buildFor(browserItem.name, { remote });
+          const res = await fetch("http://localhost:9292/json/list");
+          const json = await res.json();
+          // Our ws client should be able to connect if the browser is running
+          const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+          let promise = deferred();
+          client.onopen = function () {
+            promise.resolve();
+          };
+          await promise;
+          promise = deferred();
+          client.onclose = function () {
+            promise.resolve();
+          };
+          client.close();
           await promise;
           await browser.close();
         },

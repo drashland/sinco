@@ -6,7 +6,7 @@ import { existsSync } from "../../src/utility.ts";
 import { server } from "../server.ts";
 const remote = Deno.args.includes("--remoteBrowser");
 const serverAdd = `http://${
-  (remote) ? "host.docker.internal" : "localhost"
+  remote ? "host.docker.internal" : "localhost"
 }:1447`;
 for (const browserItem of browserList) {
   Deno.test(browserItem.name, async (t) => {
@@ -114,7 +114,7 @@ for (const browserItem of browserList) {
           await page.location("https://drash.land");
           const pageTitle = await page.evaluate(() => {
             // deno-lint-ignore no-undef
-            return document.title;
+            return document.querySelector("h1")?.textContent;
           });
           await browser.close();
           assertEquals(pageTitle, "Drash Land");
@@ -173,6 +173,24 @@ for (const browserItem of browserList) {
     });
 
     await t.step("location()", async (t) => {
+      // TODO
+      await t.step(
+        "Handles correctly and doesnt hang when invalid URL",
+        async () => {
+          const { browser, page } = await buildFor(browserItem.name, {
+            remote,
+          });
+          let error = null;
+          try {
+            await page.location("https://google.comINPUT");
+          } catch (e) {
+            error = e.message;
+          }
+          await browser.close();
+          assertEquals(error, "net::ERR_NAME_NOT_RESOLVED");
+        },
+      );
+
       await t.step("Sets and gets the location", async () => {
         const { browser, page } = await buildFor(browserItem.name, { remote });
         await page.location("https://google.com");
