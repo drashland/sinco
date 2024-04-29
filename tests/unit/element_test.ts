@@ -18,11 +18,10 @@ for (const browserItem of browserList) {
           const { page } = await buildFor(browserItem.name, {
             remote,
           });
-          await page.location("https://drash.land");
+          await page.location(serverAdd + "/anchor-links");
           // Need to make the element either not clickable or not a HTMLElement
-          const selector = 'a[href="https://discord.gg/RFsCSaHRWK"]';
           const elem = await page.querySelector(
-            selector,
+            "a",
           );
           await page.location("https://google.com");
           let errMsg = "";
@@ -33,7 +32,7 @@ for (const browserItem of browserList) {
           }
           assertEquals(
             errMsg,
-            `The given element ("${selector}") is no longer present in the DOM`,
+            `The given element ("a") is no longer present in the DOM`,
           );
         },
       );
