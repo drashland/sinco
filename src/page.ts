@@ -221,7 +221,7 @@ export class Page {
       );
       return target?.url ?? "";
     }
-
+    
     // Send message
     const res = await this.#protocol.send<
       Protocol.Page.NavigateRequest,
