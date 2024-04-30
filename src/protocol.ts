@@ -46,11 +46,6 @@ export class Protocol {
     }
   > = new Map();
 
-  /**
-   * Map of notifications, where the key is the method and the value is an array of the events
-   */
-  public console_errors: string[] = [];
-
   constructor(
     socket: WebSocket,
   ) {
@@ -58,6 +53,7 @@ export class Protocol {
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
+      console.log(data);
       this.#handleSocketMessage(data);
     };
   }
@@ -94,9 +90,10 @@ export class Protocol {
   #handleSocketMessage(
     message: MessageResponse | NotificationResponse,
   ) {
-    // TODO :: make it unique eg `<frame-id>.message` so say another page instance wont pick up events for the wrong websocket
-    dispatchEvent(new CustomEvent("message", { detail: message }));
     if ("id" in message) { // message response
+      // TODO :: make it unique eg `<frame-id>.message` so say another page instance wont pick up events for the wrong websocket
+      dispatchEvent(new CustomEvent("message", { detail: message }));
+
       const resolvable = this.#messages.get(message.id);
       if (!resolvable) {
         return;
@@ -109,24 +106,33 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
-      // Store certain methods for if we need to query them later
+      dispatchEvent(
+        new CustomEvent(message.method, {
+          detail: message.params,
+        }),
+      );
+
+      // Handle console errors
       if (message.method === "Runtime.exceptionThrown") {
         const params = message
           .params as unknown as ProtocolTypes.Runtime.ExceptionThrownEvent;
         const errorMessage = params.exceptionDetails.exception?.description ??
           params.exceptionDetails.text;
-        if (errorMessage) {
-          this.console_errors.push(errorMessage);
-        }
+        dispatchEvent(
+          new CustomEvent("consoleError", {
+            detail: errorMessage,
+          }),
+        );
       }
       if (message.method === "Log.entryAdded") {
         const params = message
           .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
         if (params.entry.level === "error") {
-          const errorMessage = params.entry.text;
-          if (errorMessage) {
-            this.console_errors.push(errorMessage);
-          }
+          dispatchEvent(
+            new CustomEvent("consoleError", {
+              detail: params.entry.text,
+            }),
+          );
         }
       }
 

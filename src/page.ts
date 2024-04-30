@@ -1,4 +1,4 @@
-import { AssertionError, deferred, Protocol } from "../deps.ts";
+import { deferred, Protocol } from "../deps.ts";
 import { existsSync, generateTimestamp } from "./utility.ts";
 import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
@@ -31,6 +31,8 @@ export class Page {
 
   readonly client: Client;
 
+  #console_errors: string[] = [];
+
   constructor(
     protocol: ProtocolClass,
     targetId: string,
@@ -41,6 +43,35 @@ export class Page {
     this.target_id = targetId;
     this.client = client;
     this.#frame_id = frameId;
+
+    const onError = (event: Event) => {
+      this.#console_errors.push((event as CustomEvent<string>).detail);
+    };
+
+    addEventListener("Log.entryAdded", onError);
+    addEventListener("Runtime.exceptionThrow", onError);
+  }
+
+  /**
+   * @example
+   * ```ts
+   * const waitForNewPage = page.waitFor<ProtocolTypes.Page.WindowOpen>("Page.windowOpen");
+   * await elem.click();
+   * await waitForNewPage
+   * const page2 = browser.page(2)
+   * ```
+   *
+   * @param methodName
+   */
+  public async waitFor<T>(methodName: string): Promise<T> {
+    const p = deferred();
+    const listener = (event: Event) => {
+      p.resolve((event as CustomEvent<T>).detail);
+    };
+    addEventListener(methodName, listener);
+    const result = await p as T;
+    removeEventListener(methodName, listener);
+    return result;
   }
 
   public get socket() {
@@ -383,56 +414,16 @@ export class Page {
   }
 
   /**
-   * Assert that there are no errors in the developer console, such as:
-   *   - 404's (favicon for example)
-   *   - Issues with JavaScript files
-   *   - etc
-   *
-   * @param exceptions - A list of strings that if matched, will be ignored such as ["favicon.ico"] if you want/need to ignore a 404 error for this file
-   *
-   * @throws AssertionError
+   * Return the current list of console errors present in the dev tools
    */
-  public async assertNoConsoleErrors(exceptions: string[] = []) {
-    const forMessages = deferred();
-    let notifCount = 0;
-    // deno-lint-ignore no-this-alias
-    const self = this;
-    const interval = setInterval(function () {
-      const notifs = self.#protocol.console_errors;
-      // If stored notifs is greater than what we've got, then
-      // more notifs are being sent to us, so wait again
-      if (notifs.length > notifCount) {
-        notifCount = notifs.length;
-        return;
-      }
-      // Otherwise, we have not gotten anymore notifs in the last .5s
-      clearInterval(interval);
-      forMessages.resolve();
+  public async consoleErrors(): Promise<string[]> {
+    // Give it some extra time in case to pick up some more
+    const p = deferred();
+    setTimeout(() => {
+      p.resolve();
     }, 500);
-    await forMessages;
-    const errorNotifs = this.#protocol.console_errors;
-    const filteredNotifs = !exceptions.length
-      ? errorNotifs
-      : errorNotifs.filter((notif) => {
-        const notifCanBeIgnored = exceptions.find((exception) => {
-          if (notif.includes(exception)) {
-            return true;
-          }
-          return false;
-        });
-        if (notifCanBeIgnored) {
-          return false;
-        }
-        return true;
-      });
-    if (!filteredNotifs.length) {
-      return;
-    }
-    await this.client.close(
-      "Expected console to show no errors. Instead got:\n" +
-        filteredNotifs.join("\n"),
-      AssertionError,
-    );
+    await p;
+    return this.#console_errors;
   }
 
   /**

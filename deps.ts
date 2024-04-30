@@ -2,7 +2,6 @@ import type { Protocol } from "https://unpkg.com/devtools-protocol@0.0.979918/ty
 export { Protocol };
 export {
   assertEquals,
-  AssertionError,
   assertNotEquals,
 } from "https://deno.land/std@0.139.0/testing/asserts.ts";
 export { deferred } from "https://deno.land/std@0.139.0/async/deferred.ts";

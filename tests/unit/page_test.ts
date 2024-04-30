@@ -173,7 +173,6 @@ for (const browserItem of browserList) {
     });
 
     await t.step("location()", async (t) => {
-      // TODO
       await t.step(
         "Handles correctly and doesnt hang when invalid URL",
         async () => {
@@ -217,71 +216,39 @@ for (const browserItem of browserList) {
     });
 
     await t.step({
-      name: "assertNoConsoleErrors()",
+      name: "consoleErrors()",
       fn: async (t) => {
         await t.step(`Should throw when errors`, async () => {
           server.run();
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
-          // I (ed) knows this page shows errors, but if we ever need to change it in the future,
-          // can always spin up a drash web app and add errors in the js to produce console errors
           await page.location(
             serverAdd,
           );
-          let errMsg = "";
-          try {
-            await page.assertNoConsoleErrors();
-          } catch (e) {
-            errMsg = e.message;
-          }
+          const errors = await page.consoleErrors();
           await browser.close();
           await server.close();
           assertEquals(
-            errMsg.startsWith(
-              `Expected console to show no errors. Instead got:\n`,
-            ),
-            true,
+            errors,
+            [
+              "Failed to load resource: the server responded with a status of 404 (Not Found)",
+              "ReferenceError: callUser is not defined\n" +
+              `    at ${serverAdd}/index.js:1:1`,
+            ],
           );
-          assertEquals(errMsg.includes("Not Found"), true);
-          assertEquals(errMsg.includes("callUser"), true);
         });
 
-        await t.step(`Should not throw when no errors`, async () => {
+        await t.step(`Should be empty if no errors`, async () => {
           const { browser, page } = await buildFor(browserItem.name, {
             remote,
           });
           await page.location(
             "https://drash.land",
           );
-          await page.assertNoConsoleErrors();
+          const errors = await page.consoleErrors();
           await browser.close();
-        });
-
-        await t.step(` Should exclude messages`, async () => {
-          server.run();
-          const { browser, page } = await buildFor(browserItem.name, {
-            remote,
-          });
-          await page.location(
-            serverAdd,
-          );
-          let errMsg = "";
-          try {
-            await page.assertNoConsoleErrors(["callUser"]);
-          } catch (e) {
-            errMsg = e.message;
-          }
-          await server.close();
-          await browser.close();
-          assertEquals(
-            errMsg.startsWith(
-              "Expected console to show no errors. Instead got",
-            ),
-            true,
-          );
-          assertEquals(errMsg.includes("Not Found"), true);
-          assertEquals(errMsg.includes("callUser"), false);
+          assertEquals(errors, []);
         });
       },
     }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
