@@ -1,6 +1,6 @@
 FROM debian:stable-slim
 
-ENV CHROME_VERSION "124.0.6367.91"
+ENV CHROME_VERSION "124.0.6367.119"
 
 # Install chrome driver
 RUN apt update -y \
