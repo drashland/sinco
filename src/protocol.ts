@@ -1,5 +1,4 @@
 import { Deferred, deferred } from "../deps.ts";
-import { Protocol as ProtocolTypes } from "../deps.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -12,18 +11,11 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: Record<string, unknown>;
 }
 
-type Create<T> = T extends true ? {
-    protocol: Protocol;
-    frameId: string;
-  }
-  : T extends false ? Protocol
-  : never;
-
 export class Protocol {
   /**
    * Our web socket connection to the remote debugging port
    */
-  public socket: WebSocket;
+  protected socket: WebSocket;
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
@@ -53,7 +45,6 @@ export class Protocol {
     // Register on message listener
     this.socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
-      console.log(data);
       this.#handleSocketMessage(data);
     };
   }
@@ -112,30 +103,6 @@ export class Protocol {
         }),
       );
 
-      // Handle console errors
-      if (message.method === "Runtime.exceptionThrown") {
-        const params = message
-          .params as unknown as ProtocolTypes.Runtime.ExceptionThrownEvent;
-        const errorMessage = params.exceptionDetails.exception?.description ??
-          params.exceptionDetails.text;
-        dispatchEvent(
-          new CustomEvent("consoleError", {
-            detail: errorMessage,
-          }),
-        );
-      }
-      if (message.method === "Log.entryAdded") {
-        const params = message
-          .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
-        if (params.entry.level === "error") {
-          dispatchEvent(
-            new CustomEvent("consoleError", {
-              detail: params.entry.text,
-            }),
-          );
-        }
-      }
-
       const resolvable = this.notifications.get(message.method);
       if (!resolvable) {
         return;
@@ -167,40 +134,5 @@ export class Protocol {
         return;
       }
     }
-  }
-
-  /**
-   * A builder for creating an instance of a protocol
-   *
-   * @param url - The websocket url to connect, which the protocol will use
-   *
-   * @returns A new protocol instance
-   */
-  public static async create<T extends boolean = false>(
-    url: string,
-    getFrameId?: T,
-  ): Promise<Create<T>> {
-    const p = deferred();
-    const socket = new WebSocket(url);
-    socket.onopen = () => p.resolve();
-    await p;
-    const protocol = new Protocol(socket);
-    if (getFrameId) {
-      protocol.notifications.set("Runtime.executionContextCreated", deferred());
-    }
-    for (const method of ["Page", "Log", "Runtime", "Network"]) {
-      await protocol.send(`${method}.enable`);
-    }
-    if (getFrameId) {
-      const { context: { auxData: { frameId } } } =
-        (await protocol.notifications.get(
-          "Runtime.executionContextCreated",
-        )) as unknown as ProtocolTypes.Runtime.ExecutionContextCreatedEvent;
-      return {
-        protocol,
-        frameId,
-      } as Create<T>;
-    }
-    return protocol as Create<T>;
   }
 }

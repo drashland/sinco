@@ -1,9 +1,13 @@
 import { Page } from "./page.ts";
-import { Protocol } from "./protocol.ts";
 import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
-import { existsSync, generateTimestamp } from "./utility.ts";
-import { ScreenshotOptions, WebsocketTarget } from "./interfaces.ts";
+import { ScreenshotOptions } from "./interfaces.ts";
 import { waitUntilNetworkIdle } from "./utility.ts";
+
+// Eg if parameter is a string
+type Click<T> = T extends "middle" ? Page
+  : void;
+type WaitFor = "navigation" | "newPage";
+
 /**
  * A class to represent an element on the page, providing methods
  * to action on that element
@@ -17,7 +21,7 @@ export class Element {
   /**
    * How we select the element
    */
-  readonly #method: "document.querySelector" | "$x";
+  readonly #method = "document.querySelector"; // | "$x";
 
   /**
    * The page this element belongs to
@@ -25,34 +29,24 @@ export class Element {
   readonly #page: Page;
 
   /**
-   * Protocol to use, attached to the page
-   */
-  readonly #protocol: Protocol;
-
-  /**
    * ObjectId belonging to this element
    */
-  readonly #objectId?: string;
+  readonly #node: ProtocolTypes.DOM.Node;
 
   /**
    * @param method - The method we use for query selecting
    * @param selector - The CSS selector
    * @param page - The page this element belongs to
-   * @param protocol - The protocol for the page this element belongs to
    * @param objectId - The object id assigned to the element
    */
   constructor(
-    method: "document.querySelector" | "$x",
     selector: string,
     page: Page,
-    protocol: Protocol,
-    objectId?: string,
+    node: ProtocolTypes.DOM.Node,
   ) {
-    this.#objectId = objectId;
+    this.#node = node;
     this.#page = page;
     this.#selector = selector;
-    this.#method = method;
-    this.#protocol = protocol;
   }
 
   /**
@@ -110,58 +104,33 @@ export class Element {
       );
     }
 
-    const { node } = await this.#protocol.send<
-      ProtocolTypes.DOM.DescribeNodeRequest,
-      ProtocolTypes.DOM.DescribeNodeResponse
-    >("DOM.describeNode", {
-      objectId: this.#objectId,
-    });
-    await this.#protocol.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
+    await this.#page.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
       "DOM.setFileInputFiles",
       {
         files: files,
-        objectId: this.#objectId,
-        backendNodeId: node.backendNodeId,
+        nodeId: this.#node.nodeId,
+        backendNodeId: this.#node.backendNodeId,
       },
     );
   }
 
   /**
-   * Get the value of this element, or set the value
-   *
-   * @param newValue - If not passed, will return the value, else will set the value
-   *
-   * @returns The value if getting, else if setting then an empty string
-   */
-  public async value(newValue?: string): Promise<string> {
-    if (!newValue) {
-      return await this.#page.evaluate(
-        `${this.#method}('${this.#selector}').value`,
-      );
-    }
-    await this.#page.evaluate(
-      `${this.#method}('${this.#selector}').value = \`${newValue}\``,
-    );
-    return "";
-  }
-
-  /**
    * Take a screenshot of the element and save it to `filename` in `path` folder, with a `format` and `quality` (jpeg format only)
+   *
+   * @example
+   * ```ts
+   * const uint8array = await element.takeScreenshot();
+   * Deno.writeFileSync('./file.jpg', uint8array);
+   * ```
    *
    * @param path - The path of where to save the screenshot to
    * @param options
    *
-   * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
+   * @returns The data
    */
   async takeScreenshot(
-    path: string,
     options?: ScreenshotOptions,
-  ): Promise<string> {
-    if (!existsSync(path)) {
-      await this.#page.client.close(
-        `The provided folder path "${path}" doesn't exist`,
-      );
-    }
+  ): Promise<Uint8Array> {
     const ext = options?.format ?? "jpeg";
     const rawViewportResult = await this.#page.evaluate(
       `JSON.stringify(${this.#method}('${this.#selector}').getBoundingClientRect())`,
@@ -181,12 +150,12 @@ export class Element {
       );
     }
 
-    //Quality should defined only if format is jpeg
+    // Quality should defined only if format is jpeg
     const quality = (ext == "jpeg")
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 
-    const res = await this.#protocol.send<
+    const res = await this.#page.send<
       ProtocolTypes.Page.CaptureScreenshotRequest,
       ProtocolTypes.Page.CaptureScreenshotResponse
     >(
@@ -198,20 +167,10 @@ export class Element {
       },
     );
 
-    //Writing the Obtained Base64 encoded string to image file
-    const fName = `${path}/${
-      options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
-        generateTimestamp()
-    }.${ext}`;
     const B64str = res.data;
     const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
-    try {
-      Deno.writeFileSync(fName, u8Arr);
-    } catch (e) {
-      await this.#page.client.close(e.message);
-    }
 
-    return fName;
+    return u8Arr;
   }
 
   /**
@@ -229,36 +188,14 @@ export class Element {
    *
    * @example
    * ```js
-   * // Clicking an anchor tag
-   * await click({
-   *   waitFor: "navigation"
-   * })
-   * // Clicking an anchor tag with `__BLANK`
-   * await click({
-   *   button: "middle",
-   * })
+   * await click(); // eg button
+   * await click({ waitFor: 'navigation' }); // eg if link or form submit
+   * const newPage = await click({ waitFor: 'newPage' }); // If download button or anchor tag with _BLANK
+   * ```
    */
-  public async click(options: {
-    button?: "left" | "middle" | "right";
-    waitFor?: "navigation";
-  } = {}): Promise<void> {
-    /**
-     * TODO :: Remember to check now and then to see if this is fixed
-     * This whole process doesnt work for firefox.. we get no events of a new tab opening. If you remove headless,
-     * and try open a new tab manually or middle clicky ourself, you get no events. Not sure if it's our fault or a CDP
-     * problem, but some related links are https://github.com/puppeteer/puppeteer/issues/6932 and
-     * https://github.com/puppeteer/puppeteer/issues/7444
-     */
-    if (
-      this.#page.client.browser === "firefox" && options.button === "middle"
-    ) {
-      await this.#page.client.close(
-        "Middle clicking in Firefox doesn't work at the moment. Please mention on our Discord if you would like to discuss it.",
-      );
-    }
-
-    if (!options.button) options.button = "left";
-
+  public async click<T extends WaitFor>(options: {
+    waitFor?: WaitFor;
+  } = {}): Promise<Click<T>> {
     // Scroll into view
     await this.#page.evaluate(
       `${this.#method}('${this.#selector}').scrollIntoView({
@@ -269,13 +206,13 @@ export class Element {
     );
 
     // Get details we need for dispatching input events on the element
-    const result = await this.#protocol.send<
+    const result = await this.#page.send<
       ProtocolTypes.DOM.GetContentQuadsRequest,
       ProtocolTypes.DOM.GetContentQuadsResponse
     >("DOM.getContentQuads", {
-      objectId: this.#objectId,
+      nodeId: this.#node.nodeId,
     });
-    const layoutMetrics = await this.#protocol.send<
+    const layoutMetrics = await this.#page.send<
       null,
       ProtocolTypes.Page.GetLayoutMetricsResponse
     >("Page.getLayoutMetrics");
@@ -319,7 +256,7 @@ export class Element {
       await this.#page.client.close(
         `Unable to click the element "${this.#selector}". It could be that it is invalid HTML`,
       );
-      return;
+      return undefined as Click<T>;
     }
 
     for (const point of quad) {
@@ -334,133 +271,62 @@ export class Element {
       middle: 4,
     };
 
-    await this.#protocol.send("Input.dispatchMouseEvent", {
+    await this.#page.send("Input.dispatchMouseEvent", {
       type: "mouseMoved",
-      button: options.button,
+      button: "left",
       modifiers: 0,
       clickCount: 1,
       x: x + (x - x) * (1 / 1),
       y,
-      buttons: buttonsMap[options.button],
+      buttons: buttonsMap.left,
     });
 
     // Creating this here because by the time we send the below events, and try wait for the notification, the protocol may have already got the message and discarded it
-    const middleClickHandler = options.button === "middle"
+    const newPageHandler = options.waitFor === "newPage"
       ? "Page.frameRequestedNavigation"
       : null;
-    if (middleClickHandler) {
-      this.#protocol.notifications.set(
-        middleClickHandler,
+    if (newPageHandler) {
+      this.#page.notifications.set(
+        newPageHandler,
         deferred(),
       );
     }
 
-    await this.#protocol.send("Input.dispatchMouseEvent", {
+    await this.#page.send("Input.dispatchMouseEvent", {
       type: "mousePressed",
-      button: options.button,
+      button: "left",
       modifiers: 0,
       clickCount: 1,
       x,
       y,
-      buttons: buttonsMap[options.button],
+      buttons: buttonsMap.left,
     });
-    await this.#protocol.send("Input.dispatchMouseEvent", {
+    await this.#page.send("Input.dispatchMouseEvent", {
       type: "mouseReleased",
-      button: options.button,
+      button: "left",
       modifiers: 0,
       clickCount: 1,
       x,
       y,
-      buttons: buttonsMap[options.button],
+      buttons: buttonsMap.left,
     });
 
-    if (options.button === "middle" && middleClickHandler) {
-      const p1 = this.#protocol.notifications.get(
-        middleClickHandler,
+    if (newPageHandler) {
+      const p1 = this.#page.notifications.get(
+        newPageHandler,
       );
-      const { url, frameId } =
+      const { frameId } =
         await p1 as unknown as ProtocolTypes.Page.FrameRequestedNavigationEvent;
-      this.#protocol.notifications.delete(
-        middleClickHandler,
+      this.#page.notifications.delete(
+        newPageHandler,
       );
 
-      // Now, any events for the page we wont get, they will be sent thru the new targets ws connection, so we need to connect first:
-      // 1. Get target id of this new page
-      // 2. Create ws connection and protocol instance
-      // 3. Wait until the page has loaded properly and isnt about:blank
-      let targetId = "";
-      while (!targetId) { // The ws endpoint might not have the item straight away, so give it a tiny bit of time
-        const res = await fetch(
-          `http://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/json/list`,
-        );
-        const json = await res.json() as WebsocketTarget[];
-        const item = json.find((j) => j.url === url);
-        if (!item) {
-          continue;
-        }
-        targetId = item.id;
-      }
-      await this.#protocol.send("Target.attachToTarget", {
-        targetId: this.#page.target_id,
-      });
-      const newProt = await Protocol.create(
-        `ws://${this.#page.client.wsOptions.hostname}:${this.#page.client.wsOptions.port}/devtools/page/${targetId}`,
-      );
-      const endpointPromise = deferred();
-      const intervalId = setInterval(async () => {
-        const targets = await newProt.send<
-          null,
-          ProtocolTypes.Target.GetTargetsResponse
-        >("Target.getTargets");
-        const target = targets.targetInfos.find((t) =>
-          t.targetId === targetId
-        ) as ProtocolTypes.Target.TargetInfo;
-        if (target.title !== "about:blank") {
-          clearInterval(intervalId);
-          endpointPromise.resolve();
-        }
-      });
-      await endpointPromise;
-
-      this.#page.client._pushPage(
-        new Page(newProt, targetId, this.#page.client, frameId),
-      );
-    } else if (options.waitFor === "navigation") { // TODO :: Should we put this into its own method? waitForNavigation() to free up the maintability f this method, allowing us to add more params later but also for the mo, not need to do `.click({}, true)` OR maybe do `.click(..., waitFor: { navigation?: boolean, fetch?: boolean, ... }), because clicking needs to support: new pages, new locations, requests (any JS stuff, maybe when js is triggered it fired an event we can hook into?)
+      return await Page.create(this.#page.client, frameId) as Click<T>;
+    }
+    if (options.waitFor === "navigation") {
       await waitUntilNetworkIdle();
     }
-  }
 
-  /**
-   * Get an attribute on the element
-   *
-   * @example
-   * ```js
-   * const class = await elem.getAttribute("class"); // "form-control button"
-   * ```
-   *
-   * @param name - The name of the attribute
-   *
-   * @returns The attribute value
-   */
-  public async getAttribute(name: string): Promise<string> {
-    return await this.#page.evaluate(
-      `${this.#method}('${this.#selector}').getAttribute('${name}')`,
-    );
-  }
-  /**
-   * Set an attribute on the element
-   *
-   * @example
-   * ```js
-   * await elem.setAttribute("data-name", "Sinco");
-   * ```
-   *
-   * @param name - The name of the attribute
-   * @param value - The value to set the atrribute to
-   */
-  public async setAttribute(name: string, value: string): Promise<void> {
-    await this.#page.evaluate(
-      `${this.#method}('${this.#selector}').setAttribute('${name}', '${value}')`,
-    );
+    return undefined as Click<T>;
   }
 }
