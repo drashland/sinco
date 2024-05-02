@@ -9,14 +9,6 @@ export const regexes = {
   yml_deno: /deno: \[".+"\]/g,
 };
 
-export const preReleaseFiles = [
-  {
-    filename: "./egg.json",
-    replaceTheRegex: regexes.egg_json,
-    replaceWith: `"version": "{{ thisModulesLatestVersion }}"`,
-  },
-];
-
 const chromeVersionsRes = await fetch(
   "https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/versions",
 );
