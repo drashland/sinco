@@ -31,6 +31,8 @@ export class Element {
   /**
    * ObjectId belonging to this element
    */
+  readonly #objectId: string;
+
   readonly #node: ProtocolTypes.DOM.Node;
 
   /**
@@ -43,8 +45,10 @@ export class Element {
     selector: string,
     page: Page,
     node: ProtocolTypes.DOM.Node,
+    objectId: string,
   ) {
     this.#node = node;
+    this.#objectId = objectId;
     this.#page = page;
     this.#selector = selector;
   }
@@ -108,7 +112,7 @@ export class Element {
       "DOM.setFileInputFiles",
       {
         files: files,
-        nodeId: this.#node.nodeId,
+        objectId: this.#objectId,
         backendNodeId: this.#node.backendNodeId,
       },
     );
@@ -210,7 +214,7 @@ export class Element {
       ProtocolTypes.DOM.GetContentQuadsRequest,
       ProtocolTypes.DOM.GetContentQuadsResponse
     >("DOM.getContentQuads", {
-      nodeId: this.#node.nodeId,
+      objectId: this.#objectId,
     });
     const layoutMetrics = await this.#page.send<
       null,

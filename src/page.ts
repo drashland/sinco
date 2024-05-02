@@ -305,16 +305,23 @@ export class Page extends ProtocolClass {
         'The selector "' + selector + '" does not exist inside the DOM',
       );
     }
+
+    if (!result.result.objectId) {
+      await this.client.close("Unable to find the object");
+    }
+
     const { node } = await this.send<
       ProtocolTypes.DOM.DescribeNodeRequest,
       ProtocolTypes.DOM.DescribeNodeResponse
     >("DOM.describeNode", {
       objectId: result.result.objectId,
     });
+
     return new Element(
       selector,
       this,
       node,
+      result.result.objectId as string,
     );
   }
 

@@ -10,12 +10,6 @@ const serverAdd = `http://${
 Deno.test("element_test.ts", async (t) => {
   await t.step("click()", async (t) => {
     await t.step(
-      "Can handle things like downloads opening new tab then closing",
-      async () => {
-      },
-    );
-
-    await t.step(
       "It should allow clicking of elements and update location",
       async () => {
         const { browser, page } = await build({
