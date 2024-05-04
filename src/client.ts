@@ -33,6 +33,8 @@ export class Client {
    */
   readonly #browser_process: Deno.ChildProcess;
 
+  #closed = false;
+
   /**
    * The host and port that the websocket server is listening on
    */
@@ -68,6 +70,10 @@ export class Client {
     errMsg?: string,
     errClass: { new (message: string): Error } = Error,
   ) {
+    if (this.#closed) {
+      return;
+    }
+    
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     const p = deferred();
     this.#socket.onclose = () => p.resolve();
@@ -76,6 +82,7 @@ export class Client {
     this.#browser_process.kill();
     await this.#browser_process.status;
     await p;
+    this.#closed = true;
 
     if (errMsg) {
       throw new errClass(errMsg);
