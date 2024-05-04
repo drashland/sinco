@@ -68,7 +68,6 @@ Deno.test("element_test.ts", async (t) => {
         });
         await page.location("https://drash.land");
         const img = await page.querySelector("img");
-        Deno.mkdirSync(ScreenshotsFolder);
         await img.takeScreenshot({
           quality: 50,
         });
@@ -81,7 +80,6 @@ Deno.test("element_test.ts", async (t) => {
       server.run();
       await page.location(serverAdd + "/anchor-links");
       const a = await page.querySelector("a");
-      Deno.mkdirSync(ScreenshotsFolder);
       await a.takeScreenshot({
         format: "jpeg",
         quality: 100,
