@@ -73,7 +73,7 @@ export class Client {
     if (this.#closed) {
       return;
     }
-    
+
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
     const p = deferred();
     this.#socket.onclose = () => p.resolve();

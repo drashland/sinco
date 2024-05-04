@@ -1,6 +1,5 @@
 import { build } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
-const ScreenshotsFolder = "./Screenshots";
 import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
 const remote = Deno.args.includes("--remoteBrowser");

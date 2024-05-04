@@ -170,7 +170,7 @@ Deno.test("page_test.ts", async (t) => {
   await t.step({
     name: "consoleErrors()",
     fn: async (t) => {
-      await t.step(`Should throw when errors`, async () => {
+      await t.step(`Should return expected errors`, async () => {
         server.run();
         const { browser, page } = await build({
           remote,
