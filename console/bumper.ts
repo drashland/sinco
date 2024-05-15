@@ -4,6 +4,9 @@ const chromeVersionsRes = await fetch(
 const { versions } = await chromeVersionsRes.json();
 
 const dockerfile = Deno.readTextFileSync("./tests/drivers.dockerfile")
-  .replace(/ENV CHROME_VERSION \".*\"/, `ENV CHROME_VERSION "${versions[0].version}"`);
+  .replace(
+    /ENV CHROME_VERSION \".*\"/,
+    `ENV CHROME_VERSION "${versions[0].version}"`,
+  );
 
-Deno.writeTextFileSync('./tests/drivers.dockerfile', dockerfile);
+Deno.writeTextFileSync("./tests/drivers.dockerfile", dockerfile);
