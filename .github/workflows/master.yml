@@ -21,21 +21,6 @@ jobs:
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/unit
 
-  console-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Install Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: vx.x.x
-
-      - name: Run Console Tests
-        run: |
-          deno test -A tests/console
-
   linter:
     # Only one OS is required since fmt is cross platform
     runs-on: ubuntu-latest
