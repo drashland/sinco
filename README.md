@@ -219,3 +219,39 @@ const newPage = await anchor.click({
 });
 // ... Now `newPage` is a reference to the new tab that just opened
 ```
+
+### Authenticating
+
+One way of authenticating, say if there is a website that is behind a login, is
+to manually set some cookies e.g., `X-CSRF-TOKEN`:
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com/login");
+const token = await page.evaluate(() =>
+  document.querySelector('meta[name="token"]').value
+);
+await page.cookie({
+  name: "X-CSRF-TOKEN",
+  value: token,
+});
+await page.location("https://some-url.com/api/users");
+```
+
+Another approach would be to manually submit a login form:
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com/login");
+const button = await page.querySelector('[type="submit"]');
+await page.evaluate(() =>
+  document.querySelector('[type="email]').value = "..."
+);
+await page.evaluate(() =>
+  document.querySelector('[type="password]').value = "..."
+);
+await button.click({
+  waitFor: "navigation",
+});
+await page.evaluate("window.location.href"); // "https://some-url.com/dashboard"
+```
