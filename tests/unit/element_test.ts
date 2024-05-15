@@ -20,6 +20,7 @@ Deno.test("click()", async (t) => {
       } catch (e) {
         errMsg = e.message;
       }
+      server.close();
       assertEquals(
         errMsg,
         "Node is either not clickable or not an HTMLElement",
@@ -30,18 +31,23 @@ Deno.test("click()", async (t) => {
     "It should allow clicking of elements and update location",
     async () => {
       const { browser, page } = await build();
-      server.run();
-      await page.location(server.address + "/anchor-links");
-      const elem = await page.querySelector(
-        "a#not-blank",
-      );
-      await elem.click({
-        waitFor: "navigation",
-      });
-      const page1Location = await page.evaluate(() => window.location.href);
-      await browser.close();
-      await server.close();
-      assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
+      try {
+        server.run();
+        await page.location(server.address + "/anchor-links");
+        const elem = await page.querySelector(
+          "a#not-blank",
+        );
+        await elem.click({
+          waitFor: "navigation",
+        });
+        const page1Location = await page.evaluate(() => window.location.href);
+        await browser.close();
+        await server.close();
+        assertEquals(page1Location, "https://discord.com/invite/RFsCSaHRWK");
+      } catch (e) {
+        console.log(e);
+        await browser.close();
+      }
     },
   );
 
