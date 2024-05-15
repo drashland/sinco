@@ -51,9 +51,27 @@ import { build } from "...";
 const { browser, page } = await build();
 ```
 
+The hostname and port of the subprocess and debugger default to `localhost` and
+`9292` respectively. If you wish to customise this, you can:
+
+```ts
+await build({
+  hostname: "127.0.0.1",
+  debuggerPort: 1000,
+});
+```
+
 Be sure to always call `.close()` on the client once you've finished any actions
 with it, to ensure you do not leave any hanging ops, For example, closing after
 the last `browser.*` call or before assertions.
+
+You can also use `connect()` if you wish to connect to an existing remote
+process and not run a new subprocess yourself.
+
+````ts
+import { connect } from "...";
+const { browser, page } = await connect();
+```
 
 ### Visiting Pages
 
@@ -62,8 +80,132 @@ You can do this by calling `.location()` on the page:
 ```ts
 const { browser, page } = await build();
 await page.location("https://some-url.com");
+````
+
+### Taking Screenshots
+
+Utilise the `.screenshotMethod()` on a page or element:
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+const uint8array = await page.screenshot({ // Options are optional
+  format: "jpeg", // or png. Defaults to jpeg
+  quality: 50, // 0-100, only applicable if format is optional. Defaults to 80
+});
+const elem = await page.querySelector("div");
+const uint8array = await elem.screenshot(); // Same options as above
 ```
 
-## Taking Screenshots
+### Dialogs
 
-Utilise the `
+You're able to interact with dialogs (prompt, alert).
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+await page.dialog(false); // Decline the dialog
+await page.dialog(true); // Accept it
+await page.dialog(true, "I will be joining on 20/03/2024"); // Accept and provide prompt text
+```
+
+### Cookies
+
+You can get or set cookies
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+await page.cookie(); // Get the cookies, [ { ... }, { ... } ]
+await page.cookie({
+  name: "x-csrf-token",
+  value: "1234",
+  url: "/",
+});
+```
+
+### Evaluating (full DOM or dev console access)
+
+Evaluating will evaluate a command and you can use this to make any query to the
+DOM, think of it like you've got the devtools open. Maybe you want to create an
+element and add it to a list, or get the `innerHTML` of an element, or get the
+page title.
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+await page.evaluate("1 + 1"); // 2
+await page.evaluate(() => {
+  return document.title;
+}); // "Some title"
+await page.evaluate(() => {
+  return document.cookie;
+}); // "cxsrf=hello;john=doe"
+
+// You can reference variables inside the callback but you must pass them as parameters, and you can pass as many as you like. See how im using `username` and `greeting` in the callback, so I can pass these in as parameters to `.evaluate()` and also access them from the callback.
+await page.evaluate(
+  (username, greeting) => {
+    document.body.innerHTML = `${greeting}, ${username}`;
+  },
+  "Sinco",
+  "Hello",
+);
+```
+
+### Retreiving console errors
+
+This could be useful if you would like to quickly assert the page has no console
+errors. `.consoleErrors()` will return any console errors that have appeared up
+until this point.
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+await page.evaluate("1 + 1"); // 2
+const errors = await page.consoleErrors();
+```
+
+### Working with Elements (clicking, inputs)
+
+We provide ways to set files on a file input and click elements.
+
+To create a reference to an element, use
+`await page.querySelector("<css selector>")`, just like how you would use it in
+the browser.
+
+#### File operations
+
+We provide an easier way to set a file on a file input element.
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+const input = await page.querySelector('input[type="file"]');
+await input.file("./users.png");
+const multipleInput = await page.querySelector('input[type="file"]');
+await multipleInput.files(["./users.png", "./company.pdf"]);
+```
+
+#### Clicking
+
+You can also click elements, such as buttons or anchor tags.
+
+```ts
+const { browser, page } = await build();
+await page.location("https://some-url.com");
+const button = await page.querySelector('button[type="button"]');
+await button.click();
+// .. Do something else now button has been clicked
+
+// `navigation` is used if you need to wait for some kind of HTTP request, such as going to a different URL, or clicking a button that makes an API request
+const anchor = await page.querySelector("a");
+await anchor.click({
+  waitFor: "navigation",
+});
+
+const anchor = await page.querySelector('a[target="_BLANK"]');
+const newPage = await anchor.click({
+  waitFor: "newPage",
+});
+// ... Now `newPage` is a reference to the new tab that just opened
+```
