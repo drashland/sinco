@@ -1,9 +1,9 @@
-import type { Protocol } from "https://unpkg.com/devtools-protocol@0.0.979918/types/protocol.d.ts";
+import type { Protocol } from "https://unpkg.com/devtools-protocol@0.0.1300426/types/protocol.d.ts";
 export { Protocol };
 export {
   assertEquals,
   AssertionError,
   assertNotEquals,
-} from "https://deno.land/std@0.139.0/testing/asserts.ts";
-export { deferred } from "https://deno.land/std@0.139.0/async/deferred.ts";
-export type { Deferred } from "https://deno.land/std@0.139.0/async/deferred.ts";
+} from "https://deno.land/std@0.224.0/testing/asserts.ts";
+export { deferred } from "https://deno.land/std@0.224.0/async/deferred.ts";
+export type { Deferred } from "https://deno.land/std@0.224.0/async/deferred.ts";
