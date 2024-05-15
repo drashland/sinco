@@ -227,7 +227,7 @@ export class Element {
       ProtocolTypes.Page.GetLayoutMetricsResponse
     >("Page.getLayoutMetrics");
 
-    if (!result || !result.quads.length) {
+    if (!result || !result.quads?.length) {
       await this.#page.client.close(
         `Node is either not clickable or not an HTMLElement`,
       );

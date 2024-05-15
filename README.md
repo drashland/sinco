@@ -165,6 +165,16 @@ await page.evaluate("1 + 1"); // 2
 const errors = await page.consoleErrors();
 ```
 
+Due to race conditions with console errors, it's best not to assert the whole
+array, and instead assert the length or if it contains, for example:
+
+```ts
+const errors = await page.consoleErrors(); // ["user not defined", "undefined property company"];
+// It could be that on another test run, "user not defined" is the 2nd item in the array, so instead do the below.
+assertEquals(errors.length, 2);
+assertEquals(errors.includes("user not defined"));
+```
+
 ### Working with Elements (clicking, inputs)
 
 We provide ways to set files on a file input and click elements.
