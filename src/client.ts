@@ -146,6 +146,18 @@ export class Client {
       wsOptions,
     );
 
+    // Handle CTRL+C for example
+    // TODO :: Even if we remove this in the timeout callback, we still get leaking ops
+    // const onSIGINT = async () => {
+    //   await client.close();
+    //   Deno.exit(1);
+    // }
+    // Deno.addSignalListener("SIGINT", onSIGINT);
+    // Handle a timeout from our protocol
+    addEventListener("timeout", async (e) => {
+      await client.close((e as CustomEvent<string>).detail);
+    });
+
     const page = await Page.create(
       client,
       targetId,

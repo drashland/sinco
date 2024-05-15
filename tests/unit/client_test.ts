@@ -2,6 +2,21 @@ import { deferred } from "../../deps.ts";
 import { build } from "../../mod.ts";
 
 Deno.test("create()", async (t) => {
+  await t.step("Registers close listener", async () => {
+    await build();
+    const res = await fetch("http://localhost:9292/json/list");
+    const json = await res.json();
+    const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
+    let promise = deferred();
+    client.onopen = function () {
+      promise.resolve();
+    };
+    await promise;
+    promise = deferred();
+    client.onclose = () => promise.resolve();
+    dispatchEvent(new CustomEvent("timeout"));
+    await promise;
+  });
   await t.step(
     "Uses the port when passed in to the parameters",
     async () => {

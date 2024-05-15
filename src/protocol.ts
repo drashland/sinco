@@ -73,7 +73,22 @@ export class Protocol {
     const promise = deferred<ResponseType>();
     this.#messages.set(data.id, promise);
     this.socket.send(JSON.stringify(data));
+
+    let count = 0;
+    const maxDuration = 30;
+    const intervalId = setInterval(() => {
+      count++;
+      if (count === maxDuration) {
+        const event = new CustomEvent("timeout", {
+          detail: "Timed out as action took longer than 30s.",
+        });
+        dispatchEvent(event);
+        clearInterval(intervalId);
+      }
+    }, 1000);
+
     const result = await promise;
+    clearInterval(intervalId);
     this.#messages.delete(data.id);
     return result;
   }
