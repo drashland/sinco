@@ -4,6 +4,29 @@ import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
 Deno.test("click()", async (t) => {
   await t.step(
+    "It should fail if the element is no longer present in the DOM",
+    async () => {
+      server.run();
+      const { page } = await build();
+      await page.location(server.address + "/anchor-links");
+      // Need to make the element either not clickable or not a HTMLElement
+      const elem = await page.querySelector(
+        "a",
+      );
+      await page.location("https://google.com");
+      let errMsg = "";
+      try {
+        await elem.click();
+      } catch (e) {
+        errMsg = e.message;
+      }
+      assertEquals(
+        errMsg,
+        `todo`,
+      );
+    },
+  );
+  await t.step(
     "It should allow clicking of elements and update location",
     async () => {
       const { browser, page } = await build();

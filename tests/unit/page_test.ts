@@ -166,13 +166,19 @@ Deno.test({
       const errors = await page.consoleErrors();
       await browser.close();
       await server.close();
+      assertEquals(errors.length, 2);
       assertEquals(
-        errors,
-        [
-          "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        errors.includes(
           "ReferenceError: callUser is not defined\n" +
-          `    at ${server.address}/index.js:1:1`,
-        ],
+            `    at ${server.address}/index.js:1:1`,
+        ),
+        true,
+      );
+      assertEquals(
+        errors.includes(
+          "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        ),
+        true,
       );
     });
 

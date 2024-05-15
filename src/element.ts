@@ -201,13 +201,19 @@ export class Element {
     waitFor?: WaitFor;
   } = {}): Promise<Click<T>> {
     // Scroll into view
-    await this.#page.evaluate(
-      `${this.#method}('${this.#selector}').scrollIntoView({
-      block: 'center',
-      inline: 'center',
-      behavior: 'instant'
-    })`,
-    );
+    try {
+      await this.#page.evaluate(
+        `${this.#method}('${this.#selector}').scrollIntoView({
+        block: 'center',
+        inline: 'center',
+        behavior: 'instant'
+      })`,
+      );
+    } catch (e) {
+      await this.#page.client.close(
+        "It might be that the element is no longer in the DOM:" + e.message,
+      );
+    }
 
     // Get details we need for dispatching input events on the element
     const result = await this.#page.send<
@@ -220,6 +226,13 @@ export class Element {
       null,
       ProtocolTypes.Page.GetLayoutMetricsResponse
     >("Page.getLayoutMetrics");
+
+    if (!result || !result.quads.length) {
+      await this.#page.client.close(
+        `Node is either not clickable or not an HTMLElement`,
+      );
+    }
+
     // Ignoring because cssLayoutMetrics is present on chrome, but not firefox
     // deno-lint-ignore ban-ts-comment
     // @ts-ignore
