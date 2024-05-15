@@ -2,18 +2,13 @@ import { build } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
-const remote = Deno.args.includes("--remoteBrowser");
-const serverAdd = `http://${
-  remote ? "host.docker.internal" : "localhost"
-}:1447`;
+const serverAdd = `http://localhost:1447`;
 Deno.test("element_test.ts", async (t) => {
   await t.step("click()", async (t) => {
     await t.step(
       "It should allow clicking of elements and update location",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         server.run();
         await page.location(serverAdd + "/anchor-links");
         const elem = await page.querySelector(
@@ -32,9 +27,7 @@ Deno.test("element_test.ts", async (t) => {
     await t.step(
       "It should error if the HTML for the element is invalid",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         server.run();
         await page.location(serverAdd + "/anchor-links");
         const elem = await page.querySelector(
@@ -62,9 +55,7 @@ Deno.test("element_test.ts", async (t) => {
     await t.step(
       "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location("https://drash.land");
         const img = await page.querySelector("img");
         await img.takeScreenshot({
@@ -75,7 +66,7 @@ Deno.test("element_test.ts", async (t) => {
     );
 
     await t.step("Saves Screenshot with all options provided", async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       server.run();
       await page.location(serverAdd + "/anchor-links");
       const a = await page.querySelector("a");
@@ -95,9 +86,7 @@ Deno.test("element_test.ts", async (t) => {
         "Should throw if multiple files and input isnt multiple",
         async () => {
           server.run();
-          const { browser, page } = await build({
-            remote,
-          });
+          const { browser, page } = await build();
           await page.location(serverAdd + "/input");
           const elem = await page.querySelector("#single-file");
           let errMsg = "";
@@ -117,9 +106,7 @@ Deno.test("element_test.ts", async (t) => {
       );
       await t.step("Should throw if element isnt an input", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("p");
         let errMsg = "";
@@ -138,9 +125,7 @@ Deno.test("element_test.ts", async (t) => {
       });
       await t.step("Should throw if input is not of type file", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build()
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("#text");
         let errMsg = "";
@@ -159,9 +144,7 @@ Deno.test("element_test.ts", async (t) => {
       });
       await t.step("Should successfully upload files", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build(});
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("#multiple-file");
         try {
@@ -181,16 +164,14 @@ Deno.test("element_test.ts", async (t) => {
         }
       });
     },
-  }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
+  });
 
   await t.step({
     name: "file()",
     fn: async (t) => {
       await t.step("Should throw if element isnt an input", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("p");
         let errMsg = "";
@@ -209,9 +190,7 @@ Deno.test("element_test.ts", async (t) => {
       });
       await t.step("Should throw if input is not of type file", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("#text");
         let errMsg = "";
@@ -230,9 +209,7 @@ Deno.test("element_test.ts", async (t) => {
       });
       await t.step("Should successfully upload files", async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(serverAdd + "/input");
         const elem = await page.querySelector("#single-file");
         try {
@@ -249,5 +226,5 @@ Deno.test("element_test.ts", async (t) => {
         }
       });
     },
-  }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
+  });
 });

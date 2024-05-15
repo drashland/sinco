@@ -1,8 +1,6 @@
 import { deferred } from "../../deps.ts";
 import { build } from "../../mod.ts";
 
-const remote = Deno.args.includes("--remoteBrowser");
-
 Deno.test("client_test.ts", async (t) => {
   await t.step("create()", async (t) => {
     await t.step(
@@ -33,7 +31,7 @@ Deno.test("client_test.ts", async (t) => {
     await t.step(
       `Will start headless as a subprocess`,
       async () => {
-        const { browser } = await build({ remote });
+        const { browser } = await build();
         const res = await fetch("http://localhost:9292/json/list");
         const json = await res.json();
         // Our ws client should be able to connect if the browser is running
@@ -82,14 +80,13 @@ Deno.test("client_test.ts", async (t) => {
           await promise;
           await browser.close();
         },
-        ignore: remote, //Ignoring as binary path is not a necessisty to test for remote browsers
       },
     );
   });
 
   await t.step(`close()`, async (t) => {
     await t.step(`Should close all resources and not leak any`, async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://drash.land");
       await browser.close();
       // If resources are not closed or pending ops or leaked, this test will show it when ran
@@ -98,32 +95,22 @@ Deno.test("client_test.ts", async (t) => {
     await t.step({
       name: `Should close all page specific resources too`,
       fn: async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location("https://drash.land");
         await browser.close();
-        if (!remote) {
-          try {
-            const listener = Deno.listen({
-              port: 9292,
-              hostname: "localhost",
-            });
-            listener.close();
-          } catch (e) {
-            if (e instanceof Deno.errors.AddrInUse) {
-              throw new Error(
-                `Seems like the subprocess is still running: ${e.message}`,
-              );
-            }
-          }
-        } else {
-          const { browser: br2 } = await build({
-            remote,
+        try {
+          const listener = Deno.listen({
+            port: 9292,
+            hostname: "localhost",
           });
-          await br2.close();
+          listener.close();
+        } catch (e) {
+          if (e instanceof Deno.errors.AddrInUse) {
+            throw new Error(
+              `Seems like the subprocess is still running: ${e.message}`,
+            );
+          }
         }
-        // If resources are not closed or pending ops or leaked, this test will show it when ran
       },
     });
   });

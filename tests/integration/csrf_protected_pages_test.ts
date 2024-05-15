@@ -7,13 +7,11 @@ import { assertEquals } from "../../deps.ts";
 
 import { build } from "../../mod.ts";
 
-const remote = Deno.args.includes("--remoteBrowser");
-
 Deno.test("csrf_protected_pages_test.ts", async (t) => {
   await t.step(
     `CSRF Protected Pages - Tutorial for this feature in the docs should work`,
     async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://drash.land");
       await page.cookie({
         name: "X-CSRF-TOKEN",

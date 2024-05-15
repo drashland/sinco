@@ -1,18 +1,13 @@
 import { build } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
-const remote = Deno.args.includes("--remoteBrowser");
-const serverAdd = `http://${
-  remote ? "host.docker.internal" : "localhost"
-}:1447`;
+const serverAdd = `http://localhost:1447`;
 Deno.test("page_test.ts", async (t) => {
   await t.step("takeScreenshot()", async (t) => {
     await t.step(
       "takeScreenshot() | Takes a Screenshot",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location("https://drash.land");
         const result = await page.takeScreenshot();
         await browser.close();
@@ -23,7 +18,7 @@ Deno.test("page_test.ts", async (t) => {
     await t.step(
       "Throws an error when format passed is jpeg(or default) and quality > than 100",
       async () => {
-        const { page } = await build({ remote });
+        const { page } = await build();
         await page.location("https://drash.land");
         let msg = "";
         try {
@@ -44,9 +39,7 @@ Deno.test("page_test.ts", async (t) => {
     await t.step(
       "It should evaluate function on current frame",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location("https://drash.land");
         const pageTitle = await page.evaluate(() => {
           // deno-lint-ignore no-undef
@@ -57,7 +50,7 @@ Deno.test("page_test.ts", async (t) => {
       },
     );
     await t.step("It should evaluate string on current frame", async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://drash.land");
       const parentConstructor = await page.evaluate(`1 + 2`);
       await browser.close();
@@ -66,9 +59,7 @@ Deno.test("page_test.ts", async (t) => {
     await t.step(
       "You should be able to pass arguments to the callback",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location("https://drash.land");
         interface User {
           name: string;
@@ -112,9 +103,7 @@ Deno.test("page_test.ts", async (t) => {
     await t.step(
       "Handles correctly and doesnt hang when invalid URL",
       async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         let error = null;
         try {
           await page.location("https://google.comINPUT");
@@ -127,7 +116,7 @@ Deno.test("page_test.ts", async (t) => {
     );
 
     await t.step("Sets and gets the location", async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://google.com");
       await page.location("https://drash.land");
       const url = await page.evaluate(() => window.location.href);
@@ -138,7 +127,7 @@ Deno.test("page_test.ts", async (t) => {
 
   await t.step("cookie()", async (t) => {
     await t.step("Sets and gets cookies", async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://drash.land");
       await page.cookie({
         name: "user",
@@ -172,9 +161,7 @@ Deno.test("page_test.ts", async (t) => {
     fn: async (t) => {
       await t.step(`Should return expected errors`, async () => {
         server.run();
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(
           serverAdd,
         );
@@ -192,9 +179,7 @@ Deno.test("page_test.ts", async (t) => {
       });
 
       await t.step(`Should be empty if no errors`, async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         await page.location(
           "https://drash.land",
         );
@@ -203,15 +188,13 @@ Deno.test("page_test.ts", async (t) => {
         assertEquals(errors, []);
       });
     },
-  }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
+  });
 
   await t.step({
     name: "dialog()",
     fn: async (t) => {
       await t.step(`Accepts a dialog`, async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         server.run();
         await page.location(serverAdd + "/dialogs");
         const elem = await page.querySelector("#button");
@@ -226,9 +209,7 @@ Deno.test("page_test.ts", async (t) => {
         assertEquals(val, "Sinco 4eva");
       });
       await t.step(`Throws if a dialog was not expected`, async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         let errMsg = "";
         try {
           await page.dialog(true, "Sinco 4eva");
@@ -242,9 +223,7 @@ Deno.test("page_test.ts", async (t) => {
         );
       });
       await t.step(`Rejects a dialog`, async () => {
-        const { browser, page } = await build({
-          remote,
-        });
+        const { browser, page } = await build();
         server.run();
         await page.location(serverAdd + "/dialogs");
         const elem = await page.querySelector("#button");
@@ -259,5 +238,4 @@ Deno.test("page_test.ts", async (t) => {
         assertEquals(val, "");
       });
     },
-  }); //Ignoring until we figure out a way to run the server on a remote container accesible to the remote browser
-});
+  });

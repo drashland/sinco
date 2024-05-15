@@ -21,11 +21,11 @@ jobs:
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration
           docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/unit
 
-      - name: Tests (remote)
+      - name: Remote tests
         run: |
-          docker compose -f tests/integration/docker_test/docker-compose.yml up remotes -d
-          deno test -A tests/integration --config tsconfig.json --no-check=remote -- --remoteBrowser
-          deno test -A tests/integration --config tsconfig.json --no-check=remote -- --remoteBrowser
+          cd tests/integration/docker_test
+          docker-compose up -d remotes
+          docker exec drivers deno test -A --config tsconfig.json --no-check=remote tests/integration/remote_test.ts
 
   console-tests:
     runs-on: ubuntu-latest

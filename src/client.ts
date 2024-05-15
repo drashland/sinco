@@ -1,6 +1,5 @@
 import { deferred } from "../deps.ts";
 import { Page } from "./page.ts";
-import { getChromeArgs } from "./utility.ts";
 
 /**
  * A way to interact with the headless browser instance.
@@ -31,7 +30,7 @@ export class Client {
   /**
    * The sub process that runs headless chrome
    */
-  readonly #browser_process: Deno.ChildProcess;
+  readonly #browser_process: Deno.ChildProcess | undefined;
 
   #closed = false;
 
@@ -49,7 +48,7 @@ export class Client {
    */
   constructor(
     socket: WebSocket,
-    browserProcess: Deno.ChildProcess,
+    browserProcess: Deno.ChildProcess | undefined,
     wsOptions: {
       hostname: string;
       port: number;
@@ -75,12 +74,17 @@ export class Client {
     }
 
     // Close browser process (also closes the ws endpoint, which in turn closes all sockets)
+    // Though if browser process isn't present (eg remote) then just close socket
     const p = deferred();
     this.#socket.onclose = () => p.resolve();
-    this.#browser_process.stderr.cancel();
-    this.#browser_process.stdout.cancel();
-    this.#browser_process.kill();
-    await this.#browser_process.status;
+    if (this.#browser_process) {
+      this.#browser_process.stderr.cancel();
+      this.#browser_process.stdout.cancel();
+      this.#browser_process.kill();
+      await this.#browser_process.status;
+    } else {
+      this.#socket.close();
+    }
     await p;
     this.#closed = true;
 
@@ -104,36 +108,11 @@ export class Client {
       hostname: string;
       port: number;
     },
+    browserProcess: Deno.ChildProcess | undefined = undefined,
   ): Promise<{
     browser: Client;
     page: Page;
   }> {
-    const buildArgs = getChromeArgs(wsOptions.port);
-    const path = buildArgs.splice(0, 1)[0];
-    const command = new Deno.Command(path, {
-      args: buildArgs,
-      stderr: "piped",
-      stdout: "piped",
-    });
-    const browserProcess = command.spawn();
-    // Old approach until we discovered we can always just use fetch
-    // // Get the main ws conn for the client - this loop is needed as the ws server isn't open until we get the listeneing on.
-    // // We could just loop on the fetch of the /json/list endpoint, but we could tank the computers resources if the endpoint
-    // // isn't up for another 10s, meaning however many fetch requests in 10s
-    // // Sometimes it takes a while for the "Devtools listening on ws://..." line to show on windows + firefox too
-    // import { TextLineStream } from "jsr:@std/streams";
-    // for await (
-    //   const line of browserProcess.stderr.pipeThrough(new TextDecoderStream())
-    //     .pipeThrough(new TextLineStream())
-    // ) { // Loop also needed before json endpoint is up
-    //   const match = line.match(/^DevTools listening on (ws:\/\/.*)$/);
-    //   if (!match) {
-    //     continue;
-    //   }
-    //   browserWsUrl = line.split("on ")[1];
-    //   break;
-    // }
-
     // Wait until endpoint is ready and get a WS connection
     // to the main socket
     const p = deferred<WebSocket>();

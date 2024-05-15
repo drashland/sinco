@@ -1,11 +1,9 @@
 import { assertEquals } from "../../deps.ts";
 import { build } from "../../mod.ts";
 
-const remote = Deno.args.includes("--remoteBrowser");
-
 Deno.test("manipulate_page_test.ts", async (t) => {
   await t.step("Manipulate Webpage", async () => {
-    const { browser, page } = await build({ remote });
+    const { browser, page } = await build();
     await page.location("https://drash.land");
 
     const updatedBody = await page.evaluate(() => {
@@ -26,7 +24,7 @@ Deno.test("manipulate_page_test.ts", async (t) => {
   await t.step(
     "Evaluating a script - Tutorial for this feature in the documentation works",
     async () => {
-      const { browser, page } = await build({ remote });
+      const { browser, page } = await build();
       await page.location("https://drash.land");
       const pageTitle = await page.evaluate(() => {
         // deno-lint-ignore no-undef
@@ -49,8 +47,9 @@ Deno.test("manipulate_page_test.ts", async (t) => {
       await browser.close();
       assertEquals(pageTitle, "Drash Land");
       assertEquals(sum, 11);
-      assertEquals(oldBodyLength, remote ? 5 : 3);
-      assertEquals(newBodyLength, remote ? 6 : 4);
+      // TODO :: Do this test but for remote as well
+      assertEquals(oldBodyLength, 3);
+      assertEquals(newBodyLength, 4);
     },
   );
 });

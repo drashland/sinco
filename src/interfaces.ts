@@ -5,8 +5,6 @@ export interface BuildOptions {
   hostname?: string;
   /** The path to the binary of the browser executable, such as specifying an alternative chromium browser */
   binaryPath?: string;
-  /** If the Browser is a remote process */
-  remote?: boolean;
 }
 
 export interface ScreenshotOptions {

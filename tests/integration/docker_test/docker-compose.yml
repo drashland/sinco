@@ -13,6 +13,7 @@ services:
       - ../../../tsconfig.json:/var/www/docker-test/tsconfig.json
     command: bash -c "tail -f /dev/null"
     working_dir: /var/www/docker-test
+
   remotes:
     container_name: remotes
     restart: always
