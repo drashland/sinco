@@ -7,23 +7,18 @@ import { assertEquals } from "../../deps.ts";
 
 import { build } from "../../mod.ts";
 
-Deno.test("csrf_protected_pages_test.ts", async (t) => {
-  await t.step(
-    `CSRF Protected Pages - Tutorial for this feature in the docs should work`,
-    async () => {
-      const { browser, page } = await build();
-      await page.location("https://drash.land");
-      await page.cookie({
-        name: "X-CSRF-TOKEN",
-        value: "hi:)",
-        url: "https://drash.land",
-      });
-      await page.location("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
-      const cookieVal = await page.evaluate(() => {
-        return document.cookie;
-      });
-      await browser.close();
-      assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
-    },
-  );
+Deno.test(`Tutorial for this feature in the docs should work`, async () => {
+  const { browser, page } = await build();
+  await page.location("https://drash.land");
+  await page.cookie({
+    name: "X-CSRF-TOKEN",
+    value: "hi:)",
+    url: "https://drash.land",
+  });
+  await page.location("https://drash.land/drash/v1.x/#/"); // Going here to ensure the cookie stays
+  const cookieVal = await page.evaluate(() => {
+    return document.cookie;
+  });
+  await browser.close();
+  assertEquals(cookieVal, "X-CSRF-TOKEN=hi:)");
 });

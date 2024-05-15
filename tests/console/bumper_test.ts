@@ -7,12 +7,12 @@ Deno.test("Updates chrome version in dockerfile", async () => {
   const { versions } = await chromeVersionsRes.json();
   const version = versions[0].version;
   const originalContents = Deno.readTextFileSync(
-    "./tests/integration/docker_test/drivers.dockerfile",
+    "./tests/drivers.dockerfile",
   );
   let newContent = originalContents;
   newContent.replace(/CHROME_VERSION \".*\"/, 'CHROME VERSION "123"');
   Deno.writeTextFileSync(
-    "./tests/integration/docker_test/drivers.dockerfile",
+    "./tests/drivers.dockerfile",
     newContent,
   );
   const p = new Deno.Command("deno", {
@@ -21,7 +21,7 @@ Deno.test("Updates chrome version in dockerfile", async () => {
   const child = p.spawn();
   await child.status;
   newContent = Deno.readTextFileSync(
-    "./tests/integration/docker_test/drivers.dockerfile",
+    "./tests/drivers.dockerfile",
   );
   assertEquals(newContent.includes(`CHROME_VERSION "${version}"`), true);
 });

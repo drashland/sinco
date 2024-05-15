@@ -16,7 +16,7 @@ const { versions } = await chromeVersionsRes.json();
 
 export const bumperFiles = [
   {
-    filename: "./tests/integration/docker_test/drivers.dockerfile",
+    filename: "./tests/drivers.dockerfile",
     replaceTheRegex: /ENV CHROME_VERSION \".*\"/,
     replaceWith: `ENV CHROME_VERSION "${versions[0].version}"`,
   },

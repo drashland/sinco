@@ -1,0 +1,15 @@
+services:
+  drivers:
+    container_name: drivers
+    build:
+      context: .
+      dockerfile: drivers.dockerfile
+    volumes:
+      - /dev/shm:/dev/shm
+      - ../src:/var/www/docker-test/src
+      - ../tests:/var/www/docker-test/tests
+      - ../deps.ts:/var/www/docker-test/deps.ts
+      - ../mod.ts:/var/www/docker-test/mod.ts
+      - ../tsconfig.json:/var/www/docker-test/tsconfig.json
+    command: bash -c "tail -f /dev/null"
+    working_dir: /var/www/docker-test
