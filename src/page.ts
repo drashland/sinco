@@ -348,7 +348,7 @@ export class Page extends ProtocolClass {
    * @example
    * ```ts
    * try {
-   *  Deno.writeFileSync('./tets.png', await page.takeScreenshot());
+   *  Deno.writeFileSync('./tets.png', await page.screenshot());
    * } catch (e) {
    *   await browser.close(e.message);
    * }
@@ -356,7 +356,7 @@ export class Page extends ProtocolClass {
    *
    * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
    */
-  public async takeScreenshot(
+  public async screenshot(
     options?: ScreenshotOptions,
   ): Promise<Uint8Array> {
     const ext = options?.format ?? "jpeg";
@@ -369,7 +369,7 @@ export class Page extends ProtocolClass {
     }
 
     // Quality should defined only if format is jpeg
-    const quality = (ext == "jpeg")
+    const quality = (ext === "jpeg")
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 

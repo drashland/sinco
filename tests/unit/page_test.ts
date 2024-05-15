@@ -1,13 +1,13 @@
 import { build } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
-Deno.test("takeScreenshot()", async (t) => {
+Deno.test("screenshot()", async (t) => {
   await t.step(
-    "takeScreenshot() | Takes a Screenshot",
+    "screenshot() | Takes a Screenshot",
     async () => {
       const { browser, page } = await build();
       await page.location("https://drash.land");
-      const result = await page.takeScreenshot();
+      const result = await page.screenshot();
       await browser.close();
       assertEquals(result instanceof Uint8Array, true);
     },
@@ -20,7 +20,7 @@ Deno.test("takeScreenshot()", async (t) => {
       await page.location("https://drash.land");
       let msg = "";
       try {
-        await page.takeScreenshot({ quality: 999 });
+        await page.screenshot({ quality: 999 });
       } catch (error) {
         msg = error.message;
       }

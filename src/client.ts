@@ -122,7 +122,7 @@ export class Client {
           `http://${wsOptions.hostname}:${wsOptions.port}/json/version`,
         );
         const json = await res.json();
-        console.log(json['webSocketDebuggerUrl'])
+        console.log(json["webSocketDebuggerUrl"]);
         const socket = new WebSocket(json["webSocketDebuggerUrl"]);
         const p2 = deferred();
         socket.onopen = () => p2.resolve();

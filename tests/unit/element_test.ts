@@ -49,14 +49,14 @@ Deno.test("click()", async (t) => {
   );
 });
 
-Deno.test("takeScreenshot()", async (t) => {
+Deno.test("screenshot()", async (t) => {
   await t.step(
     "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
     async () => {
       const { browser, page } = await build();
       await page.location("https://drash.land");
       const img = await page.querySelector("img");
-      await img.takeScreenshot({
+      await img.screenshot({
         quality: 50,
       });
       await browser.close();
@@ -68,7 +68,7 @@ Deno.test("takeScreenshot()", async (t) => {
     server.run();
     await page.location(server.address + "/anchor-links");
     const a = await page.querySelector("a");
-    await a.takeScreenshot({
+    await a.screenshot({
       format: "jpeg",
       quality: 100,
     });

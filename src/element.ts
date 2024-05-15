@@ -123,7 +123,7 @@ export class Element {
    *
    * @example
    * ```ts
-   * const uint8array = await element.takeScreenshot();
+   * const uint8array = await element.screenshot();
    * Deno.writeFileSync('./file.jpg', uint8array);
    * ```
    *
@@ -132,7 +132,7 @@ export class Element {
    *
    * @returns The data
    */
-  async takeScreenshot(
+  async screenshot(
     options?: ScreenshotOptions,
   ): Promise<Uint8Array> {
     const ext = options?.format ?? "jpeg";
