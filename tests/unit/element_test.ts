@@ -22,7 +22,7 @@ Deno.test("click()", async (t) => {
       }
       assertEquals(
         errMsg,
-        `todo`,
+        "Node is either not clickable or not an HTMLElement",
       );
     },
   );
