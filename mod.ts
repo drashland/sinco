@@ -12,14 +12,16 @@ const defaultOptions = {
 };
 
 export async function build(
-  options: BuildOptions = defaultOptions,
+  {
+    hostname = "localhost",
+    debuggerPort = 9292,
+    binaryPath,
+  }: BuildOptions = defaultOptions,
 ): Promise<{
   browser: Client;
   page: Page;
 }> {
-  if (!options.debuggerPort) options.debuggerPort = 9292;
-  if (!options.hostname) options.hostname = "localhost";
-  const buildArgs = getChromeArgs(options.debuggerPort);
+  const buildArgs = getChromeArgs(debuggerPort, binaryPath);
   const path = buildArgs.splice(0, 1)[0];
   const command = new Deno.Command(path, {
     args: buildArgs,
@@ -30,21 +32,22 @@ export async function build(
 
   return await Client.create(
     {
-      hostname: options.hostname,
-      port: options.debuggerPort,
+      hostname,
+      port: debuggerPort,
     },
     browserProcess,
   );
 }
 
-export async function connect(options: BuildOptions = defaultOptions) {
-  if (!options.debuggerPort) options.debuggerPort = 9292;
-  if (!options.hostname) options.hostname = "localhost";
-
+export async function connect({
+  hostname = "localhost",
+  debuggerPort = 9292,
+}: BuildOptions = defaultOptions) {
+  console.log(hostname, debuggerPort);
   return await Client.create(
     {
-      hostname: options.hostname,
-      port: options.debuggerPort,
+      hostname,
+      port: debuggerPort,
     },
   );
 }
