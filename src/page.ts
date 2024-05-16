@@ -23,8 +23,6 @@ export class Page extends ProtocolClass {
 
   #console_errors: string[] = [];
 
-  #uuid: string;
-
   constructor(
     targetId: string,
     client: Client,
@@ -33,7 +31,6 @@ export class Page extends ProtocolClass {
     super(socket);
     this.target_id = targetId;
     this.client = client;
-    this.#uuid = (Math.random() + 1).toString(36).substring(7);
 
     this.#listenForErrors();
   }
