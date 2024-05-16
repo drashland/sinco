@@ -47,15 +47,15 @@ You use Sinco to build a subprocess (client) and interact with the page that has
 been opened. This defaults to "about:blank".
 
 ```ts
-import { build } from "...";
-const { browser, page } = await build();
+import { Client } from "...";
+const { browser, page } = await Client.create();
 ```
 
 The hostname and port of the subprocess and debugger default to `localhost` and
 `9292` respectively. If you wish to customise this, you can:
 
 ```ts
-await build({
+await Client.create({
   hostname: "127.0.0.1",
   debuggerPort: 1000,
 });
@@ -65,12 +65,14 @@ Be sure to always call `.close()` on the client once you've finished any actions
 with it, to ensure you do not leave any hanging ops, For example, closing after
 the last `browser.*` call or before assertions.
 
-You can also use `connect()` if you wish to connect to an existing remote
-process and not run a new subprocess yourself.
+You can also use an existing remote process and not run a new subprocess
+yourself.
 
-````ts
-import { connect } from "...";
-const { browser, page } = await connect();
+```ts
+import { Client } from "...";
+const { browser, page } = await Client.create({
+  remote: true,
+});
 ```
 
 ### Visiting Pages
@@ -78,16 +80,16 @@ const { browser, page } = await connect();
 You can do this by calling `.location()` on the page:
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
-````
+```
 
 ### Taking Screenshots
 
 Utilise the `.screenshotMethod()` on a page or element:
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 const uint8array = await page.screenshot({ // Options are optional
   format: "jpeg", // or png. Defaults to jpeg
@@ -102,7 +104,7 @@ const uint8array = await elem.screenshot(); // Same options as above
 You're able to interact with dialogs (prompt, alert).
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 await page.dialog(false); // Decline the dialog
 await page.dialog(true); // Accept it
@@ -114,7 +116,7 @@ await page.dialog(true, "I will be joining on 20/03/2024"); // Accept and provid
 You can get or set cookies
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 await page.cookie(); // Get the cookies, [ { ... }, { ... } ]
 await page.cookie({
@@ -132,7 +134,7 @@ element and add it to a list, or get the `innerHTML` of an element, or get the
 page title.
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 await page.evaluate("1 + 1"); // 2
 await page.evaluate(() => {
@@ -159,7 +161,7 @@ errors. `.consoleErrors()` will return any console errors that have appeared up
 until this point.
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 await page.evaluate("1 + 1"); // 2
 const errors = await page.consoleErrors();
@@ -188,7 +190,7 @@ the browser.
 We provide an easier way to set a file on a file input element.
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 const input = await page.querySelector('input[type="file"]');
 await input.file("./users.png");
@@ -201,7 +203,7 @@ await multipleInput.files(["./users.png", "./company.pdf"]);
 You can also click elements, such as buttons or anchor tags.
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
 const button = await page.querySelector('button[type="button"]');
 await button.click();
@@ -226,7 +228,7 @@ One way of authenticating, say if there is a website that is behind a login, is
 to manually set some cookies e.g., `X-CSRF-TOKEN`:
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com/login");
 const token = await page.evaluate(() =>
   document.querySelector('meta[name="token"]').value
@@ -241,7 +243,7 @@ await page.location("https://some-url.com/api/users");
 Another approach would be to manually submit a login form:
 
 ```ts
-const { browser, page } = await build();
+const { browser, page } = await Client.create();
 await page.location("https://some-url.com/login");
 const button = await page.querySelector('[type="submit"]');
 await page.evaluate(() =>

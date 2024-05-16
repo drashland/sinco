@@ -5,6 +5,8 @@ export interface BuildOptions {
   hostname?: string;
   /** The path to the binary of the browser executable, such as specifying an alternative chromium browser */
   binaryPath?: string;
+  /** If true, will not run a subprocess but will still connect to the ws endpoint using above info */
+  remote?: boolean;
 }
 
 export interface ScreenshotOptions {

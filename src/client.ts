@@ -1,5 +1,14 @@
 import { deferred } from "../deps.ts";
+import { BuildOptions, WebsocketTarget } from "./interfaces.ts";
 import { Page } from "./page.ts";
+import { getChromeArgs } from "./utility.ts";
+
+const defaultOptions = {
+  hostname: "localhost",
+  debuggerPort: 9292,
+  binaryPath: undefined,
+  remote: false,
+};
 
 /**
  * A way to interact with the headless browser instance.
@@ -104,24 +113,37 @@ export class Client {
    * @returns A client and browser instance, ready to be used
    */
   static async create(
-    wsOptions: {
-      hostname: string;
-      port: number;
-    },
-    browserProcess: Deno.ChildProcess | undefined = undefined,
+    {
+      hostname = "localhost",
+      debuggerPort = 9292,
+      binaryPath,
+      remote,
+    }: BuildOptions = defaultOptions,
   ): Promise<{
     browser: Client;
     page: Page;
   }> {
+    let browserProcess: Deno.ChildProcess | undefined = undefined;
+
+    if (!remote) {
+      const buildArgs = getChromeArgs(debuggerPort, binaryPath);
+      const path = buildArgs.splice(0, 1)[0];
+      const command = new Deno.Command(path, {
+        args: buildArgs,
+        stderr: "piped",
+        stdout: "piped",
+      });
+      browserProcess = command.spawn();
+    }
     // Wait until endpoint is ready and get a WS connection
     // to the main socket
     const p = deferred<WebSocket>();
     const intervalId = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://${wsOptions.hostname}:${wsOptions.port}/json/version`,
+          `http://${hostname}:${debuggerPort}/json/version`,
         );
-        const json = await res.json();
+        const json = await res.json() as WebsocketTarget;
         const socket = new WebSocket(json["webSocketDebuggerUrl"]);
         const p2 = deferred();
         socket.onopen = () => p2.resolve();
@@ -136,14 +158,17 @@ export class Client {
     const clientSocket = await p;
 
     const listRes = await fetch(
-      `http://${wsOptions.hostname}:${wsOptions.port}/json/list`,
+      `http://${hostname}:${debuggerPort}/json/list`,
     );
     const targetId = (await listRes.json())[0]["id"];
 
     const client = new Client(
       clientSocket,
       browserProcess,
-      wsOptions,
+      {
+        hostname,
+        port: debuggerPort,
+      },
     );
 
     // Handle CTRL+C for example
