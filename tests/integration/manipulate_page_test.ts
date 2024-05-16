@@ -1,10 +1,10 @@
 import { assertEquals } from "../../deps.ts";
-import { build } from "../../mod.ts";
+import { Client } from "../../mod.ts";
 
 Deno.test(
   "Evaluating a script - Tutorial for this feature in the documentation works",
   async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     await page.location("https://drash.land");
     const pageTitle = await page.evaluate(() => {
       // deno-lint-ignore no-undef

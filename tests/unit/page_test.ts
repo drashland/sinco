@@ -1,11 +1,11 @@
-import { build } from "../../mod.ts";
+import { Client } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
 Deno.test("screenshot()", async (t) => {
   await t.step(
     "screenshot() | Takes a Screenshot",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       const result = await page.screenshot();
       await browser.close();
@@ -16,7 +16,7 @@ Deno.test("screenshot()", async (t) => {
   await t.step(
     "Throws an error when format passed is jpeg(or default) and quality > than 100",
     async () => {
-      const { page } = await build();
+      const { page } = await Client.create();
       await page.location("https://drash.land");
       let msg = "";
       try {
@@ -37,7 +37,7 @@ Deno.test("evaluate()", async (t) => {
   await t.step(
     "It should evaluate function on current frame",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       const pageTitle = await page.evaluate(() => {
         // deno-lint-ignore no-undef
@@ -48,7 +48,7 @@ Deno.test("evaluate()", async (t) => {
     },
   );
   await t.step("It should evaluate string on current frame", async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     await page.location("https://drash.land");
     const parentConstructor = await page.evaluate(`1 + 2`);
     await browser.close();
@@ -57,7 +57,7 @@ Deno.test("evaluate()", async (t) => {
   await t.step(
     "You should be able to pass arguments to the callback",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       interface User {
         name: string;
@@ -101,7 +101,7 @@ Deno.test("location()", async (t) => {
   await t.step(
     "Handles correctly and doesnt hang when invalid URL",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       let error = null;
       try {
         await page.location("https://google.comINPUT");
@@ -114,7 +114,7 @@ Deno.test("location()", async (t) => {
   );
 
   await t.step("Sets and gets the location", async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     await page.location("https://google.com");
     await page.location("https://drash.land");
     const url = await page.evaluate(() => window.location.href);
@@ -125,7 +125,7 @@ Deno.test("location()", async (t) => {
 
 Deno.test("cookie()", async (t) => {
   await t.step("Sets and gets cookies", async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     await page.location("https://drash.land");
     await page.cookie({
       name: "user",
@@ -159,7 +159,7 @@ Deno.test({
   fn: async (t) => {
     await t.step(`Should return expected errors`, async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(
         server.address,
       );
@@ -183,7 +183,7 @@ Deno.test({
     });
 
     await t.step(`Should be empty if no errors`, async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(
         "https://drash.land",
       );
@@ -198,7 +198,7 @@ Deno.test({
   name: "dialog()",
   fn: async (t) => {
     await t.step(`Accepts a dialog`, async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       server.run();
       await page.location(server.address + "/dialogs");
       const elem = await page.querySelector("#button");
@@ -213,7 +213,7 @@ Deno.test({
       assertEquals(val, "Sinco 4eva");
     });
     await t.step(`Throws if a dialog was not expected`, async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       let errMsg = "";
       try {
         await page.dialog(true, "Sinco 4eva");
@@ -227,7 +227,7 @@ Deno.test({
       );
     });
     await t.step(`Rejects a dialog`, async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       server.run();
       await page.location(server.address + "/dialogs");
       const elem = await page.querySelector("#button");

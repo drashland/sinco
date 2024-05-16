@@ -1,9 +1,9 @@
 import { deferred } from "../../deps.ts";
-import { build } from "../../mod.ts";
+import { Client } from "../../mod.ts";
 
 Deno.test("create()", async (t) => {
   await t.step("Registers close listener", async () => {
-    await build();
+    await Client.create();
     const res = await fetch("http://localhost:9292/json/list");
     const json = await res.json();
     const client = new WebSocket(json[0]["webSocketDebuggerUrl"]);
@@ -20,7 +20,7 @@ Deno.test("create()", async (t) => {
   await t.step(
     "Uses the port when passed in to the parameters",
     async () => {
-      const { browser } = await build({
+      const { browser } = await Client.create({
         debuggerPort: 9999,
       });
       const res = await fetch("http://localhost:9999/json/list");
@@ -45,7 +45,7 @@ Deno.test("create()", async (t) => {
   await t.step(
     `Will start headless as a subprocess`,
     async () => {
-      const { browser } = await build();
+      const { browser } = await Client.create();
       const res = await fetch("http://localhost:9292/json/list");
       const json = await res.json();
       // Our ws client should be able to connect if the browser is running
@@ -76,7 +76,7 @@ Deno.test("create()", async (t) => {
     {
       name: "Uses the binaryPath when passed in to the parameters",
       fn: async () => {
-        const { browser } = await build({
+        const { browser } = await Client.create({
           //binaryPath: await browserItem.getPath(),
         });
 
@@ -100,7 +100,7 @@ Deno.test("create()", async (t) => {
 
 Deno.test(`close()`, async (t) => {
   await t.step(`Should close all resources and not leak any`, async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     await page.location("https://drash.land");
     await browser.close();
     // If resources are not closed or pending ops or leaked, this test will show it when ran
@@ -109,7 +109,7 @@ Deno.test(`close()`, async (t) => {
   await t.step({
     name: `Should close all page specific resources too`,
     fn: async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       await browser.close();
       try {

@@ -1,4 +1,4 @@
-import { build } from "../../mod.ts";
+import { Client } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
 import { resolve } from "../deps.ts";
@@ -7,7 +7,7 @@ Deno.test("click()", async (t) => {
     "It should fail if the element is no longer present in the DOM",
     async () => {
       server.run();
-      const { page } = await build();
+      const { page } = await Client.create();
       await page.location(server.address + "/anchor-links");
       // Need to make the element either not clickable or not a HTMLElement
       const elem = await page.querySelector(
@@ -30,7 +30,7 @@ Deno.test("click()", async (t) => {
   await t.step(
     "It should allow clicking of elements and update location",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       try {
         server.run();
         await page.location(server.address + "/anchor-links");
@@ -54,7 +54,7 @@ Deno.test("click()", async (t) => {
   await t.step(
     "It should error if the HTML for the element is invalid",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       server.run();
       await page.location(server.address + "/anchor-links");
       const elem = await page.querySelector(
@@ -82,7 +82,7 @@ Deno.test("screenshot()", async (t) => {
   await t.step(
     "Takes Screenshot of only the element passed as selector and also quality(only if the image is jpeg)",
     async () => {
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       const img = await page.querySelector("img");
       await img.screenshot({
@@ -93,7 +93,7 @@ Deno.test("screenshot()", async (t) => {
   );
 
   await t.step("Saves Screenshot with all options provided", async () => {
-    const { browser, page } = await build();
+    const { browser, page } = await Client.create();
     server.run();
     await page.location(server.address + "/anchor-links");
     const a = await page.querySelector("a");
@@ -113,7 +113,7 @@ Deno.test({
       "Should throw if multiple files and input isnt multiple",
       async () => {
         server.run();
-        const { browser, page } = await build();
+        const { browser, page } = await Client.create();
         await page.location(server.address + "/input");
         const elem = await page.querySelector("#single-file");
         let errMsg = "";
@@ -133,7 +133,7 @@ Deno.test({
     );
     await t.step("Should throw if element isnt an input", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("p");
       let errMsg = "";
@@ -152,7 +152,7 @@ Deno.test({
     });
     await t.step("Should throw if input is not of type file", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("#text");
       let errMsg = "";
@@ -171,7 +171,7 @@ Deno.test({
     });
     await t.step("Should successfully upload files", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("#multiple-file");
       try {
@@ -198,7 +198,7 @@ Deno.test({
   fn: async (t) => {
     await t.step("Should throw if element isnt an input", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("p");
       let errMsg = "";
@@ -217,7 +217,7 @@ Deno.test({
     });
     await t.step("Should throw if input is not of type file", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("#text");
       let errMsg = "";
@@ -236,7 +236,7 @@ Deno.test({
     });
     await t.step("Should successfully upload files", async () => {
       server.run();
-      const { browser, page } = await build();
+      const { browser, page } = await Client.create();
       await page.location(server.address + "/input");
       const elem = await page.querySelector("#single-file");
       try {
