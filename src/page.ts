@@ -176,8 +176,6 @@ export class Page extends ProtocolClass {
 
     // Usually if an invalid URL is given, the WS never gets a notification
     // but we get a message with the id associated with the msg we sent
-    // TODO :: Ideally the protocol class would throw and we could catch it so we know
-    // for sure its an error
     if ("errorText" in res) {
       await this.client.close(res.errorText);
       return;

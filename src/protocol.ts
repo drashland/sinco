@@ -69,6 +69,7 @@ export class Protocol {
       id: this.#next_message_id++,
       method: method,
     };
+
     if (params) data.params = params;
     const promise = deferred<ResponseType>();
     this.#messages.set(data.id, promise);
@@ -124,29 +125,6 @@ export class Protocol {
       }
       if ("resolve" in resolvable && "reject" in resolvable) {
         resolvable.resolve(message.params);
-      }
-      if ("params" in resolvable && "promise" in resolvable) {
-        let allMatch = false;
-        Object.keys(resolvable.params).forEach((paramName) => {
-          if (
-            allMatch === true &&
-            (message.params[paramName] as string | number).toString() !==
-              (resolvable.params[paramName] as string | number).toString()
-          ) {
-            allMatch = false;
-            return;
-          }
-          if (
-            (message.params[paramName] as string | number).toString() ===
-              (resolvable.params[paramName] as string | number).toString()
-          ) {
-            allMatch = true;
-          }
-        });
-        if (allMatch) {
-          resolvable.promise.resolve(message.params);
-        }
-        return;
       }
     }
   }
