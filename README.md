@@ -43,25 +43,26 @@ development Transparency
 
 1. [Documentation](#documentation)
 
-    1.1. [Getting Started](#getting-started)
+   1.1. [Getting Started](#getting-started)
 
-    1.2. [Waiting For Actions](#waiting-for-actions-page-to-be-loaded-requests-to-finish)
+   1.2.
+   [Waiting For Actions](#waiting-for-actions-page-to-be-loaded-requests-to-finish)
 
-    1.3. [Visiting Pages](#visiting-pages)
+   1.3. [Visiting Pages](#visiting-pages)
 
-    1.4. [Taking Screenshots](#taking-screenshots)
+   1.4. [Taking Screenshots](#taking-screenshots)
 
-    1.5. [Dialogs](#dialogs)
+   1.5. [Dialogs](#dialogs)
 
-    1.6. [Cookies](#cookies)
+   1.6. [Cookies](#cookies)
 
-    1.7. [Evaluating](#evaluating-full-dom-or-dev-console-access)
+   1.7. [Evaluating](#evaluating-full-dom-or-dev-console-access)
 
-    1.8. [Retrieving Console Errors](#retreiving-console-errors)
+   1.8. [Retrieving Console Errors](#retreiving-console-errors)
 
-    1.9. [Working With Elements](#working-with-elements-clicking-inputs)
+   1.9. [Working With Elements](#working-with-elements-clicking-inputs)
 
-    1.10. [Authenticating](#authenticating)
+   1.10. [Authenticating](#authenticating)
 
 ## Documentation
 
@@ -101,17 +102,20 @@ const { browser, page } = await Client.create({
 
 ### Waiting for Actions (page to be loaded, requests to finish)
 
-There is only so much we can really do on our end. Whilst we try out best to wait for the correct events from the websocket,
-websites load in various ways. Some examples might be:
+There is only so much we can really do on our end. Whilst we try out best to
+wait for the correct events from the websocket, websites load in various ways.
+Some examples might be:
 
 - A basic website that may take 200ms to load and the DOM is fully ready by then
-- A Vue site that uses Inertia or Vite. The load has loaded but the page/network is still fetching components
+- A Vue site that uses Inertia or Vite. The load has loaded but the page/network
+  is still fetching components
 
 There are simple ways to handle this though
 
 #### Wait until a specific element is visible in the page
 
-For example if you're testing your login page, you may wait until the email field is visible to start typing into it
+For example if you're testing your login page, you may wait until the email
+field is visible to start typing into it
 
 ```ts
 import { Client } from "...";
@@ -122,13 +126,16 @@ const until = async (cb: () => Promise<void>) => {
   while (!(await cb())) {
     await delay(100);
   }
-}
+};
 await page.location("http://localhost/login");
-await until(() => await page.evaluate('document.querySelector("[input=email]")'));
-await page.evaluate(() => document.querySelector("[type=email]").value = '...');
+await until(() =>
+  await page.evaluate('document.querySelector("[input=email]")')
+);
+await page.evaluate(() => document.querySelector("[type=email]").value = "...");
 ```
 
-What this will do is you will keep calling `until`, until the result of `evaluate` is truthy.
+What this will do is you will keep calling `until`, until the result of
+`evaluate` is truthy.
 
 #### Wait until the network is idle
 
@@ -143,7 +150,8 @@ await page.location("http://localhost/login");
 await waitUntilNetworkIdle();
 ```
 
-This method will wait until there have been 0 network requests in a 500ms timeframe.
+This method will wait until there have been 0 network requests in a 500ms
+timeframe.
 
 ### Visiting Pages
 
@@ -315,11 +323,15 @@ Another approach would be to manually submit a login form:
 ```ts
 const login = async (page: Page) => {
   await page.location("http://localhost/login");
-  await until(async () => (await page.evaluate('document.querySelector("input[type=email]")')))
+  await until(
+    async () => (await page.evaluate(
+      'document.querySelector("input[type=email]")',
+    )),
+  );
   await page.evaluate(() => {
     document.querySelector('input[type="email"]').value = "admin@example.com";
-    document.querySelector('input[type="password"]').value = 'secret'
-  })
+    document.querySelector('input[type="password"]').value = "secret";
+  });
   const submit = await page.querySelector("button[type=submit]");
   await submit.click({
     waitFor: "navigation",
