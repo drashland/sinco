@@ -6,7 +6,7 @@
 
 <img align="right" src="./logo.svg" alt="Drash Land - Sinco logo" height="150" style="max-height: 150px">
 
-Sinco is a browser automation and testing tool. What this means is, Sinco runs a
+Sinco is a very lightweight browser automation and testing tool to act fast, simple, and get the job done. What this means is, Sinco runs a
 subprocess for Chrome, and will communicate to the process via the Chrome
 Devtools Protocol, as the subprocess opens a WebSocket server that Sinco
 connects to. This allows Sinco to spin up a new browser tab, go to certain
@@ -38,6 +38,8 @@ Its maintainers have taken concepts from the following ...
 
 Developer UX Approachability Test-driven development Documentation-driven
 development Transparency
+
+We've tried to keep Sinco as minimal as possible, only exposing methods that will make it easier to action upon a page. For example, setting files on a file input. This is not a simple action so we provide a method to do this that ends up sending multiple websocket messages.
 
 ## Table of Contents
 
