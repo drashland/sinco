@@ -41,6 +41,19 @@ class DialogsResource extends Drash.Resource {
   }
 }
 
+class DownloadResource extends Drash.Resource {
+  public paths = ["/downloads", "/downloads/download"];
+
+  public GET(r: Drash.Request, res: Drash.Response) {
+    if (r.url.includes("downloads/download")) {
+      return res.download("./mod.ts", "application/typescript");
+    }
+    return res.html(`
+      <a target="blank" href="/downloads/download">Download</a>
+    `);
+  }
+}
+
 class InputResource extends Drash.Resource {
   public paths = ["/input"];
 
@@ -89,6 +102,7 @@ export const server = new Drash.Server({
     WaitForRequestsResource,
     InputResource,
     DialogsResource,
+    DownloadResource,
   ],
   protocol: "http",
   port: 1447,

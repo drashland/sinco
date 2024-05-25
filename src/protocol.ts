@@ -1,5 +1,4 @@
 import { Deferred, deferred } from "../deps.ts";
-import { Protocol as ProtocolTypes } from "../deps.ts";
 
 interface MessageResponse { // For when we send an event to get one back, eg running a JS expression
   id: number;
@@ -12,18 +11,11 @@ interface NotificationResponse { // Not entirely sure when, but when we send the
   params: Record<string, unknown>;
 }
 
-type Create<T> = T extends true ? {
-    protocol: Protocol;
-    frameId: string;
-  }
-  : T extends false ? Protocol
-  : never;
-
 export class Protocol {
   /**
    * Our web socket connection to the remote debugging port
    */
-  public socket: WebSocket;
+  protected socket: WebSocket;
 
   /**
    * A counter that acts as the message id we use to send as part of the event data through the websocket
@@ -45,11 +37,6 @@ export class Protocol {
       promise: Deferred<Record<string, unknown>>;
     }
   > = new Map();
-
-  /**
-   * Map of notifications, where the key is the method and the value is an array of the events
-   */
-  public console_errors: string[] = [];
 
   constructor(
     socket: WebSocket,
@@ -82,11 +69,27 @@ export class Protocol {
       id: this.#next_message_id++,
       method: method,
     };
+
     if (params) data.params = params;
     const promise = deferred<ResponseType>();
     this.#messages.set(data.id, promise);
     this.socket.send(JSON.stringify(data));
+
+    let count = 0;
+    const maxDuration = 30;
+    const intervalId = setInterval(() => {
+      count++;
+      if (count === maxDuration) {
+        const event = new CustomEvent("timeout", {
+          detail: "Timed out as action took longer than 30s.",
+        });
+        dispatchEvent(event);
+        clearInterval(intervalId);
+      }
+    }, 1000);
+
     const result = await promise;
+    clearInterval(intervalId);
     this.#messages.delete(data.id);
     return result;
   }
@@ -94,9 +97,10 @@ export class Protocol {
   #handleSocketMessage(
     message: MessageResponse | NotificationResponse,
   ) {
-    // TODO :: make it unique eg `<frame-id>.message` so say another page instance wont pick up events for the wrong websocket
-    dispatchEvent(new CustomEvent("message", { detail: message }));
     if ("id" in message) { // message response
+      // TODO :: make it unique eg `<frame-id>.message` so say another page instance wont pick up events for the wrong websocket
+      dispatchEvent(new CustomEvent("message", { detail: message }));
+
       const resolvable = this.#messages.get(message.id);
       if (!resolvable) {
         return;
@@ -109,26 +113,11 @@ export class Protocol {
       }
     }
     if ("method" in message) { // Notification response
-      // Store certain methods for if we need to query them later
-      if (message.method === "Runtime.exceptionThrown") {
-        const params = message
-          .params as unknown as ProtocolTypes.Runtime.ExceptionThrownEvent;
-        const errorMessage = params.exceptionDetails.exception?.description ??
-          params.exceptionDetails.text;
-        if (errorMessage) {
-          this.console_errors.push(errorMessage);
-        }
-      }
-      if (message.method === "Log.entryAdded") {
-        const params = message
-          .params as unknown as ProtocolTypes.Log.EntryAddedEvent;
-        if (params.entry.level === "error") {
-          const errorMessage = params.entry.text;
-          if (errorMessage) {
-            this.console_errors.push(errorMessage);
-          }
-        }
-      }
+      dispatchEvent(
+        new CustomEvent(message.method, {
+          detail: message.params,
+        }),
+      );
 
       const resolvable = this.notifications.get(message.method);
       if (!resolvable) {
@@ -137,64 +126,6 @@ export class Protocol {
       if ("resolve" in resolvable && "reject" in resolvable) {
         resolvable.resolve(message.params);
       }
-      if ("params" in resolvable && "promise" in resolvable) {
-        let allMatch = false;
-        Object.keys(resolvable.params).forEach((paramName) => {
-          if (
-            allMatch === true &&
-            (message.params[paramName] as string | number).toString() !==
-              (resolvable.params[paramName] as string | number).toString()
-          ) {
-            allMatch = false;
-            return;
-          }
-          if (
-            (message.params[paramName] as string | number).toString() ===
-              (resolvable.params[paramName] as string | number).toString()
-          ) {
-            allMatch = true;
-          }
-        });
-        if (allMatch) {
-          resolvable.promise.resolve(message.params);
-        }
-        return;
-      }
     }
-  }
-
-  /**
-   * A builder for creating an instance of a protocol
-   *
-   * @param url - The websocket url to connect, which the protocol will use
-   *
-   * @returns A new protocol instance
-   */
-  public static async create<T extends boolean = false>(
-    url: string,
-    getFrameId?: T,
-  ): Promise<Create<T>> {
-    const p = deferred();
-    const socket = new WebSocket(url);
-    socket.onopen = () => p.resolve();
-    await p;
-    const protocol = new Protocol(socket);
-    if (getFrameId) {
-      protocol.notifications.set("Runtime.executionContextCreated", deferred());
-    }
-    for (const method of ["Page", "Log", "Runtime", "Network"]) {
-      await protocol.send(`${method}.enable`);
-    }
-    if (getFrameId) {
-      const { context: { auxData: { frameId } } } =
-        (await protocol.notifications.get(
-          "Runtime.executionContextCreated",
-        )) as unknown as ProtocolTypes.Runtime.ExecutionContextCreatedEvent;
-      return {
-        protocol,
-        frameId,
-      } as Create<T>;
-    }
-    return protocol as Create<T>;
   }
 }

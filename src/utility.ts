@@ -1,6 +1,6 @@
 import { deferred } from "../deps.ts";
 
-export const existsSync = (filename: string): boolean => {
+const existsSync = (filename: string): boolean => {
   try {
     Deno.statSync(filename);
     // successful, file or directory must exist
@@ -14,13 +14,6 @@ export const existsSync = (filename: string): boolean => {
       throw error;
     }
   }
-};
-
-export const generateTimestamp = (): string => {
-  const dt = new Date();
-  const ts = dt.toLocaleDateString().replace(/\//g, "_") + "_" +
-    dt.toLocaleTimeString().replace(/:/g, "_");
-  return ts;
 };
 
 /**
@@ -93,42 +86,6 @@ export function getChromeArgs(port: number, binaryPath?: string): string[] {
     "--enable-automation",
     "--password-store=basic",
     "--use-mock-keychain",
-    "about:blank",
-  ];
-}
-
-/**
- * Get full path to the firefox binary on the user'ss filesystem.
- * Thanks to [caspervonb](https://github.com/caspervonb/deno-web/blob/master/browser.ts)
- *
- * @returns the path
- */
-export function getFirefoxPath(): string {
-  switch (Deno.build.os) {
-    case "darwin":
-      return "/Applications/Firefox.app/Contents/MacOS/firefox";
-    case "linux":
-      return "/usr/bin/firefox";
-    case "windows":
-      return "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
-    default:
-      throw new Error("Unhandled OS. Unsupported for " + Deno.build.os);
-  }
-}
-
-export function getFirefoxArgs(
-  tmpDirName: string,
-  port: number,
-  binaryPath?: string,
-): string[] {
-  return [
-    binaryPath || getFirefoxPath(),
-    "--remote-debugging-port",
-    port.toString(),
-    "-profile",
-    tmpDirName,
-    "-headless",
-    "-url",
     "about:blank",
   ];
 }

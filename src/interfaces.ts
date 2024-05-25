@@ -5,17 +5,17 @@ export interface BuildOptions {
   hostname?: string;
   /** The path to the binary of the browser executable, such as specifying an alternative chromium browser */
   binaryPath?: string;
-  /** If the Browser is a remote process */
+  /** If true, will not run a subprocess but will still connect to the ws endpoint using above info */
   remote?: boolean;
 }
 
 export interface ScreenshotOptions {
-  /** Screenshot the given selector instead of the full page. Optional */
-  fileName?: string;
   /** The Screenshot format(and hence extension). Allowed values are "jpeg" and "png" - Optional */
   format?: "jpeg" | "png";
   /** The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional */
   quality?: number;
+  /** The css selector should you wish to screenshot an element */
+  element?: string;
 }
 
 /**

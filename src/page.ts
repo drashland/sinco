@@ -1,83 +1,70 @@
-import { AssertionError, deferred, Protocol } from "../deps.ts";
-import { existsSync, generateTimestamp } from "./utility.ts";
-import { Element } from "./element.ts";
+import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 import { Client } from "./client.ts";
-import type { Deferred } from "../deps.ts";
 import { waitUntilNetworkIdle } from "./utility.ts";
 
 /**
  * A representation of the page the client is on, allowing the client to action
  * on it, such as setting cookies, or selecting elements, or interacting with localstorage etc
  */
-export class Page {
-  /**
-   * The pages specific protocol to communicate on the page
-   */
-  readonly #protocol: ProtocolClass;
-
+export class Page extends ProtocolClass {
   /**
    * If chrome, will look like 4174549611B216287286CA10AA78BF56
    * If firefox, will look like 41745-49611-B2162-87286 (eg like a uuid)
+   *
+   * When frame ID, if chrome, ends up being what target id is
+   * If firefox, will be something like "26"
    */
   readonly target_id: string;
 
-  /**
-   * If chrome, ends up being what target id is
-   * If firefox, will be something like "26"
-   */
-  readonly #frame_id: string;
-
   readonly client: Client;
 
+  #console_errors: string[] = [];
+
   constructor(
-    protocol: ProtocolClass,
     targetId: string,
     client: Client,
-    frameId: string,
+    socket: WebSocket,
   ) {
-    this.#protocol = protocol;
+    super(socket);
     this.target_id = targetId;
     this.client = client;
-    this.#frame_id = frameId;
-  }
 
-  public get socket() {
-    return this.#protocol.socket;
+    this.#listenForErrors();
   }
 
   /**
-   * Tells Sinco you are expecting a dialog, so Sinco can listen for the event,
-   * and when `.dialog()` is called, Sinco can accept or decline it at the right time
-   *
-   * @example
-   * ```js
-   * // Note that if `.click()` produces a dialog, do not await it.
-   * await page.expectDialog();
-   * await elem.click();
-   * await page.dialog(true, "my username is Sinco");
-   * ```
+   * Responsible for listening to errors so we can collect them
    */
-  public expectDialog() {
-    this.#protocol.notifications.set(
-      "Page.javascriptDialogOpening",
-      deferred(),
-    );
+  #listenForErrors() {
+    const onError = (event: Event) => {
+      if (event.type === "Runtime.exceptionThrown") {
+        const evt = event as CustomEvent<
+          ProtocolTypes.Runtime.ExceptionThrownEvent
+        >;
+        const msg = evt.detail.exceptionDetails.exception?.description ||
+          evt.detail.exceptionDetails.text;
+        this.#console_errors.push(msg);
+      }
+      if (event.type === "Log.entryAdded") {
+        const evt = event as CustomEvent<ProtocolTypes.Log.EntryAddedEvent>;
+        const { level, text } = evt.detail.entry;
+        if (level === "error") {
+          this.#console_errors.push(text);
+        }
+      }
+    };
+
+    addEventListener("Log.entryAdded", onError);
+    addEventListener("Runtime.exceptionThrown", onError);
   }
 
   /**
    * Interact with a dialog.
    *
-   * Will throw if `.expectDialog()` was not called before.
-   * This is so Sino doesn't try to accept/decline a dialog before
-   * it opens.
-   *
    * @example
    * ```js
-   * // Note that if `.click()` produces a dialog, do not await it.
-   * await page.expectDialog();
-   * elem.click();
    * await page.dialog(true, "my username is Sinco");
    * ```
    *
@@ -85,48 +72,104 @@ export class Page {
    * @param promptText  - The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog.
    */
   public async dialog(accept: boolean, promptText?: string) {
-    const p = this.#protocol.notifications.get("Page.javascriptDialogOpening");
-    if (!p) {
-      throw new Error(
-        `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand.`,
-      );
-    }
-    await p;
+    this.notifications.set("Page.javascriptDialogOpening", deferred());
+    await this.notifications.get("Page.javascriptDialogOpening");
     const method = "Page.javascriptDialogClosed";
-    this.#protocol.notifications.set(method, deferred());
-    const body: Protocol.Page.HandleJavaScriptDialogRequest = {
+    this.notifications.set(method, deferred());
+    const body: ProtocolTypes.Page.HandleJavaScriptDialogRequest = {
       accept,
     };
     if (promptText) {
       body.promptText = promptText;
     }
-    await this.#protocol.send<
-      Protocol.Page.HandleJavaScriptDialogRequest,
+    await this.send<
+      ProtocolTypes.Page.HandleJavaScriptDialogRequest,
       null
     >("Page.handleJavaScriptDialog", body);
-    const closedPromise = this.#protocol.notifications.get(method);
+    const closedPromise = this.notifications.get(method);
     await closedPromise;
   }
 
   /**
-   * Closes the page. After, you will not be able to interact with it
+   * Sets files for a file input
+   *
+   * @param files - The list of remote files to attach
+   *
+   * @example
+   * ```js
+   * await page.setInputFiles({
+   *  selector: "input[type='file']",
+   *  files: ["./logo.png"],
+   * });
+   * ```
    */
-  public async close() {
-    // Delete page
-    this.#protocol.send<
-      Protocol.Target.CloseTargetRequest,
-      Protocol.Target.CloseTargetResponse
-    >("Target.closeTarget", {
-      targetId: this.target_id,
+  public async setInputFiles(options: {
+    selector: string;
+    files: string[];
+  }) {
+    if (options.files.length > 1) {
+      const isMultiple = await this.evaluate(
+        `document.querySelector('${options.selector}').hasAttribute('multiple')`,
+      );
+      if (!isMultiple) {
+        throw new Error(
+          "Trying to set files on a file input without the 'multiple' attribute",
+        );
+      }
+    }
+
+    const name = await this.evaluate(
+      `document.querySelector('${options.selector}').nodeName`,
+    );
+    if (name !== "INPUT") {
+      throw new Error("Trying to set a file on an element that isnt an input");
+    }
+    const type = await this.evaluate(
+      `document.querySelector('${options.selector}').type`,
+    );
+    if (type !== "file") {
+      throw new Error(
+        'Trying to set a file on an input that is not of type "file"',
+      );
+    }
+
+    const {
+      result: {
+        value,
+        objectId,
+      },
+    } = await this.send<
+      ProtocolTypes.Runtime.EvaluateRequest,
+      ProtocolTypes.Runtime.EvaluateResponse
+    >("Runtime.evaluate", {
+      expression: `document.querySelector('${options.selector}')`,
+      includeCommandLineAPI: true,
+    });
+    if (value === null) {
+      await this.client.close(
+        'The selector "' + options.selector + '" does not exist inside the DOM',
+      );
+    }
+
+    if (!objectId) {
+      await this.client.close("Unable to find the object");
+    }
+
+    const { node } = await this.send<
+      ProtocolTypes.DOM.DescribeNodeRequest,
+      ProtocolTypes.DOM.DescribeNodeResponse
+    >("DOM.describeNode", {
+      objectId: objectId,
     });
 
-    // wait for socket to close (closing page also shuts down connection to debugger url)
-    const p2 = deferred();
-    this.#protocol.socket.onclose = () => p2.resolve();
-    await p2;
-
-    // And remove it from the pages array
-    this.client._popPage(this.target_id);
+    await this.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
+      "DOM.setFileInputFiles",
+      {
+        files: options.files,
+        objectId: objectId,
+        backendNodeId: node.backendNodeId,
+      },
+    );
   }
 
   /**
@@ -138,17 +181,17 @@ export class Page {
    */
   public async cookie(
     newCookie?: Cookie,
-  ): Promise<Protocol.Network.Cookie[] | []> {
+  ): Promise<ProtocolTypes.Network.Cookie[] | []> {
     if (!newCookie) {
-      const result = await this.#protocol.send<
-        Protocol.Network.GetCookiesRequest,
-        Protocol.Network.GetCookiesResponse
+      const result = await this.send<
+        ProtocolTypes.Network.GetCookiesRequest,
+        ProtocolTypes.Network.GetCookiesResponse
       >("Network.getCookies");
       return result.cookies;
     }
-    await this.#protocol.send<
-      Protocol.Network.SetCookieRequest,
-      Protocol.Network.SetCookieResponse
+    await this.send<
+      ProtocolTypes.Network.SetCookieRequest,
+      ProtocolTypes.Network.SetCookieResponse
     >("Network.setCookie", {
       name: newCookie.name,
       value: newCookie.value,
@@ -158,74 +201,17 @@ export class Page {
   }
 
   /**
-   * Tell Sinco that you will be expecting to wait for a request
-   */
-  public expectWaitForRequest() {
-    const requestWillBeSendMethod = "Network.requestWillBeSent";
-    this.#protocol.notifications.set(requestWillBeSendMethod, deferred());
-  }
-
-  /**
-   * Wait for a request to finish loading.
-   *
-   * Can be used to wait for:
-   *   - Clicking a button that (via JS) will send a HTTO request via axios/fetch etc
-   *   - Submitting an inline form
-   *   - ... and many others
-   */
-  public async waitForRequest() {
-    const params = await this.#protocol.notifications.get(
-      "Network.requestWillBeSent",
-    ) as {
-      requestId: string;
-    };
-    if (!params) {
-      throw new Error(
-        `Unable to wait for a request because \`.expectWaitForRequest()\` was not called.`,
-      );
-    }
-    const { requestId } = params;
-    const method = "Network.loadingFinished";
-    this.#protocol.notifications.set(method, {
-      params: {
-        requestId,
-      },
-      promise: deferred(),
-    });
-    const result = this.#protocol.notifications.get(method) as unknown as {
-      promise: Deferred<never>;
-    };
-    await result.promise;
-  }
-
-  /**
    * Either get the href/url for the page, or set the location
-   *
-   * @param newLocation - Only required if you want to set the location
    *
    * @example
    * ```js
-   * const location = await page.location() // "https://drash.land"
+   * const location = await page.location("https://google.com"); // Or "http://localhost:9292"
    * ```
-   *
-   * @returns The location for the page if no parameter is passed in, else an empty string
    */
-  public async location(newLocation?: string): Promise<string> {
-    if (!newLocation) {
-      const targets = await this.#protocol.send<
-        null,
-        Protocol.Target.GetTargetsResponse
-      >("Target.getTargets");
-      const target = targets.targetInfos.find((target) =>
-        target.targetId === this.target_id
-      );
-      return target?.url ?? "";
-    }
-
-    // Send message
-    const res = await this.#protocol.send<
-      Protocol.Page.NavigateRequest,
-      Protocol.Page.NavigateResponse
+  public async location(newLocation: string): Promise<void> {
+    const res = await this.send<
+      ProtocolTypes.Page.NavigateRequest,
+      ProtocolTypes.Page.NavigateResponse
     >(
       "Page.navigate",
       {
@@ -237,19 +223,10 @@ export class Page {
 
     // Usually if an invalid URL is given, the WS never gets a notification
     // but we get a message with the id associated with the msg we sent
-    // TODO :: Ideally the protocol class would throw and we could catch it so we know
-    // for sure its an error
     if ("errorText" in res) {
       await this.client.close(res.errorText);
-      return "";
+      return;
     }
-
-    if (res.errorText) {
-      await this.client.close(
-        `${res.errorText}: Error for navigating to page "${newLocation}"`,
-      );
-    }
-    return "";
   }
 
   // deno-lint-ignore no-explicit-any
@@ -297,7 +274,7 @@ export class Page {
     function convertArgument(
       this: Page,
       arg: unknown,
-    ): Protocol.Runtime.CallArgument {
+    ): ProtocolTypes.Runtime.CallArgument {
       if (typeof arg === "bigint") {
         return { unserializableValue: `${arg.toString()}n` };
       }
@@ -311,9 +288,9 @@ export class Page {
     }
 
     if (typeof pageCommand === "string") {
-      const result = await this.#protocol.send<
-        Protocol.Runtime.EvaluateRequest,
-        Protocol.Runtime.EvaluateResponse
+      const result = await this.send<
+        ProtocolTypes.Runtime.EvaluateRequest,
+        ProtocolTypes.Runtime.EvaluateResponse
       >("Runtime.evaluate", {
         expression: pageCommand,
         returnByValue: true,
@@ -324,19 +301,19 @@ export class Page {
     }
 
     if (typeof pageCommand === "function") {
-      const { executionContextId } = await this.#protocol.send<
-        Protocol.Page.CreateIsolatedWorldRequest,
-        Protocol.Page.CreateIsolatedWorldResponse
+      const { executionContextId } = await this.send<
+        ProtocolTypes.Page.CreateIsolatedWorldRequest,
+        ProtocolTypes.Page.CreateIsolatedWorldResponse
       >(
         "Page.createIsolatedWorld",
         {
-          frameId: this.#frame_id,
+          frameId: this.target_id,
         },
       );
 
-      const res = await this.#protocol.send<
-        Protocol.Runtime.CallFunctionOnRequest,
-        Protocol.Runtime.CallFunctionOnResponse
+      const res = await this.send<
+        ProtocolTypes.Runtime.CallFunctionOnRequest,
+        ProtocolTypes.Runtime.CallFunctionOnResponse
       >(
         "Runtime.callFunctionOn",
         {
@@ -354,85 +331,49 @@ export class Page {
   }
 
   /**
-   * Representation of the Browser's `document.querySelector`
-   *
-   * @param selector - The selector for the element
-   *
-   * @returns An element class, allowing you to take an action upon that element
+   * Return the current list of console errors present in the dev tools
    */
-  async querySelector(selector: string) {
-    const result = await this.#protocol.send<
-      Protocol.Runtime.EvaluateRequest,
-      Protocol.Runtime.EvaluateResponse
-    >("Runtime.evaluate", {
-      expression: `document.querySelector('${selector}')`,
-      includeCommandLineAPI: true,
-    });
-    if (result.result.value === null) {
-      await this.client.close(
-        'The selector "' + selector + '" does not exist inside the DOM',
-      );
-    }
-    return new Element(
-      "document.querySelector",
-      selector,
-      this,
-      this.#protocol,
-      result.result.objectId,
-    );
+  public async consoleErrors(): Promise<string[]> {
+    // Give it some extra time in case to pick up some more
+    const p = deferred();
+    setTimeout(() => {
+      p.resolve();
+    }, 500);
+    await p;
+    return this.#console_errors;
   }
 
   /**
-   * Assert that there are no errors in the developer console, such as:
-   *   - 404's (favicon for example)
-   *   - Issues with JavaScript files
-   *   - etc
+   * Click an element and expect a new page to be opened.
    *
-   * @param exceptions - A list of strings that if matched, will be ignored such as ["favicon.ico"] if you want/need to ignore a 404 error for this file
+   * @param selector - The selector for the element
    *
-   * @throws AssertionError
+   * @returns A new Page instance referencing the new tab
    */
-  public async assertNoConsoleErrors(exceptions: string[] = []) {
-    const forMessages = deferred();
-    let notifCount = 0;
-    // deno-lint-ignore no-this-alias
-    const self = this;
-    const interval = setInterval(function () {
-      const notifs = self.#protocol.console_errors;
-      // If stored notifs is greater than what we've got, then
-      // more notifs are being sent to us, so wait again
-      if (notifs.length > notifCount) {
-        notifCount = notifs.length;
-        return;
-      }
-      // Otherwise, we have not gotten anymore notifs in the last .5s
-      clearInterval(interval);
-      forMessages.resolve();
-    }, 500);
-    await forMessages;
-    const errorNotifs = this.#protocol.console_errors;
-    const filteredNotifs = !exceptions.length
-      ? errorNotifs
-      : errorNotifs.filter((notif) => {
-        const notifCanBeIgnored = exceptions.find((exception) => {
-          if (notif.includes(exception)) {
-            return true;
-          }
-          return false;
-        });
-        if (notifCanBeIgnored) {
-          return false;
-        }
-        return true;
-      });
-    if (!filteredNotifs.length) {
-      return;
-    }
-    await this.client.close(
-      "Expected console to show no errors. Instead got:\n" +
-        filteredNotifs.join("\n"),
-      AssertionError,
+  public async newPageClick(selector: string): Promise<Page> {
+    const newPageMethod = "Page.windowOpen";
+    this.notifications.set(newPageMethod, deferred());
+
+    await this.evaluate(
+      `document.querySelector('${selector}').click()`,
     );
+
+    const p = this.notifications.get(newPageMethod);
+    const { url } = await p as unknown as ProtocolTypes.Page.WindowOpenEvent;
+    const res = await fetch(
+      `http://${this.client.wsOptions.hostname}:${this.client.wsOptions.port}/json/list`,
+    );
+    const page = (await res.json()).find((p: Record<string, string>) =>
+      p.url === url
+    );
+
+    if (!page) {
+      await this.client.close(
+        `Internal error. Could not find a new page`,
+      );
+    }
+
+    return await Page.create(this.client, page.id);
   }
 
   /**
@@ -440,22 +381,37 @@ export class Page {
    * If `selector` is passed in, it will take a screenshot of only that element
    * and its children as opposed to the whole page.
    *
-   * @param path - The path of where to save the screenshot to
    * @param options
+   *
+   * @example
+   * ```ts
+   * try {
+   *  Deno.writeFileSync('./tets.png', await page.screenshot());
+   * } catch (e) {
+   *   await browser.close(e.message);
+   * }
+   * ```
    *
    * @returns The path to the file relative to CWD, e.g., "Screenshots/users/user_1.png"
    */
-  async takeScreenshot(
-    path: string,
+  public async screenshot(
     options?: ScreenshotOptions,
-  ): Promise<string> {
-    if (!existsSync(path)) {
-      await this.client.close(
-        `The provided folder path "${path}" doesn't exist`,
-      );
-    }
+  ): Promise<Uint8Array> {
     const ext = options?.format ?? "jpeg";
-    const clip = undefined;
+    let clip: ProtocolTypes.Page.Viewport | undefined = undefined;
+    if (options?.element) {
+      const rawViewportResult = await this.evaluate(
+        `JSON.stringify(document.querySelector('${options.element}').getBoundingClientRect())`,
+      );
+      const jsonViewportResult = JSON.parse(rawViewportResult);
+      clip = {
+        x: jsonViewportResult.x,
+        y: jsonViewportResult.y,
+        width: jsonViewportResult.width,
+        height: jsonViewportResult.height,
+        scale: 2,
+      };
+    }
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
       await this.client.close(
@@ -463,14 +419,14 @@ export class Page {
       );
     }
 
-    //Quality should defined only if format is jpeg
-    const quality = (ext == "jpeg")
+    // Quality should defined only if format is jpeg
+    const quality = (ext === "jpeg")
       ? ((options?.quality) ? Math.abs(options.quality) : 80)
       : undefined;
 
-    const res = await this.#protocol.send<
-      Protocol.Page.CaptureScreenshotRequest,
-      Protocol.Page.CaptureScreenshotResponse
+    const res = await this.send<
+      ProtocolTypes.Page.CaptureScreenshotRequest,
+      ProtocolTypes.Page.CaptureScreenshotResponse
     >(
       "Page.captureScreenshot",
       {
@@ -480,20 +436,8 @@ export class Page {
       },
     );
 
-    //Writing the Obtained Base64 encoded string to image file
-    const fName = `${path}/${
-      options?.fileName?.replaceAll(/.jpeg|.jpg|.png/g, "") ??
-        generateTimestamp()
-    }.${ext}`;
     const B64str = res.data;
-    const u8Arr = Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
-    try {
-      Deno.writeFileSync(fName, u8Arr);
-    } catch (e) {
-      await this.client.close(e.message);
-    }
-
-    return fName;
+    return Uint8Array.from<string>(atob(B64str), (c) => c.charCodeAt(0));
   }
 
   /**
@@ -503,7 +447,7 @@ export class Page {
    * @param commandSent - The command sent to trigger the result
    */
   async #checkForEvaluateErrorResult(
-    result: Protocol.Runtime.AwaitPromiseResponse,
+    result: ProtocolTypes.Runtime.AwaitPromiseResponse,
     commandSent: string,
   ): Promise<void> {
     const exceptionDetail = result.exceptionDetails;
@@ -521,5 +465,29 @@ export class Page {
     }
     // any others, unsure what they'd be
     await this.client.close(`${errorMessage}: "${commandSent}"`);
+  }
+
+  public static async create(client: Client, targetId: string): Promise<Page> {
+    const socket = new WebSocket(
+      `ws://${client.wsOptions.hostname}:${client.wsOptions.port}/devtools/page/${targetId}`,
+    );
+    const p = deferred();
+    socket.onopen = () => p.resolve();
+    await p;
+
+    const page = new Page(
+      targetId,
+      client,
+      socket,
+    );
+    await page.send("Target.attachToTarget", {
+      targetId: targetId,
+    });
+
+    for (const method of ["Page", "Log", "Runtime", "Network"]) {
+      await page.send(`${method}.enable`);
+    }
+
+    return page;
   }
 }

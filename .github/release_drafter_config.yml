@@ -35,7 +35,7 @@ template: |
 
   * Import this latest release by using the following in your project(s):
     ```typescript
-    import { buildFor } from "https://deno.land/x/sinco@v$RESOLVED_VERSION/mod.ts";
+    import { Client } from "https://deno.land/x/sinco@v$RESOLVED_VERSION/mod.ts";
     ```
 
   __Updates__
