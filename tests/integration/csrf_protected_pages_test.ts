@@ -1,4 +1,4 @@
-import { assertEquals } from "../../deps.ts";
+import { assertEquals } from "../deps.ts";
 /**
  * Other ways you can achieve this are:
  *

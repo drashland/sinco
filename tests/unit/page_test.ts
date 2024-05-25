@@ -1,7 +1,6 @@
 import { Client } from "../../mod.ts";
-import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
-import { resolve } from "../deps.ts";
+import { assertEquals, resolve } from "../deps.ts";
 Deno.test("screenshot()", async (t) => {
   await t.step(
     "Takes a Screenshot",

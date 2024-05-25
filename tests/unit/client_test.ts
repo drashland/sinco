@@ -1,4 +1,5 @@
-import { assertEquals, deferred } from "../../deps.ts";
+import { assertEquals } from "../deps.ts";
+import { deferred } from "../../deps.ts";
 import { Client } from "../../mod.ts";
 
 Deno.test("create()", async (t) => {
