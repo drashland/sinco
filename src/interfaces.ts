@@ -14,6 +14,8 @@ export interface ScreenshotOptions {
   format?: "jpeg" | "png";
   /** The image quality from 0 to 100, default 80. Applicable only if no format provided or format is "jpeg" - Optional */
   quality?: number;
+  /** The css selector should you wish to screenshot an element */
+  element?: string;
 }
 
 /**

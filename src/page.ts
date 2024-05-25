@@ -1,5 +1,4 @@
 import { deferred, Protocol as ProtocolTypes } from "../deps.ts";
-import { Element } from "./element.ts";
 import { Protocol as ProtocolClass } from "./protocol.ts";
 import { Cookie, ScreenshotOptions } from "./interfaces.ts";
 import { Client } from "./client.ts";
@@ -62,36 +61,10 @@ export class Page extends ProtocolClass {
   }
 
   /**
-   * Tells Sinco you are expecting a dialog, so Sinco can listen for the event,
-   * and when `.dialog()` is called, Sinco can accept or decline it at the right time
-   *
-   * @example
-   * ```js
-   * // Note that if `.click()` produces a dialog, do not await it.
-   * await page.expectDialog();
-   * await elem.click();
-   * await page.dialog(true, "my username is Sinco");
-   * ```
-   */
-  public expectDialog() {
-    this.notifications.set(
-      "Page.javascriptDialogOpening",
-      deferred(),
-    );
-  }
-
-  /**
    * Interact with a dialog.
    *
-   * Will throw if `.expectDialog()` was not called before.
-   * This is so Sino doesn't try to accept/decline a dialog before
-   * it opens.
-   *
    * @example
    * ```js
-   * // Note that if `.click()` produces a dialog, do not await it.
-   * await page.expectDialog();
-   * elem.click();
    * await page.dialog(true, "my username is Sinco");
    * ```
    *
@@ -99,13 +72,8 @@ export class Page extends ProtocolClass {
    * @param promptText  - The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog.
    */
   public async dialog(accept: boolean, promptText?: string) {
-    const p = this.notifications.get("Page.javascriptDialogOpening");
-    if (!p) {
-      throw new Error(
-        `Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand.`,
-      );
-    }
-    await p;
+    this.notifications.set("Page.javascriptDialogOpening", deferred());
+    await this.notifications.get("Page.javascriptDialogOpening");
     const method = "Page.javascriptDialogClosed";
     this.notifications.set(method, deferred());
     const body: ProtocolTypes.Page.HandleJavaScriptDialogRequest = {
@@ -120,6 +88,88 @@ export class Page extends ProtocolClass {
     >("Page.handleJavaScriptDialog", body);
     const closedPromise = this.notifications.get(method);
     await closedPromise;
+  }
+
+  /**
+   * Sets files for a file input
+   *
+   * @param files - The list of remote files to attach
+   *
+   * @example
+   * ```js
+   * await page.setInputFiles({
+   *  selector: "input[type='file']",
+   *  files: ["./logo.png"],
+   * });
+   * ```
+   */
+  public async setInputFiles(options: {
+    selector: string;
+    files: string[];
+  }) {
+    if (options.files.length > 1) {
+      const isMultiple = await this.evaluate(
+        `document.querySelector('${options.selector}').hasAttribute('multiple')`,
+      );
+      if (!isMultiple) {
+        throw new Error(
+          "Trying to set files on a file input without the 'multiple' attribute",
+        );
+      }
+    }
+
+    const name = await this.evaluate(
+      `document.querySelector('${options.selector}').nodeName`,
+    );
+    if (name !== "INPUT") {
+      throw new Error("Trying to set a file on an element that isnt an input");
+    }
+    const type = await this.evaluate(
+      `document.querySelector('${options.selector}').type`,
+    );
+    if (type !== "file") {
+      throw new Error(
+        'Trying to set a file on an input that is not of type "file"',
+      );
+    }
+
+    const {
+      result: {
+        value,
+        objectId,
+      },
+    } = await this.send<
+      ProtocolTypes.Runtime.EvaluateRequest,
+      ProtocolTypes.Runtime.EvaluateResponse
+    >("Runtime.evaluate", {
+      expression: `document.querySelector('${options.selector}')`,
+      includeCommandLineAPI: true,
+    });
+    if (value === null) {
+      await this.client.close(
+        'The selector "' + options.selector + '" does not exist inside the DOM',
+      );
+    }
+
+    if (!objectId) {
+      await this.client.close("Unable to find the object");
+    }
+
+    const { node } = await this.send<
+      ProtocolTypes.DOM.DescribeNodeRequest,
+      ProtocolTypes.DOM.DescribeNodeResponse
+    >("DOM.describeNode", {
+      objectId: objectId,
+    });
+
+    await this.send<ProtocolTypes.DOM.SetFileInputFilesRequest, null>(
+      "DOM.setFileInputFiles",
+      {
+        files: options.files,
+        objectId: objectId,
+        backendNodeId: node.backendNodeId,
+      },
+    );
   }
 
   /**
@@ -281,46 +331,6 @@ export class Page extends ProtocolClass {
   }
 
   /**
-   * Representation of the Browser's `document.querySelector`
-   *
-   * @param selector - The selector for the element
-   *
-   * @returns An element class, allowing you to take an action upon that element
-   */
-  async querySelector(selector: string) {
-    const result = await this.send<
-      ProtocolTypes.Runtime.EvaluateRequest,
-      ProtocolTypes.Runtime.EvaluateResponse
-    >("Runtime.evaluate", {
-      expression: `document.querySelector('${selector}')`,
-      includeCommandLineAPI: true,
-    });
-    if (result.result.value === null) {
-      await this.client.close(
-        'The selector "' + selector + '" does not exist inside the DOM',
-      );
-    }
-
-    if (!result.result.objectId) {
-      await this.client.close("Unable to find the object");
-    }
-
-    const { node } = await this.send<
-      ProtocolTypes.DOM.DescribeNodeRequest,
-      ProtocolTypes.DOM.DescribeNodeResponse
-    >("DOM.describeNode", {
-      objectId: result.result.objectId,
-    });
-
-    return new Element(
-      selector,
-      this,
-      node,
-      result.result.objectId as string,
-    );
-  }
-
-  /**
    * Return the current list of console errors present in the dev tools
    */
   public async consoleErrors(): Promise<string[]> {
@@ -331,6 +341,39 @@ export class Page extends ProtocolClass {
     }, 500);
     await p;
     return this.#console_errors;
+  }
+
+  /**
+   * Click an element and expect a new page to be opened.
+   *
+   * @param selector - The selector for the element
+   *
+   * @returns A new Page instance referencing the new tab
+   */
+  public async newPageClick(selector: string): Promise<Page> {
+    const newPageMethod = "Page.windowOpen";
+    this.notifications.set(newPageMethod, deferred());
+
+    await this.evaluate(
+      `document.querySelector('${selector}').click()`,
+    );
+
+    const p = this.notifications.get(newPageMethod);
+    const { url } = await p as unknown as ProtocolTypes.Page.WindowOpenEvent;
+    const res = await fetch(
+      `http://${this.client.wsOptions.hostname}:${this.client.wsOptions.port}/json/list`,
+    );
+    const page = (await res.json()).find((p: Record<string, string>) =>
+      p.url === url
+    );
+
+    if (!page) {
+      await this.client.close(
+        `Internal error. Could not find a new page`,
+      );
+    }
+
+    return await Page.create(this.client, page.id);
   }
 
   /**
@@ -355,7 +398,20 @@ export class Page extends ProtocolClass {
     options?: ScreenshotOptions,
   ): Promise<Uint8Array> {
     const ext = options?.format ?? "jpeg";
-    const clip = undefined;
+    let clip: ProtocolTypes.Page.Viewport | undefined = undefined;
+    if (options?.element) {
+      const rawViewportResult = await this.evaluate(
+        `JSON.stringify(document.querySelector('${options.element}').getBoundingClientRect())`,
+      );
+      const jsonViewportResult = JSON.parse(rawViewportResult);
+      clip = {
+        x: jsonViewportResult.x,
+        y: jsonViewportResult.y,
+        width: jsonViewportResult.width,
+        height: jsonViewportResult.height,
+        scale: 2,
+      };
+    }
 
     if (options?.quality && Math.abs(options.quality) > 100 && ext == "jpeg") {
       await this.client.close(

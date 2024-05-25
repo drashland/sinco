@@ -1,13 +1,27 @@
 import { Client } from "../../mod.ts";
 import { assertEquals } from "../../deps.ts";
 import { server } from "../server.ts";
+import { resolve } from "../deps.ts";
 Deno.test("screenshot()", async (t) => {
   await t.step(
-    "screenshot() | Takes a Screenshot",
+    "Takes a Screenshot",
     async () => {
       const { browser, page } = await Client.create();
       await page.location("https://drash.land");
       const result = await page.screenshot();
+      await browser.close();
+      assertEquals(result instanceof Uint8Array, true);
+    },
+  );
+
+  await t.step(
+    "Takes a Screenshot of an element",
+    async () => {
+      const { browser, page } = await Client.create();
+      await page.location("https://drash.land");
+      const result = await page.screenshot({
+        element: "div",
+      });
       await browser.close();
       assertEquals(result instanceof Uint8Array, true);
     },
@@ -155,6 +169,24 @@ Deno.test("cookie()", async (t) => {
 });
 
 Deno.test({
+  name: "newPageClick()",
+  fn: async (t) => {
+    await t.step("Should click on a link and open a new page", async () => {
+      const { browser, page } = await Client.create();
+      server.run();
+      await page.location(server.address + "/anchor-links");
+      const newPage = await page.newPageClick("a#blank");
+      const url = await newPage.evaluate(() => window.location.href);
+      const originalUrl = await page.evaluate(() => window.location.href);
+      await browser.close();
+      await server.close();
+      assertEquals(url, "https://drash.land/");
+      assertEquals(originalUrl, server.address + "/anchor-links");
+    });
+  },
+});
+
+Deno.test({
   name: "consoleErrors()",
   fn: async (t) => {
     await t.step(`Should return expected errors`, async () => {
@@ -201,9 +233,7 @@ Deno.test({
       const { browser, page } = await Client.create();
       server.run();
       await page.location(server.address + "/dialogs");
-      const elem = await page.querySelector("#button");
-      page.expectDialog();
-      elem.click();
+      page.evaluate(`document.querySelector("#button").click()`);
       await page.dialog(true, "Sinco 4eva");
       const val = await page.evaluate(
         `document.querySelector("#button").textContent`,
@@ -212,27 +242,11 @@ Deno.test({
       await server.close();
       assertEquals(val, "Sinco 4eva");
     });
-    await t.step(`Throws if a dialog was not expected`, async () => {
-      const { browser, page } = await Client.create();
-      let errMsg = "";
-      try {
-        await page.dialog(true, "Sinco 4eva");
-      } catch (e) {
-        errMsg = e.message;
-      }
-      await browser.close();
-      assertEquals(
-        errMsg,
-        'Trying to accept or decline a dialog without you expecting one. ".expectDialog()" was not called beforehand.',
-      );
-    });
     await t.step(`Rejects a dialog`, async () => {
       const { browser, page } = await Client.create();
       server.run();
       await page.location(server.address + "/dialogs");
-      const elem = await page.querySelector("#button");
-      page.expectDialog();
-      elem.click();
+      page.evaluate(`document.querySelector("#button").click()`);
       await page.dialog(false, "Sinco 4eva");
       const val = await page.evaluate(
         `document.querySelector("#button").textContent`,
@@ -240,6 +254,124 @@ Deno.test({
       await browser.close();
       await server.close();
       assertEquals(val, "");
+    });
+  },
+});
+
+Deno.test({
+  name: "files()",
+  fn: async (t) => {
+    await t.step(
+      "Should throw if multiple files and input isnt multiple",
+      async () => {
+        server.run();
+        const { browser, page } = await Client.create();
+        await page.location(server.address + "/input");
+        let errMsg = "";
+        try {
+          await page.setInputFiles({
+            selector: "#single-file",
+            files: ["ffff", "hhh"],
+          });
+        } catch (e) {
+          errMsg = e.message;
+        } finally {
+          await server.close();
+          await browser.close();
+        }
+        assertEquals(
+          errMsg,
+          `Trying to set files on a file input without the 'multiple' attribute`,
+        );
+      },
+    );
+    await t.step("Should throw if element isnt an input", async () => {
+      server.run();
+      const { browser, page } = await Client.create();
+      await page.location(server.address + "/input");
+      let errMsg = "";
+      try {
+        await page.setInputFiles({
+          selector: "p",
+          files: ["ffff"],
+        });
+      } catch (e) {
+        errMsg = e.message;
+      } finally {
+        await server.close();
+        await browser.close();
+      }
+      assertEquals(
+        errMsg,
+        "Trying to set a file on an element that isnt an input",
+      );
+    });
+    await t.step("Should throw if input is not of type file", async () => {
+      server.run();
+      const { browser, page } = await Client.create();
+      await page.location(server.address + "/input");
+      let errMsg = "";
+      try {
+        await page.setInputFiles({
+          selector: "#text",
+          files: ["ffff"],
+        });
+      } catch (e) {
+        errMsg = e.message;
+      } finally {
+        await server.close();
+        await browser.close();
+      }
+      assertEquals(
+        errMsg,
+        'Trying to set a file on an input that is not of type "file"',
+      );
+    });
+    await t.step("Should successfully upload files", async () => {
+      server.run();
+      const { browser, page } = await Client.create();
+      await page.location(server.address + "/input");
+      try {
+        await page.setInputFiles({
+          selector: "#multiple-file",
+          files: [
+            resolve("./README.md"),
+            resolve("./tsconfig.json"),
+          ],
+        });
+        const files = JSON.parse(
+          await page.evaluate(
+            `JSON.stringify(document.querySelector('#multiple-file').files)`,
+          ),
+        );
+        assertEquals(Object.keys(files).length, 2);
+      } finally {
+        await server.close();
+        await browser.close();
+      }
+    });
+
+    await t.step("Should successfully upload a file", async () => {
+      server.run();
+      const { browser, page } = await Client.create();
+      await page.location(server.address + "/input");
+      try {
+        await page.setInputFiles({
+          selector: "#single-file",
+          files: [
+            resolve("./tsconfig.json"),
+          ],
+        });
+        const files = JSON.parse(
+          await page.evaluate(
+            `JSON.stringify(document.querySelector('#single-file').files)`,
+          ),
+        );
+        assertEquals(Object.keys(files).length, 1);
+      } finally {
+        await server.close();
+        await browser.close();
+      }
     });
   },
 });

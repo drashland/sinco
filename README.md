@@ -139,8 +139,6 @@ What this will do is you will keep calling `until`, until the result of
 
 #### Wait until the network is idle
 
-We use this approach when clicking buttons that result in a navigation as well!
-
 ```ts
 import { Client } from "...";
 import { waitUntilNetworkIdle } from ".../src/utility.ts";
@@ -164,17 +162,23 @@ await page.location("https://some-url.com");
 
 ### Taking Screenshots
 
-Utilise the `.screenshotMethod()` on a page or element:
+Utilise the `.screenshot()` method on a page:
 
 ```ts
 const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
-const uint8array = await page.screenshot({ // Options are optional
-  format: "jpeg", // or png. Defaults to jpeg
+// Defaults to jpeg, with a quality of 80
+const uint8array = await page.screenshot();
+
+const uint8array = await page.screenshot({
+  format: "jpeg", // or png
   quality: 50, // 0-100, only applicable if format is optional. Defaults to 80
 });
-const elem = await page.querySelector("div");
-const uint8array = await elem.screenshot(); // Same options as above
+
+// Pass in a selector to only screenshot that
+const uint8array = await page.screenshot({
+  element: "div#users",
+});
 ```
 
 ### Dialogs
@@ -188,6 +192,18 @@ await page.dialog(false); // Decline the dialog
 await page.dialog(true); // Accept it
 await page.dialog(true, "I will be joining on 20/03/2024"); // Accept and provide prompt text
 ```
+
+Be sure that if you're evaluating for example then calling `.dialog`, do not
+await `.evaluate`, this is to ensure that the `dialog` method can get the event
+of a dialog opening:
+
+```ts
+page.evaluate("...");
+await page.dialog(true);
+```
+
+The method waits for av enet to tell us a dialog is opening, and once it's
+opened, we will either accept or reject it with any given text if appicable
 
 ### Cookies
 
@@ -255,49 +271,46 @@ assertEquals(errors.length, 2);
 assertEquals(errors.includes("user not defined"));
 ```
 
-### Working with Elements (clicking, inputs)
+### Working with file inputs
 
-We provide ways to set files on a file input and click elements.
-
-To create a reference to an element, use
-`await page.querySelector("<css selector>")`, just like how you would use it in
-the browser.
-
-#### File operations
-
-We provide an easier way to set a file on a file input element.
+We provide a simple way to set files on a file input.
 
 ```ts
 const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
-const input = await page.querySelector('input[type="file"]');
-await input.file("./users.png");
-const multipleInput = await page.querySelector('input[type="file"]');
-await multipleInput.files(["./users.png", "./company.pdf"]);
+await page.setInputFiles({
+  selector: "#upload",
+  files: ["/home/user/images/logo.png"],
+});
 ```
 
-#### Clicking
+Pass in a list of files to attach to the input. You can only send 1 if your file
+input sin't a multiple input
 
-You can also click elements, such as buttons or anchor tags.
+### Clicking
+
+To click elements, you can achieve it by doing what you might do in the devtools
+console:
 
 ```ts
 const { browser, page } = await Client.create();
 await page.location("https://some-url.com");
-const button = await page.querySelector('button[type="button"]');
-await button.click();
-// .. Do something else now button has been clicked
+await page.evaluate(`document.querySelector('button[type="button"]')`);
+```
 
-// `navigation` is used if you need to wait for some kind of HTTP request, such as going to a different URL, or clicking a button that makes an API request
-const anchor = await page.querySelector("a");
-await anchor.click({
-  waitFor: "navigation",
-});
+If the button you click makes some form of HTTP request, be sure to utilise
+`waitUntilNetworkIdle` to wait until the new page has finished loading.
 
-const anchor = await page.querySelector('a[target="_BLANK"]');
-const newPage = await anchor.click({
-  waitFor: "newPage",
-});
-// ... Now `newPage` is a reference to the new tab that just opened
+If you are clicking an element that opens a new tab, be sure to use
+`.newPageClick()`. This insures that we can expect a new tab to be opened and
+return a new instance of `Page` for you to work with:
+
+```ts
+const { browser, page } = await Client.create();
+await page.location("https://some-url.com");
+const newPage = await page.newPageClick(
+  `document.querySelector('button[type="button"]')`,
+);
 ```
 
 ### Authenticating
@@ -332,10 +345,7 @@ const login = async (page: Page) => {
     document.querySelector('input[type="email"]').value = "admin@example.com";
     document.querySelector('input[type="password"]').value = "secret";
   });
-  const submit = await page.querySelector("button[type=submit]");
-  await submit.click({
-    waitFor: "navigation",
-  });
+  await page.evaluate(`document.querySelector('button[type=submit]')`);
 };
 const { browser, page } = await Client.create();
 await login(page);

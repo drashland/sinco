@@ -1,4 +1,4 @@
-import { deferred } from "../../deps.ts";
+import { assertEquals, deferred } from "../../deps.ts";
 import { Client } from "../../mod.ts";
 
 Deno.test("create()", async (t) => {
@@ -99,32 +99,19 @@ Deno.test("create()", async (t) => {
 });
 
 Deno.test(`close()`, async (t) => {
-  await t.step(`Should close all resources and not leak any`, async () => {
-    const { browser, page } = await Client.create();
-    await page.location("https://drash.land");
-    await browser.close();
-    // If resources are not closed or pending ops or leaked, this test will show it when ran
-  });
-
-  await t.step({
-    name: `Should close all page specific resources too`,
-    fn: async () => {
+  await t.step(
+    `Should close all resources, and throw if speciified`,
+    async () => {
       const { browser, page } = await Client.create();
       await page.location("https://drash.land");
-      await browser.close();
+      let errMsg = "";
       try {
-        const listener = Deno.listen({
-          port: 9292,
-          hostname: "localhost",
-        });
-        listener.close();
+        await browser.close("Some error message");
       } catch (e) {
-        if (e instanceof Deno.errors.AddrInUse) {
-          throw new Error(
-            `Seems like the subprocess is still running: ${e.message}`,
-          );
-        }
+        errMsg = e.message;
       }
+      assertEquals(errMsg, "Some error message");
+      // If resources are not closed or pending ops or leaked, this test will show it when ran
     },
-  });
+  );
 });
